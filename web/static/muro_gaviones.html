@@ -1,0 +1,784 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Muro de Gaviones</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .res-table td:first-child{color:#555;font-size:12px;width:58%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .msg-ok   {color:#2e7d32;}
+    .msg-error{color:#c62828;font-weight:600;}
+    .msg-warn {color:#e65100;}
+    .msg-item {font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .tbl-rc td{font-size:12px;vertical-align:middle;}
+    .tbl-rc th{font-size:11px;background:#E3F2FD;white-space:nowrap;}
+    .label-unit{font-size:10px;color:#888;}
+    .fs-badge-ok{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .fs-badge-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .sug-box{margin-bottom:10px;border:1px solid #FFCC80;border-radius:6px;overflow:hidden;}
+    .sug-header{background:#FFF3E0;padding:5px 12px;font-size:11px;font-weight:700;
+      color:#e65100;letter-spacing:0.4px;text-transform:uppercase;border-bottom:1px solid #FFE0B2;}
+    .sug-body{padding:6px 12px 8px;background:#FFFDE7;margin:0;}
+    .sug-body li{font-size:12px;color:#444;padding:2px 0;line-height:1.5;}
+    .sug-body li strong{color:#1565C0;}
+    .sug-body li code{background:#E3F2FD;color:#0D47A1;padding:1px 5px;border-radius:3px;font-size:11px;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="7"  y="14" width="10" height="5" rx="0.5" fill="#85B7EB"/>
+        <rect x="8"  y="9"  width="8"  height="5" rx="0.5" fill="#85B7EB"/>
+        <rect x="9"  y="4"  width="6"  height="5" rx="0.5" fill="#85B7EB"/>
+        <!-- soil -->
+        <rect x="17" y="4" width="4" height="15" fill="#8B6914" opacity="0.45"/>
+        <!-- pressure -->
+        <line x1="21" y1="8"  x2="17" y2="8"  stroke="#EF9F27" stroke-width="1.0"/>
+        <polygon points="17,7 17,9 15,8" fill="#EF9F27"/>
+        <line x1="21" y1="14" x2="17" y2="14" stroke="#EF9F27" stroke-width="1.4"/>
+        <polygon points="17,13 17,15 15,14" fill="#EF9F27"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 9.3 — Muro de Gaviones</div>
+    </div>
+    <a class="fc-tb-back" href="/muros">&#8592; Muros</a>
+    <div class="btn-group ms-2">
+      <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">
+        &#9654; Calcular
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>
+        &#8659; Exportar PDF
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" id="btnDXF" disabled>
+        &#8659; Exportar DXF
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ PANEL IZQUIERDO ══ -->
+    <div class="col-lg-5">
+
+      <!-- Geometría -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9634; Geometría del Muro
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">N cursos <span class="label-unit">[-]</span></label>
+              <input type="number" id="N" class="form-control form-control-sm" value="4" step="1" min="2" max="10" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Número de capas de gaviones</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">h_capa <span class="label-unit">[m]</span></label>
+              <select id="h_capa" class="form-select form-select-sm" onchange="redibuja()">
+                <option value="0.5" selected>0.50 m (estándar)</option>
+                <option value="1.0">1.00 m (industrial)</option>
+                <option value="0.3">0.30 m (pequeño)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">b_base <span class="label-unit">[m]</span></label>
+              <input type="number" id="b_base" class="form-control form-control-sm" value="2.50" step="0.10" min="0.50" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Ancho del curso inferior</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">b_corona <span class="label-unit">[m]</span></label>
+              <input type="number" id="b_corona" class="form-control form-control-sm" value="1.00" step="0.10" min="0.30" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Ancho del curso superior</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">h_emb <span class="label-unit">[m]</span></label>
+              <input type="number" id="h_emb" class="form-control form-control-sm" value="0.40" step="0.05" min="0.0" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Enterramiento del pie</div>
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div id="geoDerived" class="p-1 rounded text-center w-100" style="background:#EEF4FB;font-size:11px;color:#1565C0;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Material -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9632; Material del Gavión
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-7">
+              <label class="form-label mb-0" style="font-size:11px;">Tipo de relleno</label>
+              <select id="tipo_relleno" class="form-select form-select-sm" onchange="setGammaGavion()">
+                <option value="18.0">Piedra partida (18 kN/m³)</option>
+                <option value="19.0">Piedra compacta (19 kN/m³)</option>
+                <option value="20.0">Roca densa (20 kN/m³)</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            <div class="col-5">
+              <label class="form-label mb-0" style="font-size:11px;">γ_gavión <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_g" class="form-control form-control-sm" value="18.0" step="0.5" min="14" max="25">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">φ juntas <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_gavion" class="form-control form-control-sm" value="35" step="1" min="20" max="45">
+              <div class="form-text" style="font-size:9px;">Fricción entre cursos (FS ≥ 1.3)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suelo retenido -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9616; Suelo Retenido
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">φ <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_r" class="form-control form-control-sm" value="30" step="1" min="0" max="45" oninput="actualizarKa()">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">c <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="c_r" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_r" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">q_s <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="q_s" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div id="kaDisplay" class="p-1 rounded text-center w-100" style="background:#FFF3E0;font-size:11px;">
+                Ka = <strong>0.333</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suelo fundación -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9618; Suelo de Fundación
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">φ_f <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_f" class="form-control form-control-sm" value="30" step="1" min="0" max="45">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">c_f <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="c_f" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ_f <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_f" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">q_adm <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="qa" class="form-control form-control-sm" value="150" step="10" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">δ/φ_f <span class="label-unit">[-]</span></label>
+              <input type="number" id="delta_factor" class="form-control form-control-sm" value="0.667" step="0.05" min="0.3" max="1.0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagrama -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9641; Diagrama del Muro</div>
+        <div class="card-body p-1">
+          <div id="diagramaBox" style="background:#fff;border-radius:4px;overflow:hidden;"></div>
+        </div>
+      </div>
+
+      <div class="d-lg-none mb-3">
+        <button class="btn btn-primary w-100" onclick="calcular()">&#9654; Calcular</button>
+      </div>
+    </div>
+
+    <!-- ══ PANEL DERECHO ══ -->
+    <div class="col-lg-7">
+
+      <div id="cardResultados" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+          <div style="font-size:12px;color:#555;">Calculando…</div>
+        </div>
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9654; Resultados</div>
+        <div class="card-body" id="cuerpoResultados"></div>
+      </div>
+
+      <!-- Glosario -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex align-items-center justify-content-between"
+             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#glosarioBody">
+          <span class="fw-bold" style="font-size:13px;">&#9432; Glosario + Alcance del Módulo</span>
+          <span style="font-size:11px;color:#666;">&#9660;</span>
+        </div>
+        <div id="glosarioBody" class="collapse">
+          <div class="card-body" style="font-size:12px;">
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">GEOMETRÍA</p>
+                <p class="mb-1"><strong>N</strong> — Número de cursos (capas) apiladas de gaviones. Cada curso es un cajón de malla metálica relleno de piedra</p>
+                <p class="mb-1"><strong>h_capa</strong> — Altura de cada curso [m]. Estándar: 0.5 m (común en contención); industrial: 1.0 m (muros altos)</p>
+                <p class="mb-1"><strong>H = N × h_capa</strong> — Altura total del muro [m]</p>
+                <p class="mb-1"><strong>b_base</strong> — Ancho del curso más <u>inferior</u> (el que apoya en el suelo) [m]. Rige la estabilidad global</p>
+                <p class="mb-1"><strong>b_corona</strong> — Ancho del curso más <u>superior</u> (el remate o coronamiento del muro) [m]. La sección escalonada va de b_base abajo a b_corona arriba. Paso por curso: Δb = (b_base−b_corona)/(N−1)</p>
+                <p class="mb-1"><strong>h_emb</strong> — Profundidad de enterramiento del pie del muro [m]. Activa el empuje pasivo Ep; mínimo recomendado 0.3 m para evitar erosión del pie</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">MATERIAL Y RELLENO</p>
+                <p class="mb-1"><strong>Tipo de relleno</strong> — Selecciona el peso unitario γ_gavión automáticamente: piedra partida ≈ 18 kN/m³, compacta ≈ 19, roca densa ≈ 20</p>
+                <p class="mb-1"><strong>γ_gavión</strong> — Peso unitario del gavión relleno [kN/m³]. Incluye piedra, malla y vacíos (porosidad ≈ 30%). Para piedra partida ≈ 18–20 kN/m³</p>
+                <p class="mb-1"><strong>φ_juntas</strong> — Ángulo de fricción entre superficies de dos cursos consecutivos [°]. Para piedra sobre piedra vía malla: típico 30–40°. Controla la verificación interna</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">SUELO RETENIDO</p>
+                <p class="mb-1"><strong>φ (phi_r)</strong> — Ángulo de fricción interna del suelo retenido [°]</p>
+                <p class="mb-1"><strong>c</strong> — Cohesión del suelo retenido [kPa]. En arenas c = 0</p>
+                <p class="mb-1"><strong>γ (gamma_r)</strong> — Peso unitario del suelo retenido [kN/m³]</p>
+                <p class="mb-1"><strong>q_s</strong> — Sobrecarga superficial [kPa]; genera presión activa uniforme adicional</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">SUELO DE FUNDACIÓN</p>
+                <p class="mb-1"><strong>φ_f / c_f / γ_f</strong> — Fricción, cohesión y peso unitario del suelo bajo el muro</p>
+                <p class="mb-1"><strong>q_adm</strong> — Presión admisible del suelo de fundación [kPa]</p>
+                <p class="mb-1"><strong>δ/φ_f</strong> — Fracción de fricción en la interfaz base-suelo para el deslizamiento global</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">PRESIÓN ACTIVA Y ESTABILIDAD GLOBAL</p>
+                <p class="mb-1"><strong>Ka = tan²(45°−φ/2)</strong> — Coeficiente de empuje activo de Rankine</p>
+                <p class="mb-1"><strong>Ea</strong> — Empuje activo total sobre el plano vertical del talón [kN/m]</p>
+                <p class="mb-1"><strong>Mo</strong> — Momento volcador respecto al toe [kN·m/m]</p>
+                <p class="mb-1"><strong>W_total</strong> — Peso total de todos los cursos por metro lineal [kN/m]</p>
+                <p class="mb-1"><strong>x_CG</strong> — Centroide horizontal del muro escalonado desde el toe [m]. = Σ(b_i²) / (2·Σb_i)</p>
+                <p class="mb-1"><strong>Ep</strong> — Empuje pasivo en el pie (por h_emb) [kN/m]</p>
+                <p class="mb-1"><strong>FS_v = Mr/Mo</strong> — Factor de seguridad al vuelco ≥ 2.0</p>
+                <p class="mb-1"><strong>FS_d</strong> — Factor de seguridad al deslizamiento global ≥ 1.5</p>
+                <p class="mb-1"><strong>q_max / q_min</strong> — Presiones en la base [kPa]; q_max ≤ q_adm</p>
+                <p class="mb-1"><strong>e</strong> — Excentricidad de la resultante ≤ b_base/6 para no tracción en la base</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">VERIFICACIÓN INTERNA ENTRE CURSOS</p>
+                <p class="mb-1"><strong>Junta j</strong> — Interfaz entre el curso j y el curso j+1. Junta 1 = entre base y segundo curso</p>
+                <p class="mb-1"><strong>H_sobre</strong> — Altura del muro por encima de la junta j [m] = (N−j)·h_capa</p>
+                <p class="mb-1"><strong>W_sobre</strong> — Peso de los cursos por encima de la junta j [kN/m]</p>
+                <p class="mb-1"><strong>Ea_sobre</strong> — Empuje activo de Rankine para la altura H_sobre [kN/m]</p>
+                <p class="mb-1"><strong>FS_d_int = W_sobre·tan(φ_juntas) / Ea_sobre</strong> — Factor de seguridad interno ≥ 1.3</p>
+                <div class="alert alert-warning p-2 mt-2 mb-0" style="font-size:11px;">
+                  <strong>Alcance:</strong> Cursos uniformes, frente vertical, trasdós escalonado. No incluye: volteamiento del gavión individual, corrosión de malla, filtros o drenaje, efectos sísmicos ni presión hidrostática.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const v = id => document.getElementById(id).value;
+
+function setGammaGavion() {
+  const sel = document.getElementById('tipo_relleno').value;
+  if (sel !== 'custom') document.getElementById('gamma_g').value = sel;
+}
+
+function actualizarKa() {
+  const phi = +v('phi_r');
+  const Ka = Math.pow(Math.tan((45 - phi/2)*Math.PI/180), 2);
+  document.getElementById('kaDisplay').innerHTML = `Ka = <strong>${Ka.toFixed(4)}</strong> (Rankine)`;
+}
+
+function calcAnchos() {
+  const N = Math.max(2, Math.round(+v('N') || 4));
+  const bb = +v('b_base') || 2.5;
+  const bc = +v('b_corona') || 1.0;
+  const db = (bb - bc) / (N - 1);
+  return Array.from({length: N}, (_, i) => bb - i * db);
+}
+
+function actualizarDerived() {
+  const anchos = calcAnchos();
+  const N = anchos.length;
+  const h = +v('h_capa') || 0.5;
+  const H = N * h;
+  const A = h * anchos.reduce((s, b) => s + b, 0);
+  const db = (anchos[0] - anchos[N-1]) / (N-1);
+  document.getElementById('geoDerived').innerHTML =
+    `H = <strong>${H.toFixed(2)} m</strong>&nbsp;|&nbsp;Δb = <strong>${db.toFixed(3)} m/curso</strong>`;
+}
+
+// ── Diagrama SVG ───────────────────────────────────────────────────────────
+function actualizarDiagrama(d) {
+  const W = 500, SH = 360;
+  const PAD_L = 75, PAD_R = 30, PAD_T = 25, PAD_B = 85;
+
+  const N      = Math.max(2, Math.round(+v('N') || 4));
+  const h      = +v('h_capa')  || 0.5;
+  const bb     = +v('b_base')  || 2.5;
+  const bc     = +v('b_corona')|| 1.0;
+  const h_emb  = +v('h_emb')  || 0.4;
+  const phi_r  = +v('phi_r')  || 30;
+  const q_s    = +v('q_s')    || 0;
+  const gr     = +v('gamma_r')|| 18;
+  const H      = N * h;
+  const anchos = Array.from({length: N}, (_, i) => bb - i * (bb - bc) / (N-1));
+
+  const avW = W - PAD_L - PAD_R;
+  const avH = SH - PAD_T - PAD_B;
+  const sc  = Math.min(avW / (bb * 1.6), avH / Math.max(H, 0.1));
+  const ox  = PAD_L;
+  const oy  = SH - PAD_B;
+
+  const ax = xm => ox + xm * sc;
+  const ay = ym => oy - ym * sc;
+
+  const Ka    = Math.pow(Math.tan((45 - phi_r/2)*Math.PI/180), 2);
+  const p_bot = Ka * (gr * H + q_s);
+  const p_top = Ka * q_s;
+  const p_scl = Math.min(avW * 0.20 / Math.max(p_bot, 1), 5.0);
+
+  const q_max = d.q_max != null ? d.q_max : null;
+  const q_min = d.q_min != null ? d.q_min : null;
+
+  // COLORS for gabion courses (alternating slightly)
+  const FILL1 = '#8090A0', FILL2 = '#96A6B6';
+
+  let s = `<svg width="${W}" height="${SH}" viewBox="0 0 ${W} ${SH}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${SH}" fill="#FAFAFA"/>`;
+
+  // Soil hatch pattern
+  s += `<defs>
+    <pattern id="soil" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="8" x2="8" y2="0" stroke="#8B6914" stroke-width="0.6" opacity="0.4"/>
+    </pattern>
+  </defs>`;
+
+  // ── Suelo retenido (zona detrás del trasdós) ─────────────────────────────
+  const soilW = bb * 0.55;
+  // Build soil polygon following the stepped back face
+  let soilPts = `${ax(bc)},${ay(H)}`;
+  soilPts    += ` ${ax(bc + soilW)},${ay(H)}`;
+  soilPts    += ` ${ax(bb + soilW)},${ay(0)}`;
+  soilPts    += ` ${ax(bb)},${ay(0)}`;
+  // Back face steps (from top to bottom)
+  for (let i = N-1; i >= 0; i--) {
+    const y_top = (i + 1) * h;
+    const y_bot = i * h;
+    soilPts += ` ${ax(anchos[i])},${ay(y_top)}`;
+    if (i > 0) soilPts += ` ${ax(anchos[i])},${ay(y_bot)}`;
+  }
+  s += `<polygon points="${soilPts}" fill="#C9A96A" opacity="0.35"/>`;
+  s += `<polygon points="${soilPts}" fill="url(#soil)"/>`;
+
+  // ── Cursos de gaviones ───────────────────────────────────────────────────
+  for (let i = 0; i < N; i++) {
+    const y_bot = i * h;
+    const y_top = (i + 1) * h;
+    const b_i   = anchos[i];
+    const fill  = i % 2 === 0 ? FILL1 : FILL2;
+    // Main rectangle
+    s += `<rect x="${ax(0)}" y="${ay(y_top)}" width="${ax(b_i)-ax(0)}" height="${ay(y_bot)-ay(y_top)}"
+            fill="${fill}" stroke="#37474F" stroke-width="1.2"/>`;
+    // Internal grid lines (3x2 rock cells)
+    const nCols = Math.max(2, Math.min(4, Math.round(b_i / 0.5)));
+    for (let c = 1; c < nCols; c++) {
+      const xc = ax(b_i * c / nCols);
+      s += `<line x1="${xc}" y1="${ay(y_bot)}" x2="${xc}" y2="${ay(y_top)}" stroke="#2a3a4a" stroke-width="0.5" opacity="0.5"/>`;
+    }
+    // Mid horizontal line
+    const ymid = (ay(y_bot) + ay(y_top)) / 2;
+    s += `<line x1="${ax(0)}" y1="${ymid}" x2="${ax(b_i)}" y2="${ymid}" stroke="#2a3a4a" stroke-width="0.5" opacity="0.5"/>`;
+    // Rock dots
+    for (let dc = 0; dc < 6; dc++) {
+      const rx = ax(b_i * (dc + 0.5) / 6);
+      const ry = (ay(y_bot) + ay(y_top)) / 2 + ((dc % 2) - 0.5) * (ay(y_bot)-ay(y_top)) * 0.2;
+      s += `<circle cx="${rx}" cy="${ry}" r="2" fill="#2E7D32" opacity="0.4"/>`;
+    }
+  }
+
+  // ── Superficie del terreno retenido ──────────────────────────────────────
+  s += `<line x1="${ax(bc)}" y1="${ay(H)}" x2="${ax(bc + soilW)}" y2="${ay(H)}"
+          stroke="#555" stroke-width="1.2"/>`;
+
+  // ── Enterramiento del pie ─────────────────────────────────────────────────
+  if (h_emb > 0) {
+    const emb_h = h_emb * sc;
+    s += `<rect x="${ax(0)}" y="${ay(0)}" width="${ax(bb)-ax(0)}" height="${emb_h}"
+            fill="#C9A96A" opacity="0.3" stroke="#8B6914" stroke-width="0.6" stroke-dasharray="3,2"/>`;
+    s += `<text x="${ax(bb/2)}" y="${ay(0)+emb_h/2+4}" text-anchor="middle"
+            font-size="8" fill="#8B6914">h_emb=${h_emb.toFixed(2)}m</text>`;
+  }
+
+  // ── Presión activa ─────────────────────────────────────────────────────
+  for (let i = 0; i <= 5; i++) {
+    const z   = H * i / 5;
+    const p_z = Ka * (gr * z + q_s);
+    if (p_z < 0.5) continue;
+    const p_px  = p_z * p_scl;
+    // back face position at depth z from top
+    const frac  = z / H;          // 0 at top → 1 at bottom
+    const b_at  = bc + (bb - bc) * frac;
+    // step to nearest course back face
+    const y_a   = ay(H - z);
+    s += `<line x1="${ax(b_at)+p_px}" y1="${y_a}" x2="${ax(b_at)+5}" y2="${y_a}"
+            stroke="#E53935" stroke-width="1.2"/>`;
+    s += `<polygon points="${ax(b_at)+4},${y_a-4} ${ax(b_at)+4},${y_a+4} ${ax(b_at)-2},${y_a}"
+            fill="#E53935"/>`;
+  }
+  const p_top_px = p_top * p_scl, p_bot_px = p_bot * p_scl;
+  s += `<polygon points="${ax(bc)+p_top_px},${ay(H)} ${ax(bc)},${ay(H)} ${ax(bb)},${ay(0)} ${ax(bb)+p_bot_px},${ay(0)}"
+          fill="rgba(229,57,53,0.08)" stroke="#E53935" stroke-width="0.8" stroke-dasharray="4,2"/>`;
+  s += `<text x="${ax(bb)+p_bot_px+3}" y="${ay(0)+4}" font-size="8" fill="#c62828">${p_bot.toFixed(1)} kPa</text>`;
+
+  // ── Presión en la base ──────────────────────────────────────────────────
+  const y_bp = ay(0) + 6;
+  if (q_max !== null && q_min !== null) {
+    const q_scl    = Math.min(40/Math.max(q_max,1), 0.8);
+    const q_max_px = q_max * q_scl, q_min_px = q_min * q_scl;
+    s += `<polygon points="${ax(0)},${y_bp} ${ax(bb)},${y_bp} ${ax(bb)},${y_bp+q_min_px} ${ax(0)},${y_bp+q_max_px}"
+            fill="rgba(21,101,192,0.18)" stroke="#1565C0" stroke-width="1"/>`;
+    s += `<text x="${ax(0)}" y="${y_bp+q_max_px+11}" text-anchor="middle" font-size="8" fill="#1565C0" font-weight="bold">${q_max.toFixed(0)}</text>`;
+    s += `<text x="${ax(bb)}" y="${y_bp+Math.max(q_min_px,5)+11}" text-anchor="middle" font-size="8" fill="#1565C0">${q_min.toFixed(0)}</text>`;
+    s += `<text x="${ax(bb/2)}" y="${y_bp+Math.max((q_max_px+q_min_px)/2,10)+11}" text-anchor="middle" font-size="7" fill="#555">kPa</text>`;
+  } else {
+    s += `<text x="${ax(bb/2)}" y="${y_bp+18}" text-anchor="middle" font-size="8" fill="#888">presión base</text>`;
+  }
+
+  // ── Badges FS ────────────────────────────────────────────────────────────
+  if (d.FS_vuelco != null) {
+    const cv = d.ok_vuelco ? '#2e7d32' : '#c62828';
+    const cd = d.ok_desliz ? '#2e7d32' : '#c62828';
+    const cp = d.ok_presion ? '#2e7d32' : '#c62828';
+    s += `<rect x="${W-PAD_R-72}" y="8" width="70" height="44" rx="4" fill="white" stroke="#ddd"/>`;
+    s += `<text x="${W-PAD_R-37}" y="22" text-anchor="middle" font-size="8" fill="${cv}" font-weight="bold">FS_v=${d.FS_vuelco.toFixed(2)}</text>`;
+    s += `<text x="${W-PAD_R-37}" y="34" text-anchor="middle" font-size="8" fill="${cd}" font-weight="bold">FS_d=${d.FS_desliz.toFixed(2)}</text>`;
+    s += `<text x="${W-PAD_R-37}" y="46" text-anchor="middle" font-size="7" fill="${cp}">q=${(d.q_max||0).toFixed(0)}kPa</text>`;
+  }
+
+  // ── Cotas ─────────────────────────────────────────────────────────────────
+  const x_dim = ax(0) - 18;
+  s += `<line x1="${x_dim}" y1="${ay(0)}" x2="${x_dim}" y2="${ay(H)}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<line x1="${x_dim-4}" y1="${ay(0)}" x2="${x_dim+4}" y2="${ay(0)}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<line x1="${x_dim-4}" y1="${ay(H)}" x2="${x_dim+4}" y2="${ay(H)}" stroke="#555" stroke-width="0.8"/>`;
+  const ymid = (ay(0)+ay(H))/2;
+  s += `<text x="${x_dim-5}" y="${ymid}" text-anchor="middle" font-size="9" fill="#333"
+    transform="rotate(-90,${x_dim-5},${ymid})">H=${H.toFixed(2)}m</text>`;
+  const y_bdim = y_bp + 52;
+  s += `<line x1="${ax(0)}" y1="${y_bdim}" x2="${ax(bb)}" y2="${y_bdim}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<text x="${ax(bb/2)}" y="${y_bdim+11}" text-anchor="middle" font-size="9" fill="#333">B=${bb.toFixed(2)}m</text>`;
+
+  s += '</svg>';
+  document.getElementById('diagramaBox').innerHTML = s;
+}
+
+function redibuja() {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+}
+
+// ── Calcular ──────────────────────────────────────────────────────────────
+let _lastPayload = null;
+
+async function calcular() {
+  const btn     = document.getElementById('btnCalc');
+  const overlay = document.getElementById('loadingOverlay');
+  const cardRes = document.getElementById('cardResultados');
+
+  cardRes.style.display = '';
+  overlay.classList.add('active');
+  btn.classList.add('calc-btn-loading');
+  btn.disabled = true;
+
+  const payload = {
+    N:            parseInt(v('N')),
+    h_capa:       parseFloat(v('h_capa')),
+    b_base:       parseFloat(v('b_base')),
+    b_corona:     parseFloat(v('b_corona')),
+    h_emb:        parseFloat(v('h_emb')),
+    gamma_g:      parseFloat(v('gamma_g')),
+    phi_r:        parseFloat(v('phi_r')),
+    c_r:          parseFloat(v('c_r')),
+    gamma_r:      parseFloat(v('gamma_r')),
+    q_s:          parseFloat(v('q_s')),
+    phi_f:        parseFloat(v('phi_f')),
+    c_f:          parseFloat(v('c_f')),
+    gamma_f:      parseFloat(v('gamma_f')),
+    qa:           parseFloat(v('qa')),
+    phi_gavion:   parseFloat(v('phi_gavion')),
+    delta_factor: parseFloat(v('delta_factor')),
+  };
+  _lastPayload = payload;
+
+  try {
+    const resp = await fetch('/api/muro-gaviones/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error);
+    renderResultados(d);
+    actualizarDiagrama(d);
+    document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
+  } catch(err) {
+    alert('Error: ' + err.message);
+  } finally {
+    overlay.classList.remove('active');
+    btn.classList.remove('calc-btn-loading');
+    btn.disabled = false;
+  }
+}
+
+function renderResultados(d) {
+  const e   = d.estabilidad;
+  const badge = (lbl, ok) => ok
+    ? `<span class="fs-badge-ok">✓ ${lbl}</span>`
+    : `<span class="fs-badge-fail">✗ ${lbl}</span>`;
+
+  let html = '';
+
+  // ── Badges globales ──
+  html += '<div class="mb-3 d-flex flex-wrap gap-2">';
+  html += badge(`FS_v = ${e.FS_vuelco.toFixed(2)}`, e.ok_vuelco);
+  html += badge(`FS_d = ${e.FS_desliz.toFixed(2)}`, e.ok_desliz);
+  html += badge(`q_max = ${e.q_max.toFixed(1)} kPa`, e.ok_presion);
+  html += badge(`|e| = ${Math.abs(e.e).toFixed(3)} m`, e.ok_excentricidad);
+  html += badge(`Juntas internas`, d.ok_interna);
+  html += '</div>';
+
+  // ── Empuje activo ──
+  html += '<div class="sec-heading">Empuje Activo (Rankine)</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Ka = tan²(45°−φ/2)</td><td>${d.Ka.toFixed(4)}</td></tr>`;
+  html += `<tr><td>Ea_γ (triangular)</td><td>${e.Ea_gamma.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>Ea_q (sobrecarga)</td><td>${e.Ea_q.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>Ea total</td><td><strong>${e.Ea.toFixed(2)} kN/m</strong></td></tr>`;
+  html += `<tr><td>Momento volcador Mo</td><td><strong>${e.Mo.toFixed(2)} kN·m/m</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Fuerzas estabilizantes ──
+  html += '<div class="sec-heading">Fuerzas Estabilizantes</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>W total (todos los cursos)</td><td>${e.W_total.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>x_CG (centroide desde frente)</td><td>${e.x_CG.toFixed(3)} m</td></tr>`;
+  html += `<tr><td>Momento resistente Mr</td><td><strong>${e.Mr.toFixed(2)} kN·m/m</strong></td></tr>`;
+  html += `<tr><td>Empuje pasivo Ep (pie)</td><td>${e.Ep.toFixed(2)} kN/m</td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Verificación global ──
+  html += '<div class="sec-heading">Verificación Global</div>';
+  html += '<table class="table table-sm mb-3 tbl-rc"><thead><tr>';
+  html += '<th>Verificación</th><th>Valor</th><th>Mínimo</th><th>Estado</th></tr></thead><tbody>';
+  const fsRow = (label, val, lim, ok) => {
+    const cls = ok ? 'table-success' : 'table-danger';
+    return `<tr class="${cls}"><td>${label}</td><td>${val}</td><td>${lim}</td><td><strong>${ok ? '✓ OK' : '✗ FALLA'}</strong></td></tr>`;
+  };
+  const qa = parseFloat(v('qa'));
+  const bb = parseFloat(v('b_base'));
+  html += fsRow('Vuelco',        `FS = ${e.FS_vuelco.toFixed(2)}`,     '2.00',                      e.ok_vuelco);
+  html += fsRow('Deslizamiento', `FS = ${e.FS_desliz.toFixed(2)}`,     '1.50',                      e.ok_desliz);
+  html += fsRow('Presión base',  `q_max = ${e.q_max.toFixed(1)} kPa`,  `qa = ${qa.toFixed(0)} kPa`, e.ok_presion);
+  html += fsRow('Excentricidad', `|e| = ${Math.abs(e.e).toFixed(3)} m`,`B/6 = ${(bb/6).toFixed(3)} m`, e.ok_excentricidad);
+  html += '</tbody></table>';
+
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>x_R (resultante desde toe)</td><td>${e.x_R.toFixed(3)} m</td></tr>`;
+  html += `<tr><td>q_max (toe)</td><td><strong>${e.q_max.toFixed(1)} kPa</strong></td></tr>`;
+  html += `<tr><td>q_min (heel)</td><td>${e.q_min.toFixed(1)} kPa</td></tr>`;
+  html += `<tr><td>Área sección total</td><td>${d.A_seccion.toFixed(3)} m²</td></tr>`;
+  html += `<tr><td>Anchos por curso (base→corona)</td><td>${d.anchos.map(b=>b.toFixed(2)).join(' / ')} m</td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Verificación interna ──
+  html += '<div class="sec-heading">Verificación Interna entre Cursos (FS ≥ 1.3)</div>';
+  html += '<table class="table table-sm mb-3 tbl-rc"><thead><tr>';
+  html += '<th>Junta</th><th>H sobre [m]</th><th>W sobre [kN/m]</th><th>Ea sobre [kN/m]</th><th>FS_d</th><th>Estado</th></tr></thead><tbody>';
+  for (const vi of d.internas) {
+    const cls = vi.ok_desliz ? 'table-success' : 'table-danger';
+    html += `<tr class="${cls}">
+      <td>J${vi.junta}</td>
+      <td>${vi.H_sobre.toFixed(2)}</td>
+      <td>${vi.W_sobre.toFixed(2)}</td>
+      <td>${vi.Ea_sobre.toFixed(2)}</td>
+      <td><strong>${vi.FS_desliz.toFixed(2)}</strong></td>
+      <td><strong>${vi.ok_desliz ? '✓ OK' : '✗ FALLA'}</strong></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+
+  // ── Sugerencias ──
+  html += generarSugerencias(e, parseFloat(v('b_base')), d.internas);
+
+  // ── Mensajes ──
+  html += '<div class="sec-heading">Mensajes</div>';
+  for (const msg of d.mensajes) {
+    const cls = {ok:'msg-ok', error:'msg-error', advertencia:'msg-warn'}[msg.tipo] || '';
+    html += `<div class="msg-item ${cls}">▸ ${msg.texto}</div>`;
+  }
+
+  document.getElementById('cuerpoResultados').innerHTML = html;
+}
+
+// ── Sugerencias de diseño ────────────────────────────────────────────────
+function sugBox(titulo, items) {
+  return `<div class="sug-box">
+    <div class="sug-header">&#9654; ${titulo}</div>
+    <ul class="sug-body">${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div>`;
+}
+
+function generarSugerencias(e, bb, internas) {
+  const fallos = !e.ok_vuelco || !e.ok_desliz || !e.ok_presion || !e.ok_excentricidad
+               || (internas && internas.some(v => !v.ok_desliz));
+  if (!fallos) return '';
+
+  let html = '<div class="sec-heading" style="color:#e65100;border-color:#e65100;">&#9888; Sugerencias de Diseño</div>';
+
+  if (!e.ok_vuelco) {
+    html += sugBox(`Vuelco — FS = ${e.FS_vuelco.toFixed(2)} &lt; 2.0`, [
+      'Aumentar <strong>b_base</strong>: incrementa el brazo del centroide x_CG y el momento resistente Mr',
+      'Aumentar <strong>b_corona</strong>: desplaza el CG global hacia el talón (sin aumentar el ancho en base)',
+      'Reducir <strong>q_s</strong>: disminuye el momento volcador Mo',
+    ]);
+  }
+
+  if (!e.ok_desliz) {
+    html += sugBox(`Deslizamiento — FS = ${e.FS_desliz.toFixed(2)} &lt; 1.5`, [
+      'Aumentar <strong>h_emb</strong>: incrementa el empuje pasivo Ep en el pie del muro',
+      'Aumentar <strong>b_base</strong>: mayor peso W → mayor fuerza de fricción en la base',
+      'Aumentar <strong>delta_factor</strong>: ángulo de fricción base (recomendado ≤ 1.0)',
+      'En campo: considerar <strong>clave de corte</strong> (shear key) embebida en la base',
+    ]);
+  }
+
+  if (!e.ok_presion) {
+    html += sugBox(`Presión base — q_max = ${e.q_max.toFixed(1)} kPa &gt; qa`, [
+      'Aumentar <strong>b_base</strong>: distribuye el peso sobre mayor área, reduce q_max',
+      'Corregir la excentricidad (ver sugerencias abajo): centraliza la resultante en la base',
+      'Verificar <strong>q_adm</strong> con ensayo actualizado; evaluar mejoramiento de suelo',
+    ]);
+  }
+
+  if (!e.ok_excentricidad) {
+    const b_min  = (6 * Math.abs(e.e)).toFixed(2);
+    const exceso = (Math.abs(e.e) - bb/6).toFixed(3);
+    html += sugBox(`Excentricidad — |e| = ${Math.abs(e.e).toFixed(3)} m &gt; B/6`, [
+      `Aumentar <strong>b_base</strong> a ≥ <strong>${b_min} m</strong> <code>(estimación: b_base ≥ 6·|e|)</code>`,
+      `Exceso actual fuera del tercio medio: <code>${exceso} m</code>`,
+      'Aumentar <strong>b_corona</strong>: desplaza el centroide global hacia el talón, reduce e',
+      'Reducir <strong>q_s</strong>: disminuye Mo y acerca la resultante al centro de la base',
+    ]);
+  }
+
+  if (internas) {
+    const falladas = internas.filter(v => !v.ok_desliz);
+    if (falladas.length) {
+      const lbl = falladas.map(v=>`J${v.junta} (FS=${v.FS_desliz.toFixed(2)})`).join(', ');
+      html += sugBox(`Juntas internas — ${lbl} &lt; 1.3`, [
+        'Aumentar <strong>phi_gavion</strong>: usar relleno de mayor angularidad (piedra partida vs. redondeada)',
+        'Aumentar <strong>b_corona</strong>: amplía los cursos superiores, incrementa W_sobre en las juntas altas',
+        'Reducir <strong>h_capa</strong>: cursos más delgados mejoran la estabilidad interna entre capas',
+        'Verificar que el relleno de piedra tenga d<sub>50</sub> adecuado para minimizar la deformación de malla',
+      ]);
+    }
+  }
+  return html;
+}
+
+async function exportarDXF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro-gaviones/report/dxf', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando DXF');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'muro_gaviones.dxf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro-gaviones/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando PDF');
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'muro_gaviones.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+});
+</script>
+</body>
+</html>
+
+

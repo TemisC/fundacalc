@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FundaCalc — Módulo 5: Zapata Excéntrica</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.26.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0D1B2A;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .fc-grid-lines {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(55,138,221,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55,138,221,0.07) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .fc-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(to bottom,
+        rgba(13,27,42,0.50) 0%,
+        rgba(13,27,42,0.70) 55%,
+        rgba(13,27,42,0.93) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .fc-wrap {
+      position: relative;
+      z-index: 10;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* Header */
+    .fc-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .fc-logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #1565C0 0%, #378ADD 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(55,138,221,0.35);
+      flex-shrink: 0;
+    }
+
+    .fc-brand { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .fc-tagline { color: #85B7EB; font-size: 12px; margin-top: 2px; }
+
+    .fc-back {
+      margin-left: auto;
+      color: #85B7EB;
+      font-size: 13px;
+      text-decoration: none;
+      border: 1px solid rgba(133,183,235,0.3);
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.18s;
+    }
+    .fc-back:hover { background: rgba(133,183,235,0.12); color: #fff; }
+
+    /* Breadcrumb */
+    .fc-breadcrumb {
+      color: #85B7EB;
+      font-size: 11.5px;
+      margin-bottom: 36px;
+      opacity: 0.7;
+    }
+    .fc-breadcrumb span { color: #fff; opacity: 1; }
+
+    /* Section title */
+    .fc-section-title {
+      color: #fff;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .fc-section-sub {
+      color: #85B7EB;
+      font-size: 13px;
+      margin-bottom: 32px;
+    }
+
+    /* Cards grid */
+    .fc-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .fc-card {
+      background: rgba(20,34,51,0.85);
+      border: 1px solid rgba(55,138,221,0.22);
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+      position: relative;
+    }
+    .fc-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(55,138,221,0.55);
+      box-shadow: 0 8px 32px rgba(55,138,221,0.18);
+    }
+    .fc-card.fc-card-soon {
+      opacity: 0.65;
+      cursor: default;
+    }
+    .fc-card.fc-card-soon:hover {
+      transform: none;
+      border-color: rgba(55,138,221,0.22);
+      box-shadow: none;
+    }
+
+    .fc-card-img {
+      width: 100%;
+      background: #0a1929;
+      border-bottom: 1px solid rgba(55,138,221,0.15);
+    }
+
+    .fc-card-body {
+      padding: 16px 18px 18px;
+    }
+
+    .fc-card-title {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .fc-card-desc {
+      color: #85B7EB;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .fc-card-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .badge-ready { background: rgba(21,101,192,0.25); color: #64B5F6; border: 1px solid rgba(100,181,246,0.4); }
+    .badge-soon  { background: rgba(239,159,39,0.18); color: #EF9F27; border: 1px solid rgba(239,159,39,0.35); }
+
+    .fc-card-arrow {
+      position: absolute;
+      top: 16px; right: 16px;
+      color: rgba(133,183,235,0.4);
+      font-size: 18px;
+      transition: color 0.18s;
+    }
+    .fc-card:not(.fc-card-soon):hover .fc-card-arrow { color: #85B7EB; }
+  </style>
+</head>
+<body>
+  <div class="fc-grid-lines"></div>
+  <div class="fc-overlay"></div>
+
+  <div class="fc-wrap">
+
+    <!-- Header -->
+    <div class="fc-header">
+      <div class="fc-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="13" width="20" height="8" rx="1.5" fill="#85B7EB"/>
+          <rect x="8" y="5"  width="8"  height="8" rx="1"   fill="#B5D4F4" opacity="0.85"/>
+          <line x1="2" y1="21" x2="9"  y2="21" stroke="#F9A825" stroke-width="1.4"/>
+          <line x1="9" y1="21" x2="22" y2="17" stroke="#F9A825" stroke-width="1.4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-brand">FundaCalc</div>
+        <div class="fc-tagline">Módulo 5 — Zapata Excéntrica</div>
+      </div>
+      <a class="fc-back" href="/">← Inicio</a>
+    </div>
+
+    <div class="fc-breadcrumb">Inicio › <span>Módulo 5 — Zapata Excéntrica</span></div>
+
+    <div class="fc-section-title">Zapata Excéntrica</div>
+    <div class="fc-section-sub">Selecciona el tipo de excentricidad a diseñar</div>
+
+    <div class="fc-cards">
+
+      <!-- 5a — Por carga -->
+      <div class="fc-card" onclick="window.location.href='/zapata-excentrica/por-carga'">
+        <div class="fc-card-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="fc-card-img">
+          <svg width="100%" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg">
+            <rect width="280" height="100" fill="#0a1929"/>
+            <!-- columna centrada -->
+            <rect x="116" y="10" width="48" height="36" fill="none" stroke="#378ADD" stroke-width="1.5"/>
+            <!-- zapata -->
+            <rect x="60"  y="46" width="160" height="22" fill="#142233" stroke="#378ADD" stroke-width="1.5"/>
+            <!-- presión trapezoidal -->
+            <polygon points="60,68 60,92 220,84 220,68" fill="rgba(55,138,221,0.15)" stroke="#378ADD" stroke-width="0.8"/>
+            <line x1="60"  y1="68" x2="60"  y2="92" stroke="#EF9F27" stroke-width="1"/>
+            <line x1="220" y1="68" x2="220" y2="84" stroke="#EF9F27" stroke-width="1"/>
+            <!-- momento flecha -->
+            <path d="M140 28 Q155 22 160 30" stroke="#EF9F27" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+            <defs><marker id="arr" markerWidth="5" markerHeight="5" refX="3" refY="2.5" orient="auto"><polygon points="0 0, 5 2.5, 0 5" fill="#EF9F27"/></marker></defs>
+            <text x="163" y="25" font-size="7" fill="#EF9F27">M</text>
+            <text x="140" y="98" text-anchor="middle" font-size="6.5" fill="#85B7EB">presión variable por momento</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Excéntrica por Carga</div>
+          <div class="fc-card-desc">Columna centrada sobre la zapata con momentos aplicados (viento · sismo · asimetría de vigas). La excentricidad resulta de e = M/P.</div>
+          <span class="fc-card-badge badge-ready">Módulo 5a — activo</span>
+        </div>
+      </div>
+
+      <!-- 5b — Por geometría / fachada -->
+      <div class="fc-card" onclick="window.location.href='/zapata-excentrica/fachada'">
+        <div class="fc-card-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="fc-card-img">
+          <svg width="100%" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg">
+            <rect width="280" height="100" fill="#0a1929"/>
+            <!-- limite de predio -->
+            <line x1="72" y1="5" x2="72" y2="95" stroke="#EF9F27" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="68" y="9" text-anchor="end" font-size="6" fill="#EF9F27">límite</text>
+            <!-- columna en borde -->
+            <rect x="72" y="10" width="36" height="32" fill="none" stroke="#378ADD" stroke-width="1.5"/>
+            <!-- zapata descentrada -->
+            <rect x="72" y="42" width="130" height="22" fill="#142233" stroke="#378ADD" stroke-width="1.5"/>
+            <!-- offset flecha -->
+            <line x1="90" y1="55" x2="137" y2="55" stroke="#85B7EB" stroke-width="1" stroke-dasharray="2,2"/>
+            <text x="113" y="53" text-anchor="middle" font-size="6.5" fill="#85B7EB">e</text>
+            <!-- presión trapezoidal -->
+            <polygon points="72,64 72,95 202,80 202,64" fill="rgba(55,138,221,0.12)" stroke="#378ADD" stroke-width="0.8"/>
+            <text x="137" y="98" text-anchor="middle" font-size="6.5" fill="#85B7EB">presión variable por geometría</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Excéntrica por Geometría</div>
+          <div class="fc-card-desc">Zapata de fachada / medianera. Columna descentrada por restricción de terreno. El momento resulta de M = P × e geométrico.</div>
+          <span class="fc-card-badge badge-ready">Módulo 5b — activo</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

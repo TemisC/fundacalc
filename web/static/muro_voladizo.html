@@ -1,0 +1,729 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Muro en Voladizo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .res-table td:first-child{color:#555;font-size:12px;width:58%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .chk-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .chk-ok  {background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;}
+    .chk-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;}
+    .chk-warn{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .msg-ok   {color:#2e7d32;}
+    .msg-error{color:#c62828;font-weight:600;}
+    .msg-warn {color:#e65100;}
+    .msg-item {font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .tbl-rc td{font-size:12px;vertical-align:middle;}
+    .tbl-rc th{font-size:11px;background:#E3F2FD;white-space:nowrap;}
+    .tbl-rc tr:last-child td{border-bottom:0;}
+    .label-unit{font-size:10px;color:#888;}
+    .fs-badge-ok{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .fs-badge-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .sug-box{margin-bottom:10px;border:1px solid #FFCC80;border-radius:6px;overflow:hidden;}
+    .sug-header{background:#FFF3E0;padding:5px 12px;font-size:11px;font-weight:700;
+      color:#e65100;letter-spacing:0.4px;text-transform:uppercase;border-bottom:1px solid #FFE0B2;}
+    .sug-body{padding:6px 12px 8px;background:#FFFDE7;margin:0;}
+    .sug-body li{font-size:12px;color:#444;padding:2px 0;line-height:1.5;}
+    .sug-body li strong{color:#1565C0;}
+    .sug-body li code{background:#E3F2FD;color:#0D47A1;padding:1px 5px;border-radius:3px;font-size:11px;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <!-- footing -->
+        <rect x="1" y="16" width="20" height="4" rx="0.5" fill="#85B7EB"/>
+        <!-- stem -->
+        <rect x="13" y="3"  width="4" height="13" rx="0.3" fill="#85B7EB"/>
+        <!-- soil fill -->
+        <rect x="17" y="3"  width="4" height="13" fill="#8B6914" opacity="0.45"/>
+        <!-- pressure arrows -->
+        <line x1="21" y1="7"  x2="17" y2="7"  stroke="#EF9F27" stroke-width="1.0"/>
+        <polygon points="17,6 17,8 15,7" fill="#EF9F27"/>
+        <line x1="21" y1="12" x2="17" y2="12" stroke="#EF9F27" stroke-width="1.4"/>
+        <polygon points="17,11 17,13 15,12" fill="#EF9F27"/>
+        <!-- label Ka -->
+        <text x="1" y="10" font-size="4" fill="#85B7EB">Ka</text>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 9.1 — Muro en Voladizo</div>
+    </div>
+    <a class="fc-tb-back" href="/muros">&#8592; Muros</a>
+    <div class="btn-group ms-2">
+      <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">
+        &#9654; Calcular
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>
+        &#8659; Exportar PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ PANEL IZQUIERDO ══ -->
+    <div class="col-lg-5">
+
+      <!-- Card 1: Geometría -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9634; Geometría del Muro
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">H total <span class="label-unit">[m]</span></label>
+              <input type="number" id="H" class="form-control form-control-sm" value="3.50" step="0.10" min="1" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Base zapata → coronamiento</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">h_zapata <span class="label-unit">[m]</span></label>
+              <input type="number" id="h_zapata" class="form-control form-control-sm" value="0.40" step="0.05" min="0.20" oninput="redibuja()">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">b_base fuste <span class="label-unit">[m]</span></label>
+              <input type="number" id="b_base" class="form-control form-control-sm" value="0.35" step="0.05" min="0.15" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Ancho en la base</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">b_corona fuste <span class="label-unit">[m]</span></label>
+              <input type="number" id="b_corona" class="form-control form-control-sm" value="0.25" step="0.05" min="0.10" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Ancho en la corona</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">B_punta (toe) <span class="label-unit">[m]</span></label>
+              <input type="number" id="B_punta" class="form-control form-control-sm" value="0.60" step="0.05" min="0.10" oninput="redibuja()">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">B_talón (heel) <span class="label-unit">[m]</span></label>
+              <input type="number" id="B_talon" class="form-control form-control-sm" value="2.00" step="0.10" min="0.20" oninput="redibuja()">
+            </div>
+          </div>
+          <div id="geoDerived" class="mt-2 p-2 rounded" style="background:#EEF4FB;font-size:11px;color:#1565C0;"></div>
+        </div>
+      </div>
+
+      <!-- Card 2: Suelo retenido -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9616; Suelo Retenido
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">φ <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_r" class="form-control form-control-sm" value="30" step="1" min="0" max="45" oninput="redibuja()">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">c <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="c_r" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_r" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Sobrecarga q_s <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="q_s" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div id="kaDisplay" class="p-1 rounded text-center w-100" style="background:#FFF3E0;font-size:11px;">
+                Ka = <strong>0.333</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Suelo de fundación -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9618; Suelo de Fundación
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">φ_f <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_f" class="form-control form-control-sm" value="30" step="1" min="0" max="45">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">c_f <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="c_f" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ_f <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_f" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">q_adm <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="qa" class="form-control form-control-sm" value="150" step="10" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">δ/φ_f <span class="label-unit">[-]</span></label>
+              <input type="number" id="delta_factor" class="form-control form-control-sm" value="0.667" step="0.05" min="0.3" max="1.0">
+              <div class="form-text" style="font-size:9px;">Fricción base/suelo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Hormigón y Acero -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9632; Hormigón y Acero (ACI 318)
+        </div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">f'c <span class="label-unit">[MPa]</span></label>
+              <select id="fc" class="form-select form-select-sm">
+                <option value="21">21 MPa (H21)</option>
+                <option value="25" selected>25 MPa (H25)</option>
+                <option value="28">28 MPa (H28)</option>
+                <option value="30">30 MPa (H30)</option>
+                <option value="35">35 MPa (H35)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">fy <span class="label-unit">[MPa]</span></label>
+              <select id="fy" class="form-select form-select-sm">
+                <option value="420" selected>420 MPa (ADN 420)</option>
+                <option value="500">500 MPa (ADN 500)</option>
+                <option value="414">414 MPa (Gr60)</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Recub. <span class="label-unit">[cm]</span></label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="7" step="1" min="4">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ_c <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_c" class="form-control form-control-sm" value="24" step="0.5" min="20">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagrama SVG -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9641; Diagrama del Muro</div>
+        <div class="card-body p-1">
+          <div id="diagramaBox" style="background:#fff;border-radius:4px;overflow:hidden;"></div>
+        </div>
+      </div>
+
+      <!-- Mobile: botón calcular -->
+      <div class="d-lg-none mb-3">
+        <button class="btn btn-primary w-100" onclick="calcular()">&#9654; Calcular</button>
+      </div>
+    </div>
+
+    <!-- ══ PANEL DERECHO ══ -->
+    <div class="col-lg-7">
+
+      <!-- Resultados (oculto hasta calcular) -->
+      <div id="cardResultados" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+          <div style="font-size:12px;color:#555;">Calculando…</div>
+        </div>
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">
+          &#9654; Resultados
+        </div>
+        <div class="card-body" id="cuerpoResultados">
+          <!-- Se llena por JS -->
+        </div>
+      </div>
+
+      <!-- Glosario + Alcance -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex align-items-center justify-content-between"
+             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#glosarioMuroBody">
+          <span class="fw-bold" style="font-size:13px;">&#9432; Glosario + Alcance del Módulo</span>
+          <span style="font-size:11px;color:#666;">&#9660;</span>
+        </div>
+        <div id="glosarioMuroBody" class="collapse">
+          <div class="card-body" style="font-size:12px;">
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">GEOMETRÍA</p>
+                <p class="mb-1"><strong>H</strong> — Altura total del muro: desde la base de la zapata hasta la corona del fuste [m]</p>
+                <p class="mb-1"><strong>h_zapata</strong> — Espesor de la zapata de cimentación [m]. Típico H/10 a H/8</p>
+                <p class="mb-1"><strong>h_fuste</strong> — Altura del fuste (pantalla) = H − h_zapata [m]</p>
+                <p class="mb-1"><strong>b_base</strong> — Ancho del fuste en su parte <u>inferior</u> (donde une con la zapata) [m]</p>
+                <p class="mb-1"><strong>b_corona</strong> — Ancho del fuste en su parte <u>superior</u> (remate o coronamiento del muro) [m]. Puede ser igual a b_base (sección rectangular) o menor (sección trapecial)</p>
+                <p class="mb-1"><strong>B_punta</strong> — Proyección de la zapata hacia el lado libre (toe) [m]</p>
+                <p class="mb-1"><strong>B_talón</strong> — Proyección de la zapata hacia el lado del relleno (heel) [m]. Ampliarlo mejora el FS al vuelco</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">SUELO RETENIDO</p>
+                <p class="mb-1"><strong>φ (phi_r)</strong> — Ángulo de fricción interna del suelo retenido [°]. Para arena limpia ≈ 28–36°</p>
+                <p class="mb-1"><strong>c</strong> — Cohesión del suelo retenido [kPa]. En arenas c = 0; en arcillas c > 0</p>
+                <p class="mb-1"><strong>γ (gamma_r)</strong> — Peso unitario del suelo retenido [kN/m³]. Típico 17–20</p>
+                <p class="mb-1"><strong>q_s</strong> — Sobrecarga uniforme en la superficie del relleno [kPa]. Genera presión activa adicional uniforme</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">SUELO DE FUNDACIÓN</p>
+                <p class="mb-1"><strong>φ_f / c_f / γ_f</strong> — Fricción, cohesión y peso unitario del suelo bajo la zapata</p>
+                <p class="mb-1"><strong>q_adm</strong> — Presión admisible del suelo de fundación [kPa]. Debe ser ≥ q_max</p>
+                <p class="mb-1"><strong>δ/φ_f</strong> — Fracción de fricción en la interfaz hormigón-suelo para el deslizamiento (0.67 = 2/3·φ_f; 1.0 para hormigón vaciado sobre suelo)</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">MATERIALES</p>
+                <p class="mb-1"><strong>f'c</strong> — Resistencia a compresión del hormigón [MPa]</p>
+                <p class="mb-1"><strong>fy</strong> — Límite elástico del acero de refuerzo [MPa]</p>
+                <p class="mb-1"><strong>Recubrimiento</strong> — Distancia de la cara del hormigón al borde exterior de la barra [cm]. Mínimo 7 cm en contacto con suelo</p>
+                <p class="mb-1"><strong>γ_c</strong> — Peso unitario del hormigón armado [kN/m³]. Estándar = 24</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">PRESIÓN ACTIVA</p>
+                <p class="mb-1"><strong>Ka = tan²(45°−φ/2)</strong> — Coeficiente de empuje activo de Rankine</p>
+                <p class="mb-1"><strong>Ea</strong> — Fuerza de empuje activo horizontal total [kN/m]</p>
+                <p class="mb-1"><strong>Mo</strong> — Momento volcador respecto al toe de la zapata [kN·m/m]</p>
+                <p class="mb-1"><strong>Ep</strong> — Empuje pasivo en el pie de la punta; resistencia adicional al deslizamiento [kN/m]</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">VERIFICACIONES DE ESTABILIDAD</p>
+                <p class="mb-1"><strong>W_total</strong> — Suma de pesos: fuste + zapata + suelo sobre talón + sobrecarga [kN/m]</p>
+                <p class="mb-1"><strong>Mr</strong> — Momento resistente = ΣW_i × brazo_i respecto al toe [kN·m/m]</p>
+                <p class="mb-1"><strong>FS_v = Mr/Mo</strong> — Factor de seguridad al vuelco ≥ 2.0</p>
+                <p class="mb-1"><strong>FS_d</strong> — Factor de seguridad al deslizamiento = F_resist/Ea ≥ 1.5</p>
+                <p class="mb-1"><strong>q_max / q_min</strong> — Presiones en la base (toe y heel) [kPa]; q_max ≤ q_adm</p>
+                <p class="mb-1"><strong>e</strong> — Excentricidad de la resultante respecto al centro de la zapata [m]; ≤ B/6 para que no haya tracción en la base</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">DISEÑO RC (ACI 318-19)</p>
+                <p class="mb-1"><strong>Mu_fuste</strong> — Momento último en la base del fuste (voladizo vertical); barras verticales cara de tracción</p>
+                <p class="mb-1"><strong>Mu_punta</strong> — Momento último en la punta: presión neta hacia arriba (U=1.6)</p>
+                <p class="mb-1"><strong>Mu_talón</strong> — Momento último en el talón: carga neta hacia abajo (suelo + losa − reacción)</p>
+                <p class="mb-1"><strong>As_req / As_mín / As_dis</strong> — Área de acero requerida, mínima por ACI y diseñada [cm²/m]</p>
+                <div class="alert alert-warning p-2 mt-2 mb-0" style="font-size:11px;">
+                  <strong>Alcance:</strong> Muro en L invertida con empuje de Rankine. No incluye: Coulomb, drenaje/presión hidrostática, clave de corte (shear key), efectos sísmicos ni verificación por temperatura. Para H &gt; 6 m se recomienda el Módulo 9.4 (contrafuertes).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col-lg-7 -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const v = id => document.getElementById(id).value;
+
+// ── Diagrama SVG ─────────────────────────────────────────────────────────────
+function redibuja() {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+}
+
+function actualizarKa() {
+  const phi = +v('phi_r');
+  const Ka = Math.pow(Math.tan((45 - phi/2) * Math.PI/180), 2);
+  document.getElementById('kaDisplay').innerHTML =
+    `Ka = <strong>${Ka.toFixed(4)}</strong> (Rankine)`;
+}
+
+function actualizarDerived() {
+  const H = +v('H'), hz = +v('h_zapata'), bb = +v('b_base');
+  const bc = +v('b_corona'), Bp = +v('B_punta'), Bt = +v('B_talon');
+  const hf = Math.max(0, H - hz);
+  const Btot = Bp + bb + Bt;
+  document.getElementById('geoDerived').innerHTML =
+    `h_fuste = <strong>${hf.toFixed(2)} m</strong> &nbsp;|&nbsp; B_total = <strong>${Btot.toFixed(2)} m</strong>`;
+}
+
+function actualizarDiagrama(d) {
+  const W = 500, SH = 360;
+  const PAD_L = 75, PAD_R = 30, PAD_T = 25, PAD_B = 85;
+
+  const H     = +v('H')      || 3.5;
+  const hz    = +v('h_zapata') || 0.4;
+  const bb    = +v('b_base')  || 0.35;
+  const bc    = +v('b_corona')|| 0.25;
+  const Bp    = +v('B_punta') || 0.60;
+  const Bt    = +v('B_talon') || 2.00;
+  const phi_r = +v('phi_r')  || 30;
+  const q_s   = +v('q_s')    || 0;
+  const gr    = +v('gamma_r')|| 18;
+  const Btot  = Bp + bb + Bt;
+  const hf    = H - hz;
+
+  const avW = W - PAD_L - PAD_R;
+  const avH = SH - PAD_T - PAD_B;
+  const sc  = Math.min(avW / Math.max(Btot, 0.1), avH / Math.max(H, 0.1));
+
+  const ox = PAD_L;
+  const oy = SH - PAD_B;   // y = base of footing
+
+  const ax = xm => ox + xm * sc;
+  const ay = ym => oy - ym * sc;
+
+  const Ka   = Math.pow(Math.tan((45 - phi_r/2)*Math.PI/180), 2);
+  const p_bot = Ka * (gr * H + q_s);
+  const p_top = Ka * q_s;
+  const p_scl = Math.min(avW * 0.22 / Math.max(p_bot, 1), 4.0);
+
+  const q_max = d.q_max != null ? d.q_max : null;
+  const q_min = d.q_min != null ? d.q_min : null;
+
+  let s = `<svg width="${W}" height="${SH}" viewBox="0 0 ${W} ${SH}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${SH}" fill="#FAFAFA"/>`;
+
+  // Soil on heel (retained)
+  s += `<rect x="${ax(Bp+bb)}" y="${ay(H)}" width="${Math.max(ax(Btot)-ax(Bp+bb),0)}" height="${Math.max(ay(hz)-ay(H),0)}" fill="#C9A96A" opacity="0.35"/>`;
+  // Hatch pattern for soil
+  s += `<defs><pattern id="soil" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse"><line x1="0" y1="8" x2="8" y2="0" stroke="#8B6914" stroke-width="0.6" opacity="0.4"/></pattern></defs>`;
+  s += `<rect x="${ax(Bp+bb)}" y="${ay(H)}" width="${Math.max(ax(Btot)-ax(Bp+bb),0)}" height="${Math.max(ay(hz)-ay(H),0)}" fill="url(#soil)"/>`;
+
+  // Footing
+  s += `<rect x="${ax(0)}" y="${ay(hz)}" width="${ax(Btot)-ax(0)}" height="${ay(0)-ay(hz)}" fill="#8090A0" stroke="#37474F" stroke-width="1.5"/>`;
+
+  // Stem (trapezoidal: front face vertical at B_punta, back face tapers)
+  const xsf_bot = ax(Bp), xsb_bot = ax(Bp+bb), xsf_top = ax(Bp), xsb_top = ax(Bp+bc);
+  s += `<polygon points="${xsf_bot},${ay(hz)} ${xsb_bot},${ay(hz)} ${xsb_top},${ay(H)} ${xsf_top},${ay(H)}" fill="#8090A0" stroke="#37474F" stroke-width="1.5"/>`;
+
+  // Ground line on retained side
+  s += `<line x1="${ax(Bp+bc)}" y1="${ay(H)}" x2="${ax(Btot)}" y2="${ay(H)}" stroke="#555" stroke-width="1.2"/>`;
+
+  // Active pressure (on back face of stem)
+  for (let i = 0; i <= 5; i++) {
+    const z = H * i / 5;
+    const p_z = Ka * (gr * z + q_s);
+    if (p_z < 0.5) continue;
+    const p_px = p_z * p_scl;
+    const t   = i / 5;
+    const x_back = ax(Bp + bb) + t * (ax(Bp+bc) - ax(Bp+bb));  // linearly interpolated back face
+    // Actually back face goes from Bp+bb at bottom to Bp+bc at top
+    // At depth z from top: t=z/H from top, x_back at that point
+    const x_b = ax(Bp + bc + (bb-bc)*(1 - z/H));
+    const y_a = ay(H - z);
+    s += `<line x1="${x_b+p_px}" y1="${y_a}" x2="${x_b+5}" y2="${y_a}" stroke="#E53935" stroke-width="1.2"/>`;
+    s += `<polygon points="${x_b+4},${y_a-4} ${x_b+4},${y_a+4} ${x_b-2},${y_a}" fill="#E53935"/>`;
+  }
+  // Pressure outline
+  const p_top_px = p_top * p_scl, p_bot_px = p_bot * p_scl;
+  s += `<polygon points="${ax(Bp+bc)+p_top_px},${ay(H)} ${ax(Bp+bc)},${ay(H)} ${ax(Bp+bb)},${ay(hz)} ${ax(Bp+bb)+p_bot_px},${ay(hz)}" fill="rgba(229,57,53,0.08)" stroke="#E53935" stroke-width="0.8" stroke-dasharray="4,2"/>`;
+
+  // Labels: pressure values
+  s += `<text x="${ax(Bp+bb)+p_bot_px+3}" y="${ay(hz)+4}" font-size="8" fill="#c62828">${p_bot.toFixed(1)} kPa</text>`;
+  if (p_top > 0)
+    s += `<text x="${ax(Bp+bc)+p_top_px+3}" y="${ay(H)+10}" font-size="8" fill="#c62828">${p_top.toFixed(1)}</text>`;
+
+  // Base pressure trapezoid (below footing)
+  const y_bp = ay(0) + 6;
+  if (q_max !== null && q_min !== null) {
+    const qa_in = +v('qa') || 150;
+    const q_scl = Math.min(40 / Math.max(q_max, 1), 0.8);
+    const q_max_px = q_max * q_scl, q_min_px = q_min * q_scl;
+    s += `<polygon points="${ax(0)},${y_bp} ${ax(Btot)},${y_bp} ${ax(Btot)},${y_bp+q_min_px} ${ax(0)},${y_bp+q_max_px}" fill="rgba(21,101,192,0.18)" stroke="#1565C0" stroke-width="1"/>`;
+    s += `<text x="${ax(0)}" y="${y_bp+q_max_px+11}" text-anchor="middle" font-size="8" fill="#1565C0" font-weight="bold">${q_max.toFixed(0)}</text>`;
+    s += `<text x="${ax(Btot)}" y="${y_bp+Math.max(q_min_px,5)+11}" text-anchor="middle" font-size="8" fill="#1565C0">${q_min.toFixed(0)}</text>`;
+    s += `<text x="${ax(Btot/2)}" y="${y_bp+Math.max((q_max_px+q_min_px)/2,10)+11}" text-anchor="middle" font-size="7" fill="#555">kPa</text>`;
+  } else {
+    s += `<text x="${ax(Btot/2)}" y="${y_bp+18}" text-anchor="middle" font-size="8" fill="#888">presión base</text>`;
+  }
+
+  // FS badges if data
+  if (d.FS_vuelco != null) {
+    const cv = d.ok_vuelco ? '#2e7d32' : '#c62828';
+    const cd = d.ok_desliz ? '#2e7d32' : '#c62828';
+    s += `<rect x="${W-PAD_R-70}" y="8" width="68" height="38" rx="4" fill="white" stroke="#ddd"/>`;
+    s += `<text x="${W-PAD_R-36}" y="22" text-anchor="middle" font-size="8" fill="${cv}" font-weight="bold">FS_v=${d.FS_vuelco.toFixed(2)}</text>`;
+    s += `<text x="${W-PAD_R-36}" y="34" text-anchor="middle" font-size="8" fill="${cd}" font-weight="bold">FS_d=${d.FS_desliz.toFixed(2)}</text>`;
+    const cp = d.ok_presion ? '#2e7d32' : '#c62828';
+    s += `<text x="${W-PAD_R-36}" y="46" text-anchor="middle" font-size="7" fill="${cp}">q_max=${(d.q_max||0).toFixed(0)}kPa</text>`;
+  }
+
+  // Dimension arrows
+  // H (left side)
+  const x_dim = ax(0) - 18;
+  s += `<line x1="${x_dim}" y1="${ay(0)}" x2="${x_dim}" y2="${ay(H)}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<line x1="${x_dim-5}" y1="${ay(0)}" x2="${x_dim+5}" y2="${ay(0)}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<line x1="${x_dim-5}" y1="${ay(H)}" x2="${x_dim+5}" y2="${ay(H)}" stroke="#555" stroke-width="0.8"/>`;
+  const ymid = (ay(0)+ay(H))/2;
+  s += `<text x="${x_dim-5}" y="${ymid}" text-anchor="middle" font-size="9" fill="#333" transform="rotate(-90,${x_dim-5},${ymid})">H=${H.toFixed(2)}m</text>`;
+
+  // B_total (bottom)
+  const y_bdim = y_bp + 52;
+  s += `<line x1="${ax(0)}" y1="${y_bdim}" x2="${ax(Btot)}" y2="${y_bdim}" stroke="#555" stroke-width="0.8"/>`;
+  s += `<text x="${ax(Btot/2)}" y="${y_bdim+11}" text-anchor="middle" font-size="9" fill="#333">B=${Btot.toFixed(2)}m</text>`;
+
+  // Sub-labels
+  s += `<text x="${ax(Bp/2)}" y="${y_bp+28}" text-anchor="middle" font-size="7" fill="#666">Bp</text>`;
+  s += `<text x="${ax(Bp+bb+Bt/2)}" y="${y_bp+28}" text-anchor="middle" font-size="7" fill="#666">Bt</text>`;
+
+  s += '</svg>';
+  document.getElementById('diagramaBox').innerHTML = s;
+}
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+let _lastPayload = null;
+
+async function calcular() {
+  const btn = document.getElementById('btnCalc');
+  const overlay = document.getElementById('loadingOverlay');
+  const cardRes = document.getElementById('cardResultados');
+
+  cardRes.style.display = '';
+  overlay.classList.add('active');
+  btn.classList.add('calc-btn-loading');
+  btn.disabled = true;
+
+  const payload = {
+    H:            parseFloat(v('H')),
+    h_zapata:     parseFloat(v('h_zapata')),
+    b_base:       parseFloat(v('b_base')),
+    b_corona:     parseFloat(v('b_corona')),
+    B_punta:      parseFloat(v('B_punta')),
+    B_talon:      parseFloat(v('B_talon')),
+    phi_r:        parseFloat(v('phi_r')),
+    c_r:          parseFloat(v('c_r')),
+    gamma_r:      parseFloat(v('gamma_r')),
+    q_s:          parseFloat(v('q_s')),
+    phi_f:        parseFloat(v('phi_f')),
+    c_f:          parseFloat(v('c_f')),
+    gamma_f:      parseFloat(v('gamma_f')),
+    qa:           parseFloat(v('qa')),
+    gamma_c:      parseFloat(v('gamma_c')),
+    fc:           parseFloat(v('fc')),
+    fy:           parseFloat(v('fy')),
+    recub:        parseFloat(v('recub')) / 100,
+    delta_factor: parseFloat(v('delta_factor')),
+  };
+  _lastPayload = payload;
+
+  try {
+    const resp = await fetch('/api/muro/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error);
+    renderResultados(d);
+    actualizarDiagrama(d);
+    document.getElementById('btnPDF').disabled = false;
+  } catch(err) {
+    alert('Error: ' + err.message);
+  } finally {
+    overlay.classList.remove('active');
+    btn.classList.remove('calc-btn-loading');
+    btn.disabled = false;
+  }
+}
+
+function renderResultados(d) {
+  const e = d.estabilidad;
+  const ok = v => v ? '✓' : '✗';
+  const badge = (v, ok) => ok
+    ? `<span class="fs-badge-ok">✓ ${v}</span>`
+    : `<span class="fs-badge-fail">✗ ${v}</span>`;
+
+  let html = '';
+
+  // ── Badges ──
+  html += '<div class="mb-3 d-flex flex-wrap gap-2">';
+  html += badge(`FS_v = ${e.FS_vuelco.toFixed(2)}`, e.ok_vuelco);
+  html += badge(`FS_d = ${e.FS_desliz.toFixed(2)}`, e.ok_desliz);
+  html += badge(`q_max = ${e.q_max.toFixed(1)} kPa`, e.ok_presion);
+  html += badge(`|e| = ${Math.abs(e.e).toFixed(3)} m`, e.ok_excentricidad);
+  html += '</div>';
+
+  // ── Empuje activo ──
+  html += '<div class="sec-heading">Empuje Activo (Rankine)</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Ka = tan²(45°−φ/2)</td><td>${d.Ka.toFixed(4)}</td></tr>`;
+  html += `<tr><td>Ea_γ (triangular)</td><td>${e.Ea_gamma.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>Ea_q (sobrecarga)</td><td>${e.Ea_q.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>Ea total</td><td><strong>${e.Ea.toFixed(2)} kN/m</strong></td></tr>`;
+  html += `<tr><td>Momento volcador Mo</td><td><strong>${e.Mo.toFixed(2)} kN·m/m</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Estabilidad ──
+  html += '<div class="sec-heading">Fuerzas Estabilizantes</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>W fuste (pantalla)</td><td>${e.W_fuste.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>W zapata</td><td>${e.W_zapata.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>W suelo talón</td><td>${e.W_talon_soil.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>W sobrecarga talón</td><td>${e.W_q_talon.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>ΣW total</td><td><strong>${e.W_total.toFixed(2)} kN/m</strong></td></tr>`;
+  html += `<tr><td>Momento resistente Mr</td><td><strong>${e.Mr.toFixed(2)} kN·m/m</strong></td></tr>`;
+  html += `<tr><td>Empuje pasivo Ep</td><td>${e.Ep.toFixed(2)} kN/m</td></tr>`;
+  html += '</tbody></table>';
+
+  // ── FS y presiones ──
+  html += '<div class="sec-heading">Verificación de Estabilidad</div>';
+  html += '<table class="table table-sm mb-3 tbl-rc"><thead><tr>';
+  html += '<th>Verificación</th><th>Valor</th><th>Mínimo</th><th>Estado</th></tr></thead><tbody>';
+
+  const fsRow = (label, val, lim, ok) => {
+    const cls = ok ? 'table-success' : 'table-danger';
+    return `<tr class="${cls}"><td>${label}</td><td>${val}</td><td>${lim}</td>
+      <td><strong>${ok ? '✓ OK' : '✗ FALLA'}</strong></td></tr>`;
+  };
+  const qa = parseFloat(v('qa'));
+  html += fsRow('Vuelco',         `FS = ${e.FS_vuelco.toFixed(2)}`, '2.00', e.ok_vuelco);
+  html += fsRow('Deslizamiento',  `FS = ${e.FS_desliz.toFixed(2)}`, '1.50', e.ok_desliz);
+  html += fsRow('Presión base',   `q_max = ${e.q_max.toFixed(1)} kPa`, `qa = ${qa.toFixed(0)} kPa`, e.ok_presion);
+  html += fsRow('Excentricidad',  `|e| = ${Math.abs(e.e).toFixed(3)} m`, `B/6 = ${(d.B_total/6).toFixed(3)} m`, e.ok_excentricidad);
+  html += '</tbody></table>';
+
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Posición resultante x_R</td><td>${e.x_R.toFixed(3)} m desde punta</td></tr>`;
+  html += `<tr><td>Excentricidad e</td><td>${e.e.toFixed(4)} m</td></tr>`;
+  html += `<tr><td>q_max (punta)</td><td><strong>${e.q_max.toFixed(1)} kPa</strong></td></tr>`;
+  html += `<tr><td>q_min (talón)</td><td>${e.q_min.toFixed(1)} kPa</td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Diseño RC ──
+  html += '<div class="sec-heading">Diseño de Armadura (ACI 318-19)</div>';
+  html += '<div class="table-responsive"><table class="table table-sm tbl-rc mb-2"><thead><tr>';
+  html += '<th>Elemento</th><th>Mu<br><small>kN·m/m</small></th><th>d<br><small>m</small></th>';
+  html += '<th>As_req<br><small>cm²/m</small></th><th>As_mín<br><small>cm²/m</small></th>';
+  html += '<th>As_dis<br><small>cm²/m</small></th><th>Armadura</th></tr></thead><tbody>';
+
+  for (const el of [d.fuste, d.punta, d.talon]) {
+    html += `<tr><td><strong>${el.nombre}</strong></td>`;
+    html += `<td>${el.Mu.toFixed(2)}</td><td>${el.d.toFixed(3)}</td>`;
+    html += `<td>${el.As_req.toFixed(2)}</td><td>${el.As_min.toFixed(2)}</td>`;
+    html += `<td><strong>${el.As_dis.toFixed(2)}</strong></td>`;
+    html += `<td><span class="badge bg-primary">${el.barra}</span></td></tr>`;
+  }
+  html += '</tbody></table></div>';
+  html += `<p class="mb-3" style="font-size:11px;color:#555;">
+    Acero temperatura/retracción fuste (barras horiz., c/cara):
+    As = ${d.As_temp.toFixed(2)} cm²/m → <strong>${d.barra_temp}</strong>
+  </p>`;
+
+  // ── Sugerencias ──
+  html += generarSugerencias(d);
+
+  // ── Mensajes ──
+  html += '<div class="sec-heading">Mensajes</div>';
+  for (const msg of d.mensajes) {
+    const cls = {ok:'msg-ok',error:'msg-error',advertencia:'msg-warn'}[msg.tipo]||'';
+    html += `<div class="msg-item ${cls}">▸ ${msg.texto}</div>`;
+  }
+
+  document.getElementById('cuerpoResultados').innerHTML = html;
+}
+
+// ── Sugerencias de diseño ────────────────────────────────────────────────
+function sugBox(titulo, items) {
+  return `<div class="sug-box">
+    <div class="sug-header">&#9654; ${titulo}</div>
+    <ul class="sug-body">${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div>`;
+}
+
+function generarSugerencias(d) {
+  const e  = d.estabilidad;
+  const BT = d.B_total;
+  const fallos = !e.ok_vuelco || !e.ok_desliz || !e.ok_presion || !e.ok_excentricidad;
+  if (!fallos) return '';
+  let html = '<div class="sec-heading" style="color:#e65100;border-color:#e65100;">&#9888; Sugerencias de Diseño</div>';
+
+  if (!e.ok_vuelco) {
+    html += sugBox(`Vuelco — FS = ${e.FS_vuelco.toFixed(2)} &lt; 2.0`, [
+      'Aumentar <strong>B_talón</strong>: agrega peso de suelo sobre el talón, incrementa Mr directamente',
+      'Aumentar <strong>b_corona / b_base</strong> del fuste: mayor peso propio del fuste',
+      'Reducir <strong>q_s</strong>: disminuye el momento volcador Mo',
+    ]);
+  }
+
+  if (!e.ok_desliz) {
+    html += sugBox(`Deslizamiento — FS = ${e.FS_desliz.toFixed(2)} &lt; 1.5`, [
+      'Aumentar <strong>h_zapata</strong>: incrementa el empuje pasivo Ep (Ep ∝ h²) y el peso total W',
+      'Aumentar <strong>B_talón</strong>: incrementa W total por mayor peso de suelo sobre el talón',
+      'Aumentar <strong>delta_factor</strong>: mayor ángulo de fricción base (hasta 1.0 para vaciado en sitio)',
+      'En campo: considerar <strong>clave de corte</strong> (shear key) en la base de la zapata',
+    ]);
+  }
+
+  if (!e.ok_presion) {
+    html += sugBox(`Presión base — q_max = ${e.q_max.toFixed(1)} kPa &gt; qa`, [
+      'Aumentar <strong>B_punta</strong> o <strong>B_talón</strong>: amplía el área de la zapata, reduce q_max',
+      'Corregir la excentricidad (ver sugerencias abajo): centraliza la resultante en la base',
+      'Verificar <strong>q_adm</strong> con ensayo actualizado; evaluar mejoramiento de suelo',
+    ]);
+  }
+
+  if (!e.ok_excentricidad) {
+    const b_min  = (6 * Math.abs(e.e)).toFixed(2);
+    const exceso = (Math.abs(e.e) - BT/6).toFixed(3);
+    html += sugBox(`Excentricidad — |e| = ${Math.abs(e.e).toFixed(3)} m &gt; B/6`, [
+      `Aumentar <strong>B_talón</strong> hasta que B_total ≥ <strong>${b_min} m</strong> <code>(estimación: B ≥ 6·|e|)</code>`,
+      `Exceso actual fuera del tercio medio: <code>${exceso} m</code>`,
+      'Aumentar <strong>B_punta</strong>: mejora la distribución de presiones en la base',
+      'Reducir <strong>q_s</strong>: disminuye Mo y acerca la resultante al centro de la zapata',
+    ]);
+  }
+  return html;
+}
+
+// ── Exportar PDF ──────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando PDF');
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'muro_voladizo.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+});
+</script>
+</body>
+</html>
+

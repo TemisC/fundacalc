@@ -1,0 +1,672 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Asentamientos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .label-unit{font-size:10px;color:#888;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:10px;}
+    .res-table td:first-child{color:#555;font-size:12px;width:55%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .tbl-capas td, .tbl-capas th{font-size:11px;vertical-align:middle;}
+    .tbl-capas th{background:#E3F2FD;}
+    .result-big{font-size:22px;font-weight:700;color:#1565C0;}
+    .result-unit{font-size:13px;color:#555;margin-left:4px;}
+    .badge-nc{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;
+      display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+    .badge-oc{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80;
+      display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+
+    /* Canvas curva consolidación */
+    #canvasTerz{border:1px solid #ddd;border-radius:4px;background:#fff;}
+
+    /* Filas de capas Schmertmann */
+    .capa-row input{font-size:11px;padding:2px 6px;height:28px;}
+    .capa-row select{font-size:11px;padding:2px 4px;height:28px;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <!-- Ground surface -->
+        <line x1="2" y1="6" x2="20" y2="6" stroke="#85B7EB" stroke-width="1.5"/>
+        <!-- Footing -->
+        <rect x="7" y="3" width="8" height="3" rx="0.5" fill="#85B7EB"/>
+        <!-- Arrow down (settlement) -->
+        <line x1="11" y1="6" x2="11" y2="15" stroke="#EF9F27" stroke-width="1.5"/>
+        <polygon points="9,14 13,14 11,17" fill="#EF9F27"/>
+        <!-- Soil layers -->
+        <line x1="2" y1="11" x2="20" y2="11" stroke="#8B6914" stroke-width="0.8" stroke-dasharray="3,2"/>
+        <line x1="2" y1="16" x2="20" y2="16" stroke="#8B6914" stroke-width="0.8" stroke-dasharray="3,2"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 8B — Asentamientos de Fundaciones</div>
+    </div>
+    <a class="fc-tb-back" href="/capacidad">&#8592; Capacidad Portante</a>
+    <div class="btn-group ms-2">
+      <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">&#9654; Calcular</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>&#8659; Exportar PDF</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3" id="mainTab">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabS">
+        &#9651; Schmertmann <small class="text-muted">(inmediato, arenas)</small>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabT">
+        &#9660; Terzaghi <small class="text-muted">(consolidación, arcillas)</small>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ══════════════════ TAB SCHMERTMANN ══════════════════ -->
+    <div class="tab-pane fade show active" id="tabS">
+      <div class="row g-3">
+
+        <!-- Panel izquierdo -->
+        <div class="col-lg-5">
+
+          <!-- Zapata -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9634; Zapata y Carga</div>
+            <div class="card-body py-2">
+              <div class="row g-2">
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">B <span class="label-unit">[m]</span></label>
+                  <input type="number" id="sB" class="form-control form-control-sm" value="2.0" step="0.25" min="0.5">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">L <span class="label-unit">[m]</span></label>
+                  <input type="number" id="sL" class="form-control form-control-sm" value="2.0" step="0.25" min="0.5">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">Df <span class="label-unit">[m]</span></label>
+                  <input type="number" id="sDf" class="form-control form-control-sm" value="1.0" step="0.25" min="0.3">
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">q total <span class="label-unit">[kPa]</span></label>
+                  <input type="number" id="sQ" class="form-control form-control-sm" value="150" step="10" min="10">
+                  <div class="form-text" style="font-size:9px;">Presión total en NDF</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+                  <input type="number" id="sGamma" class="form-control form-control-sm" value="18" step="0.5" min="14">
+                  <div class="form-text" style="font-size:9px;">Peso unitario del suelo</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">t creep <span class="label-unit">[años]</span></label>
+                  <input type="number" id="sT" class="form-control form-control-sm" value="10" step="5" min="1">
+                  <div class="form-text" style="font-size:9px;">Tiempo de evaluación (C₂)</div>
+                </div>
+                <div class="col-6 d-flex align-items-end">
+                  <div id="sQnet" class="p-1 rounded text-center w-100" style="background:#EEF4FB;font-size:11px;color:#1565C0;">
+                    q_net = — kPa
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Perfil de suelo -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between fw-bold" style="font-size:13px;">
+              <span>&#9618; Perfil de Suelo (hasta 6 capas)</span>
+              <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="agregarCapa()" style="font-size:11px;">+ Capa</button>
+            </div>
+            <div class="card-body py-2">
+              <table class="table table-sm mb-0">
+                <thead>
+                  <tr style="font-size:10px;">
+                    <th>#</th><th>Espesor [m]</th><th>N₆₀</th><th>Tipo</th><th></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyCapas">
+                  <!-- Generado por JS -->
+                </tbody>
+              </table>
+              <div class="mt-2 p-2 rounded" style="background:#FFF3E0;font-size:11px;color:#e65100;" id="sInfo">
+                Las capas se analizan hasta z_max = 2B (cuadrada) ó 4B (franja).
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /col-left -->
+
+        <!-- Panel derecho -->
+        <div class="col-lg-7">
+          <div id="sCardRes" class="card shadow-sm mb-3" style="display:none;position:relative;">
+            <div class="loading-overlay" id="sOverlay">
+              <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+              <div style="font-size:12px;color:#555;">Calculando…</div>
+            </div>
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9654; Resultados — Schmertmann</div>
+            <div class="card-body" id="sBody"></div>
+          </div>
+
+          <!-- Glosario -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between"
+                 style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#sGlos">
+              <span class="fw-bold" style="font-size:13px;">&#9432; Teoría — Schmertmann (1978)</span>
+              <span style="font-size:11px;color:#666;">&#9660;</span>
+            </div>
+            <div id="sGlos" class="collapse">
+              <div class="card-body" style="font-size:12px;">
+                <p class="mb-1"><strong>δᵢ = C₁ · C₂ · q_net · Σ(Iz/Es · Δz)</strong></p>
+                <p class="mb-1"><strong>C₁</strong> = 1 − 0.5·(σ'v₀/q_net) — corrección por empotramiento (≥ 0.5)</p>
+                <p class="mb-1"><strong>C₂</strong> = 1 + 0.2·log₁₀(t/0.1) — corrección por fluencia (t en años)</p>
+                <p class="mb-1"><strong>Iz_peak</strong> = 0.5 + 0.1·√(q_net/σ'vp) a z = B/2 (cuadrada) ó B (franja)</p>
+                <p class="mb-1"><strong>Es</strong> (arena): 500·(N₆₀+15) kPa — <strong>Es</strong> (limo/arcilla arenosa): 300·(N₆₀+6) kPa</p>
+                <p class="mb-0 text-muted">Aplicable a suelos granulares. No reemplaza el ensayo de placa de carga.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /tabS -->
+
+    <!-- ══════════════════ TAB TERZAGHI ══════════════════ -->
+    <div class="tab-pane fade" id="tabT">
+      <div class="row g-3">
+
+        <!-- Panel izquierdo -->
+        <div class="col-lg-5">
+
+          <!-- Zapata y carga -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9634; Zapata y Carga Neta</div>
+            <div class="card-body py-2">
+              <div class="row g-2">
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">B <span class="label-unit">[m]</span></label>
+                  <input type="number" id="tB" class="form-control form-control-sm" value="2.0" step="0.25" min="0.5">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">L <span class="label-unit">[m]</span></label>
+                  <input type="number" id="tL" class="form-control form-control-sm" value="2.0" step="0.25" min="0.5">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">q_net <span class="label-unit">[kPa]</span></label>
+                  <input type="number" id="tQnet" class="form-control form-control-sm" value="100" step="10" min="5">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Capa de arcilla -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9616; Capa de Arcilla Compresible</div>
+            <div class="card-body py-2">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">z_mid <span class="label-unit">[m desde NDF]</span></label>
+                  <input type="number" id="tZmid" class="form-control form-control-sm" value="3.0" step="0.5" min="0.1">
+                  <div class="form-text" style="font-size:9px;">Profundidad al centroide de la arcilla</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">H_c <span class="label-unit">[m]</span></label>
+                  <input type="number" id="tHc" class="form-control form-control-sm" value="4.0" step="0.5" min="0.5">
+                  <div class="form-text" style="font-size:9px;">Espesor total de la capa</div>
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">Cc</label>
+                  <input type="number" id="tCc" class="form-control form-control-sm" value="0.35" step="0.05" min="0.01">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">Cs</label>
+                  <input type="number" id="tCs" class="form-control form-control-sm" value="0.07" step="0.01" min="0.005">
+                  <div class="form-text" style="font-size:9px;">Recompresión (≈Cc/5)</div>
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">e₀</label>
+                  <input type="number" id="tE0" class="form-control form-control-sm" value="0.85" step="0.05" min="0.1">
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">σ'₀ <span class="label-unit">[kPa]</span></label>
+                  <input type="number" id="tS0" class="form-control form-control-sm" value="80" step="10" min="5">
+                  <div class="form-text" style="font-size:9px;">Tensión efectiva en el centroide</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">OCR</label>
+                  <input type="number" id="tOCR" class="form-control form-control-sm" value="1.0" step="0.5" min="1.0">
+                  <div class="form-text" style="font-size:9px;">1.0 = normalmente consolidada</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parámetros de consolidación -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9201; Consolidación (Curva δ vs t)</div>
+            <div class="card-body py-2">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">Cv <span class="label-unit">[m²/año]</span></label>
+                  <input type="number" id="tCv" class="form-control form-control-sm" value="2.0" step="0.5" min="0.01">
+                  <div class="form-text" style="font-size:9px;">Coef. de consolidación</div>
+                </div>
+                <div class="col-6">
+                  <label class="form-label mb-0" style="font-size:11px;">Condición de drenaje</label>
+                  <select id="tDren" class="form-select form-select-sm">
+                    <option value="doble" selected>Doble (arcilla entre arenas)</option>
+                    <option value="simple">Simple (arcilla con base impermeable)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /col-left -->
+
+        <!-- Panel derecho -->
+        <div class="col-lg-7">
+          <div id="tCardRes" class="card shadow-sm mb-3" style="display:none;position:relative;">
+            <div class="loading-overlay" id="tOverlay">
+              <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+            </div>
+            <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9654; Resultados — Terzaghi</div>
+            <div class="card-body" id="tBody"></div>
+          </div>
+
+          <!-- Glosario -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 d-flex align-items-center justify-content-between"
+                 style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#tGlos">
+              <span class="fw-bold" style="font-size:13px;">&#9432; Teoría — Consolidación Terzaghi (1943)</span>
+              <span style="font-size:11px;color:#666;">&#9660;</span>
+            </div>
+            <div id="tGlos" class="collapse">
+              <div class="card-body" style="font-size:12px;">
+                <p class="mb-1"><strong>NC:</strong> δ_c = Cc/(1+e₀) · H_c · log₁₀[(σ'₀+Δσ)/σ'₀]</p>
+                <p class="mb-1"><strong>OC (σ'f &lt; σ'p):</strong> δ_c = Cs/(1+e₀) · H_c · log₁₀[(σ'₀+Δσ)/σ'₀]</p>
+                <p class="mb-1"><strong>OC (σ'f &gt; σ'p):</strong> Suma de ambos tramos</p>
+                <p class="mb-1"><strong>Δσ (método 2:1):</strong> Δσ = q_net·B·L / (B+z)·(L+z)</p>
+                <p class="mb-1"><strong>T_v = Cv·t / H_dr²</strong> — H_dr = H_c/2 (doble) ó H_c (simple)</p>
+                <p class="mb-0 text-muted">Aplicable a arcillas saturadas de baja permeabilidad.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /tabT -->
+
+  </div><!-- /tab-content -->
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const v = id => document.getElementById(id).value;
+
+// ── Capas Schmertmann ─────────────────────────────────────────────────────────
+let capas = [
+  {espesor: 1.5, N60: 12, tipo: 'arena'},
+  {espesor: 2.0, N60: 18, tipo: 'arena'},
+  {espesor: 2.0, N60: 25, tipo: 'arena'},
+];
+
+function renderCapas() {
+  const tbody = document.getElementById('tbodyCapas');
+  tbody.innerHTML = '';
+  capas.forEach((c, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'capa-row';
+    tr.innerHTML = `
+      <td style="font-size:11px;color:#555;">${i+1}</td>
+      <td><input type="number" value="${c.espesor}" step="0.25" min="0.1" style="width:70px"
+          class="form-control form-control-sm" onchange="updateCapa(${i},'espesor',this.value)"></td>
+      <td><input type="number" value="${c.N60}" step="1" min="1" max="100" style="width:60px"
+          class="form-control form-control-sm" onchange="updateCapa(${i},'N60',this.value)"></td>
+      <td><select class="form-select form-select-sm" style="width:120px" onchange="updateCapa(${i},'tipo',this.value)">
+            <option value="arena" ${c.tipo==='arena'?'selected':''}>Arena</option>
+            <option value="arcilla_arenosa" ${c.tipo==='arcilla_arenosa'?'selected':''}>Limo/Arc.arenosa</option>
+          </select></td>
+      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="eliminarCapa(${i})"
+          style="font-size:10px;" ${capas.length<=1?'disabled':''}>✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  actualizarQnet();
+}
+
+function updateCapa(i, field, val) {
+  capas[i][field] = field === 'tipo' ? val : parseFloat(val) || 0;
+}
+function agregarCapa() {
+  if (capas.length >= 6) return;
+  capas.push({espesor: 1.5, N60: 15, tipo: 'arena'});
+  renderCapas();
+}
+function eliminarCapa(i) {
+  if (capas.length <= 1) return;
+  capas.splice(i, 1);
+  renderCapas();
+}
+
+function actualizarQnet() {
+  const B = +v('sB') || 2, Df = +v('sDf') || 1;
+  const q = +v('sQ') || 150, g = +v('sGamma') || 18;
+  const qn = Math.max(q - g * Df, 0);
+  document.getElementById('sQnet').innerHTML = `q_net = <strong>${qn.toFixed(1)} kPa</strong>`;
+}
+document.getElementById('sB').addEventListener('input', actualizarQnet);
+document.getElementById('sDf').addEventListener('input', actualizarQnet);
+document.getElementById('sQ').addEventListener('input', actualizarQnet);
+document.getElementById('sGamma').addEventListener('input', actualizarQnet);
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+let _lastSch = null, _lastTerz = null;
+
+async function calcular() {
+  const activeTab = document.querySelector('#mainTab .nav-link.active');
+  const isSchm = activeTab.getAttribute('data-bs-target') === '#tabS';
+
+  const btnCalc = document.getElementById('btnCalc');
+  btnCalc.disabled = true;
+  btnCalc.classList.add('calc-btn-loading');
+
+  if (isSchm) await calcularSchmertmann();
+  else        await calcularTerzaghi();
+
+  btnCalc.disabled = false;
+  btnCalc.classList.remove('calc-btn-loading');
+  document.getElementById('btnPDF').disabled = false;
+}
+
+async function calcularSchmertmann() {
+  const overlay = document.getElementById('sOverlay');
+  const card    = document.getElementById('sCardRes');
+  card.style.display = '';
+  overlay.classList.add('active');
+
+  const payload = {
+    B:      parseFloat(v('sB')),
+    L:      parseFloat(v('sL')),
+    Df:     parseFloat(v('sDf')),
+    q_total: parseFloat(v('sQ')),
+    gamma:  parseFloat(v('sGamma')),
+    t:      parseFloat(v('sT')),
+    capas:  capas.map(c => ({espesor: c.espesor, N60: c.N60, tipo: c.tipo})),
+  };
+  _lastSch = payload;
+
+  try {
+    const r = await fetch('/api/asentamientos/schmertmann', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderSchmertmann(d);
+  } catch(e) { alert('Error: '+e.message); }
+  finally { overlay.classList.remove('active'); }
+}
+
+async function calcularTerzaghi() {
+  const overlay = document.getElementById('tOverlay');
+  const card    = document.getElementById('tCardRes');
+  card.style.display = '';
+  overlay.classList.add('active');
+
+  const payload = {
+    B:          parseFloat(v('tB')),
+    L:          parseFloat(v('tL')),
+    q_net:      parseFloat(v('tQnet')),
+    z_mid:      parseFloat(v('tZmid')),
+    H_c:        parseFloat(v('tHc')),
+    Cc:         parseFloat(v('tCc')),
+    Cs:         parseFloat(v('tCs')),
+    e0:         parseFloat(v('tE0')),
+    sigma0:     parseFloat(v('tS0')),
+    OCR:        parseFloat(v('tOCR')),
+    Cv:         parseFloat(v('tCv')),
+    doble_dren: v('tDren') === 'doble',
+  };
+  _lastTerz = payload;
+
+  try {
+    const r = await fetch('/api/asentamientos/terzaghi', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderTerzaghi(d);
+  } catch(e) { alert('Error: '+e.message); }
+  finally { overlay.classList.remove('active'); }
+}
+
+// ── Render Schmertmann ────────────────────────────────────────────────────────
+function renderSchmertmann(d) {
+  let html = '';
+  html += `<div class="text-center mb-3">
+    <span class="result-big">${d.delta_i.toFixed(1)}</span>
+    <span class="result-unit">mm</span>
+    <div style="font-size:12px;color:#555;margin-top:2px;">Asentamiento inmediato δᵢ</div>
+  </div>`;
+
+  html += '<div class="sec-heading">Factores de corrección</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>q_net (presión neta)</td><td>${d.q_net.toFixed(1)} kPa</td></tr>`;
+  html += `<tr><td>C₁ (empotramiento)</td><td>${d.C1.toFixed(4)}</td></tr>`;
+  html += `<tr><td>C₂ (fluencia)</td><td>${d.C2.toFixed(4)}</td></tr>`;
+  html += `<tr><td>Iz_peak</td><td>${d.Iz_peak.toFixed(4)} a z = ${d.z_peak.toFixed(2)} m</td></tr>`;
+  html += `<tr><td>z_max influencia</td><td>${d.z_max.toFixed(2)} m</td></tr>`;
+  html += `<tr><td>Σ (Iz · Δz / Es)</td><td>${d.suma_Iz_Es.toFixed(6)} m/kPa</td></tr>`;
+  html += '</tbody></table>';
+
+  html += '<div class="sec-heading">Capas analizadas</div>';
+  html += '<div class="table-responsive"><table class="table table-sm tbl-capas mb-3"><thead><tr>';
+  html += '<th>#</th><th>z_mid [m]</th><th>Espesor [m]</th><th>N₆₀</th><th>Es [kPa]</th><th>Iz</th><th>Contrib [m/kPa]</th></tr></thead><tbody>';
+  d.capas.forEach((c, i) => {
+    html += `<tr>
+      <td>${i+1}</td>
+      <td>${c.z_mid.toFixed(2)}</td>
+      <td>${c.espesor.toFixed(2)}</td>
+      <td>${c.N60.toFixed(0)}</td>
+      <td>${c.Es.toFixed(0)}</td>
+      <td>${c.Iz_mid.toFixed(3)}</td>
+      <td>${c.contrib.toExponential(2)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+
+  // Mini-diagrama Iz
+  html += '<div class="sec-heading">Diagrama de influencia Iz</div>';
+  html += diagramaIz(d);
+
+  document.getElementById('sBody').innerHTML = html;
+}
+
+function diagramaIz(d) {
+  const W = 280, H = 150, padL = 45, padB = 25, padT = 15, padR = 10;
+  const z_max = d.z_max, Iz_pk = d.Iz_peak, z_pk = d.z_peak;
+  const scZ = (H - padT - padB) / z_max;
+  const scI = (W - padL - padR) / Math.max(Iz_pk * 1.2, 0.6);
+
+  const ax = iz => padL + iz * scI;
+  const ay = z  => padT + z  * scZ;
+
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${H}" fill="#FAFAFA"/>`;
+  // Axes
+  s += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#333" stroke-width="1"/>`;
+  s += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#333" stroke-width="1"/>`;
+  // Iz profile (0.1 at z=0, peak at z_pk, 0 at z_max)
+  const pts = [
+    [0.1, 0],
+    [Iz_pk, z_pk],
+    [0.0, z_max],
+  ].map(([iz, z]) => `${ax(iz)},${ay(z)}`).join(' ');
+  s += `<polyline points="${pts}" fill="rgba(21,101,192,0.15)" stroke="#1565C0" stroke-width="1.5"/>`;
+  // Point layers from results
+  d.capas.forEach(c => {
+    s += `<circle cx="${ax(c.Iz_mid)}" cy="${ay(c.z_mid)}" r="3" fill="#E53935"/>`;
+  });
+  // Labels
+  s += `<text x="${padL-3}" y="${padT+4}" text-anchor="end" font-size="8" fill="#333">0</text>`;
+  s += `<text x="${padL-3}" y="${ay(z_max)+4}" text-anchor="end" font-size="8" fill="#333">${z_max.toFixed(1)}</text>`;
+  s += `<text x="${ax(Iz_pk)}" y="${H-padB+12}" text-anchor="middle" font-size="7" fill="#1565C0">${Iz_pk.toFixed(2)}</text>`;
+  s += `<text x="${padL-3}" y="${H-padB/2}" text-anchor="end" font-size="7" fill="#555" transform="rotate(-90,${padL-3},${H-padB/2})">z [m]</text>`;
+  s += `<text x="${W/2}" y="${H-2}" text-anchor="middle" font-size="7" fill="#555">Iz [-]</text>`;
+  s += '</svg>';
+  return s;
+}
+
+// ── Render Terzaghi ───────────────────────────────────────────────────────────
+function renderTerzaghi(d) {
+  let html = '';
+  const badge = d.es_NC
+    ? '<span class="badge-nc">Normalmente Consolidada (NC)</span>'
+    : '<span class="badge-oc">Sobreconsolidada (OC)</span>';
+
+  html += `<div class="text-center mb-3">
+    <span class="result-big">${d.delta_c.toFixed(1)}</span>
+    <span class="result-unit">mm</span>
+    <div style="font-size:12px;color:#555;margin-top:2px;">Consolidación primaria δ_c (total)</div>
+    <div class="mt-1">${badge}</div>
+  </div>`;
+
+  html += '<div class="sec-heading">Esfuerzos y deformación</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Δσ (método 2:1) en z_mid</td><td>${d.delta_sig.toFixed(2)} kPa</td></tr>`;
+  html += `<tr><td>σ'₀ (inicial)</td><td>${d.sigma0.toFixed(1)} kPa</td></tr>`;
+  html += `<tr><td>σ'p (preconsolidación)</td><td>${d.sigma_p.toFixed(1)} kPa</td></tr>`;
+  html += `<tr><td>σ'f = σ'₀ + Δσ</td><td>${d.sigma_f.toFixed(2)} kPa</td></tr>`;
+  if (!d.es_NC) {
+    html += `<tr><td>δ componente OC (Cs)</td><td>${d.delta_c1.toFixed(1)} mm</td></tr>`;
+    html += `<tr><td>δ componente NC (Cc)</td><td>${d.delta_c2.toFixed(1)} mm</td></tr>`;
+  }
+  html += `<tr><td>δ_c TOTAL</td><td><strong>${d.delta_c.toFixed(1)} mm</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  html += '<div class="sec-heading">Tiempos de consolidación</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>H_dr (longitud de drenaje)</td><td>${d.H_dr.toFixed(2)} m</td></tr>`;
+  html += `<tr><td>t para U = 50%</td><td><strong>${d.t50.toFixed(2)} años</strong></td></tr>`;
+  html += `<tr><td>t para U = 90%</td><td><strong>${d.t90.toFixed(2)} años</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  html += '<div class="sec-heading">Curva δ(t) — Consolidación</div>';
+  html += curvaTiempo(d.curva, d.delta_c, d.t50, d.t90);
+
+  document.getElementById('tBody').innerHTML = html;
+}
+
+function curvaTiempo(curva, dc, t50, t90) {
+  const W = 400, H = 180, padL = 55, padB = 35, padT = 15, padR = 20;
+  const t_max = curva[curva.length-1].t;
+  const scT = (W - padL - padR) / Math.max(t_max, 0.01);
+  const scD = (H - padT - padB) / Math.max(dc, 0.01);
+
+  const ax = t => padL + t * scT;
+  const ay = d => padT + (dc - d) * scD;  // invertido: más asentamiento = más abajo
+
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect width="${W}" height="${H}" fill="#FAFAFA"/>`;
+
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const yt = padT + i * (H-padT-padB)/4;
+    s += `<line x1="${padL}" y1="${yt}" x2="${W-padR}" y2="${yt}" stroke="#eee" stroke-width="0.8"/>`;
+    s += `<text x="${padL-3}" y="${yt+3}" text-anchor="end" font-size="7" fill="#555">${(dc*(1-i/4)).toFixed(0)}</text>`;
+  }
+
+  // Curve
+  const pts = curva.map(p => `${ax(p.t)},${ay(p.delta)}`).join(' ');
+  s += `<polyline points="${pts}" fill="none" stroke="#1565C0" stroke-width="2"/>`;
+
+  // t50, t90 markers
+  [{ t: t50, U: 50, col: '#2e7d32' }, { t: t90, U: 90, col: '#c62828' }].forEach(mk => {
+    if (mk.t <= t_max) {
+      const d_mk = dc * mk.U / 100;
+      s += `<line x1="${ax(mk.t)}" y1="${padT}" x2="${ax(mk.t)}" y2="${ay(d_mk)}" stroke="${mk.col}" stroke-width="1" stroke-dasharray="3,2"/>`;
+      s += `<line x1="${padL}" y1="${ay(d_mk)}" x2="${ax(mk.t)}" y2="${ay(d_mk)}" stroke="${mk.col}" stroke-width="1" stroke-dasharray="3,2"/>`;
+      s += `<text x="${ax(mk.t)}" y="${H-padB+12}" text-anchor="middle" font-size="7" fill="${mk.col}">${mk.t.toFixed(1)}a</text>`;
+      s += `<text x="${padL-3}" y="${ay(d_mk)+3}" text-anchor="end" font-size="7" fill="${mk.col}">${d_mk.toFixed(0)}</text>`;
+    }
+  });
+
+  // Axes
+  s += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H-padB}" stroke="#333" stroke-width="1"/>`;
+  s += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#333" stroke-width="1"/>`;
+  s += `<text x="${padL-35}" y="${padT+H/2-padB/2}" text-anchor="middle" font-size="8" fill="#555" transform="rotate(-90,${padL-35},${padT+H/2-padB/2})">δ [mm]</text>`;
+  s += `<text x="${padL+(W-padL-padR)/2}" y="${H-2}" text-anchor="middle" font-size="8" fill="#555">Tiempo [años]</text>`;
+
+  // t_max label
+  s += `<text x="${W-padR}" y="${H-padB+12}" text-anchor="end" font-size="7" fill="#555">${t_max.toFixed(1)}</text>`;
+
+  s += '</svg>';
+  return s;
+}
+
+// ── PDF ────────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  const payload = {};
+  if (_lastSch)  payload.schmertmann = _lastSch;
+  if (_lastTerz) payload.terzaghi    = _lastTerz;
+  if (!_lastSch && !_lastTerz) return;
+
+  try {
+    const r = await fetch('/api/asentamientos/report/pdf', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error('Error generando PDF');
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'asentamientos.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderCapas();
+  actualizarQnet();
+});
+</script>
+</body>
+</html>
+

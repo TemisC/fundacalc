@@ -1,0 +1,7 @@
+{
+  "norma_por_defecto": "ACI318",
+  "idioma": "es",
+  "recubrimiento_por_defecto": 0.075,
+  "alturas_por_defecto": [0.40, 0.45, 0.50],
+  "unidad_longitud": "m"
+}

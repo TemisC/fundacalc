@@ -1,0 +1,675 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Muro de Sótano</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+    .res-table td:first-child{color:#555;font-size:12px;width:58%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .msg-ok{color:#2e7d32;} .msg-error{color:#c62828;font-weight:600;} .msg-warn{color:#e65100;}
+    .msg-item{font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .tbl-rc td{font-size:12px;vertical-align:middle;}
+    .tbl-rc th{font-size:11px;background:#E3F2FD;white-space:nowrap;}
+    .label-unit{font-size:10px;color:#888;}
+    .fs-badge-ok{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .fs-badge-info{background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;
+      display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:700;}
+    .sug-box{margin-bottom:10px;border:1px solid #FFCC80;border-radius:6px;overflow:hidden;}
+    .sug-header{background:#FFF3E0;padding:5px 12px;font-size:11px;font-weight:700;
+      color:#e65100;letter-spacing:0.4px;text-transform:uppercase;border-bottom:1px solid #FFE0B2;}
+    .sug-body{padding:6px 12px 8px;background:#FFFDE7;margin:0;}
+    .sug-body li{font-size:12px;color:#444;padding:2px 0;line-height:1.5;}
+    .sug-body li strong{color:#1565C0;}
+    .sug-body li code{background:#E3F2FD;color:#0D47A1;padding:1px 5px;border-radius:3px;font-size:11px;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="2"  y="2"  width="18" height="3" rx="0.5" fill="#85B7EB"/>
+        <rect x="2"  y="17" width="18" height="3" rx="0.5" fill="#85B7EB"/>
+        <rect x="2"  y="5"  width="3"  height="12" rx="0.3" fill="#85B7EB"/>
+        <rect x="5"  y="5"  width="15" height="12" fill="#8B6914" opacity="0.2"/>
+        <line x1="5" y1="11" x2="20" y2="11" stroke="#1E88E5" stroke-width="1.3" stroke-dasharray="3,2"/>
+        <text x="14" y="10" font-size="4" fill="#1E88E5">NF</text>
+        <line x1="20" y1="14" x2="5" y2="14" stroke="#1E88E5" stroke-width="1.2"/>
+        <polygon points="5,13 5,15 3,14" fill="#1E88E5"/>
+        <line x1="20" y1="8"  x2="5" y2="8"  stroke="#EF9F27" stroke-width="1.0"/>
+        <polygon points="5,7 5,9 3,8" fill="#EF9F27"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 9.5 — Muro de Sótano</div>
+    </div>
+    <a class="fc-tb-back" href="/muros">&#8592; Muros</a>
+    <div class="btn-group ms-2">
+      <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">&#9654; Calcular</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>&#8659; Exportar PDF</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" id="btnDXF" disabled>&#8659; Exportar DXF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- ══ PANEL IZQUIERDO ══ -->
+    <div class="col-lg-5">
+
+      <!-- Geometría y condición de apoyo -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9634; Geometría y Condición de Apoyo</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">H libre <span class="label-unit">[m]</span></label>
+              <input type="number" id="H" class="form-control form-control-sm" value="3.00" step="0.25" min="1.0" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Altura libre entre losas</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">e_muro <span class="label-unit">[m]</span></label>
+              <input type="number" id="e_muro" class="form-control form-control-sm" value="0.25" step="0.05" min="0.10" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Espesor del muro</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">h_NF <span class="label-unit">[m]</span></label>
+              <input type="number" id="h_NF" class="form-control form-control-sm" value="1.50" step="0.25" min="0" oninput="redibuja()">
+              <div class="form-text" style="font-size:10px;">Profundidad nivel freático (≥H = sin agua)</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">γ_agua <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_w" class="form-control form-control-sm" value="10.0" step="0.1" min="9.5" max="10.5">
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-0" style="font-size:11px;">Condición de apoyo</label>
+              <select id="condicion" class="form-select form-select-sm" onchange="redibuja()">
+                <option value="empotrado_base" selected>Empotrado en base · Articulado en corona</option>
+                <option value="biapoyado">Articulado en base y en corona (biapoyado)</option>
+              </select>
+            </div>
+          </div>
+          <div id="geoDerived" class="mt-2 p-2 rounded" style="background:#EEF4FB;font-size:11px;color:#1565C0;"></div>
+        </div>
+      </div>
+
+      <!-- Suelo retenido -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9616; Suelo Retenido</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">φ <span class="label-unit">[°]</span></label>
+              <input type="number" id="phi_r" class="form-control form-control-sm" value="30" step="1" min="0" max="45" oninput="actualizarKa()">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">c <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="c_r" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+              <input type="number" id="gamma_r" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">q_s <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="q_s" class="form-control form-control-sm" value="5" step="1" min="0">
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <div id="kaDisplay" class="p-1 rounded text-center w-100" style="background:#FFF3E0;font-size:11px;">
+                Ka = <strong>0.333</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hormigón y Acero -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9632; Hormigón y Acero (ACI 318)</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">f'c <span class="label-unit">[MPa]</span></label>
+              <select id="fc" class="form-select form-select-sm">
+                <option value="21">21 MPa</option>
+                <option value="25" selected>25 MPa</option>
+                <option value="28">28 MPa</option>
+                <option value="30">30 MPa</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">fy <span class="label-unit">[MPa]</span></label>
+              <select id="fy" class="form-select form-select-sm">
+                <option value="420" selected>420 MPa</option>
+                <option value="500">500 MPa</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Recub. <span class="label-unit">[cm]</span></label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="4" step="1" min="3">
+              <div class="form-text" style="font-size:9px;">Mín. 4 cm para muros enterrados</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagrama -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9641; Diagrama de Cargas</div>
+        <div class="card-body p-1">
+          <div id="diagramaBox" style="background:#fff;border-radius:4px;overflow:hidden;"></div>
+        </div>
+      </div>
+
+      <div class="d-lg-none mb-3">
+        <button class="btn btn-primary w-100" onclick="calcular()">&#9654; Calcular</button>
+      </div>
+    </div>
+
+    <!-- ══ PANEL DERECHO ══ -->
+    <div class="col-lg-7">
+
+      <div id="cardResultados" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+          <div style="font-size:12px;color:#555;">Calculando…</div>
+        </div>
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9654; Resultados</div>
+        <div class="card-body" id="cuerpoResultados"></div>
+      </div>
+
+      <!-- Glosario -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex align-items-center justify-content-between"
+             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#glosarioBody">
+          <span class="fw-bold" style="font-size:13px;">&#9432; Glosario + Alcance del Módulo</span>
+          <span style="font-size:11px;color:#666;">&#9660;</span>
+        </div>
+        <div id="glosarioBody" class="collapse">
+          <div class="card-body" style="font-size:12px;">
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">GEOMETRÍA Y CONDICIÓN DE APOYO</p>
+                <p class="mb-1"><strong>H</strong> — Altura libre entre la losa de techo (apoyo superior) y la losa de piso (apoyo inferior) [m]. No incluye el espesor de las losas</p>
+                <p class="mb-1"><strong>e_muro</strong> — Espesor del muro [m]. Mínimo recomendado ≈ H/15. Afecta el peralte efectivo d de las barras de refuerzo</p>
+                <p class="mb-1"><strong>Condición de apoyo:</strong></p>
+                <p class="mb-1 ms-2"><strong>· Empotrado en base</strong> — La losa de piso (hormigón in situ, conexión rígida) provee empotramiento. Genera momento negativo M_base en la base y momento positivo M_max en el vano. Es el caso más realista en construcción in situ</p>
+                <p class="mb-1 ms-2"><strong>· Biapoyado</strong> — Ambos apoyos articulados (sin transferencia de momento). Solo existe momento positivo M_max en el vano. Más conservador para el diseño del vano; adecuado cuando la conexión con las losas es flexible</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">NIVEL FREÁTICO</p>
+                <p class="mb-1"><strong>h_NF</strong> — Profundidad del nivel freático desde la superficie exterior del terreno [m]. Si h_NF ≥ H: no hay presión hidrostática. Si h_NF &lt; H: se añade presión hidrostática triangular desde h_NF hasta la base del muro</p>
+                <p class="mb-1"><strong>γ_agua</strong> — Peso unitario del agua [kN/m³]. Agua dulce = 9.81; suelo saturado usa γ_sub = γ_sat − γ_agua. Se puede usar 10.0 kN/m³ por simplicidad</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">SUELO RETENIDO</p>
+                <p class="mb-1"><strong>φ (phi_r)</strong> — Ángulo de fricción interna del suelo retenido [°]</p>
+                <p class="mb-1"><strong>c</strong> — Cohesión del suelo retenido [kPa]</p>
+                <p class="mb-1"><strong>γ (gamma_r)</strong> — Peso unitario del suelo retenido [kN/m³]</p>
+                <p class="mb-1"><strong>q_s</strong> — Sobrecarga superficial [kPa]; genera presión activa adicional uniforme en toda la altura del muro</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">MATERIALES</p>
+                <p class="mb-1"><strong>f'c / fy</strong> — Resistencia del hormigón [MPa] y límite elástico del acero [MPa]</p>
+                <p class="mb-1"><strong>Recubrimiento</strong> — Distancia de la cara del hormigón al eje de la barra [cm]. Mínimo 4 cm (caras interiores), 5–7 cm (contacto con suelo húmedo)</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">CARGAS HORIZONTALES</p>
+                <p class="mb-1"><strong>Ka = tan²(45°−φ/2)</strong> — Coeficiente de empuje activo de Rankine</p>
+                <p class="mb-1"><strong>pa(z) = Ka·(γ·z + q_s)</strong> — Presión activa del suelo a profundidad z [kPa]</p>
+                <p class="mb-1"><strong>pw(z) = γ_agua·(z−h_NF)</strong> — Presión hidrostática por debajo del NF [kPa]</p>
+                <p class="mb-1"><strong>p_total = pa + pw</strong> — Presión total sobre el muro en cada profundidad [kPa]</p>
+                <p class="mb-1"><strong>Ea / Ew</strong> — Fuerza total del empuje activo e hidrostático por metro lineal [kN/m]</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">DIAGRAMA DE MOMENTOS</p>
+                <p class="mb-1"><strong>R_top / R_bot</strong> — Reacciones horizontales en la losa de techo y en la losa de piso [kN/m]. Estas fuerzas las debe absorber la losa correspondiente</p>
+                <p class="mb-1"><strong>M_max</strong> — Momento flector positivo máximo en el vano [kN·m/m]. Ocurre a profundidad z_max. Diseña las barras verticales en la cara expuesta al suelo</p>
+                <p class="mb-1"><strong>M_base</strong> — Momento flector negativo en la base empotrada [kN·m/m]. Diseña las barras verticales en la cara interior (interior del sótano)</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">DISEÑO RC (ACI 318-19)</p>
+                <p class="mb-1"><strong>Vert. cara suelo</strong> — Barras verticales en la cara expuesta al suelo; resisten M_max positivo</p>
+                <p class="mb-1"><strong>Vert. cara interior</strong> — Barras verticales en la cara interior; resisten |M_base| negativo</p>
+                <p class="mb-1"><strong>Horiz. temperatura</strong> — Barras horizontales en cada cara; ρ_t ≥ 0.0020 (ACI 11.6.1) para controlar fisuración por retracción y temperatura</p>
+                <p class="mb-1"><strong>As_req / As_mín / As_dis</strong> — Área requerida, mínima ACI y diseñada [cm²/m]</p>
+                <div class="alert alert-warning p-2 mt-2 mb-0" style="font-size:11px;">
+                  <strong>Alcance:</strong> Diseño de la sección del muro como losa vertical. No incluye: diseño de las losas de apoyo, verificación de cortante, subpresión en la losa de piso, impermeabilización ni efectos sísmicos.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const v = id => document.getElementById(id).value;
+
+function actualizarKa() {
+  const phi = +v('phi_r');
+  const Ka = Math.pow(Math.tan((45 - phi/2)*Math.PI/180), 2);
+  document.getElementById('kaDisplay').innerHTML = `Ka = <strong>${Ka.toFixed(4)}</strong> (Rankine)`;
+}
+
+function actualizarDerived() {
+  const H = +v('H'), e = +v('e_muro'), hNF = +v('h_NF');
+  const eMin = (H/15).toFixed(2);
+  const tieneNF = hNF < H;
+  let txt = `e_min recomendado: <strong>${eMin} m</strong> (H/15)`;
+  if (tieneNF) txt += ` &nbsp;|&nbsp; h_agua = <strong>${(H - hNF).toFixed(2)} m</strong>`;
+  document.getElementById('geoDerived').innerHTML = txt;
+}
+
+// ── Diagrama SVG ─────────────────────────────────────────────────────────────
+function actualizarDiagrama(d) {
+  const W = 500, SH = 380;
+  const PAD_L = 30, PAD_R = 50, PAD_T = 30, PAD_B = 30;
+
+  const H    = +v('H')     || 3.0;
+  const e    = +v('e_muro')|| 0.25;
+  const hNF  = +v('h_NF') || 1.5;
+  const phi  = +v('phi_r')|| 30;
+  const qs   = +v('q_s')  || 5;
+  const gr   = +v('gamma_r') || 18;
+  const gw   = +v('gamma_w') || 10.0;
+  const cond = v('condicion');
+
+  const Ka   = Math.pow(Math.tan((45-phi/2)*Math.PI/180), 2);
+  const avH  = SH - PAD_T - PAD_B;
+  const avW  = W  - PAD_L - PAD_R;
+  const sc   = avH / H;   // pixels per meter
+
+  // Layout: wall at left, soil to right, pressure on far right
+  const x_wall_L = PAD_L + 40;       // left face of wall (interior)
+  const x_wall_R = x_wall_L + e * sc; // right face of wall (soil side)
+  const x_soil_R = x_wall_R + 50;    // soil extent
+  const y_top    = PAD_T;
+  const y_bot    = PAD_T + H * sc;
+
+  // Pressure at nodes (max at base)
+  const p_top   = Ka * qs;
+  const p_bot_a = Ka * (gr * H + qs);
+  const p_bot_w = gw * Math.max(H - hNF, 0);
+  const p_bot   = p_bot_a + p_bot_w;
+  const p_scl   = Math.min((avW - 60) / Math.max(p_bot, 1), 3.0);
+
+  // Moment diagram scale (from results)
+  const M_max = d.M_max != null ? d.M_max : null;
+  const M_base = d.M_base != null ? d.M_base : null;
+
+  let svg = `<svg width="${W}" height="${SH}" viewBox="0 0 ${W} ${SH}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="${W}" height="${SH}" fill="#FAFAFA"/>`;
+
+  // ── Suelo (right of wall) ────────────────────────────────────────────────
+  svg += `<defs>
+    <pattern id="soil" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="8" x2="8" y2="0" stroke="#8B6914" stroke-width="0.6" opacity="0.4"/>
+    </pattern>
+  </defs>`;
+  svg += `<rect x="${x_wall_R}" y="${y_top}" width="${x_soil_R-x_wall_R}" height="${y_bot-y_top}"
+            fill="#C9A96A" opacity="0.3"/>`;
+  svg += `<rect x="${x_wall_R}" y="${y_top}" width="${x_soil_R-x_wall_R}" height="${y_bot-y_top}"
+            fill="url(#soil)"/>`;
+
+  // Nivel freático
+  if (hNF < H) {
+    const y_nf = y_top + hNF * sc;
+    // Agua zone
+    svg += `<rect x="${x_wall_R}" y="${y_nf}" width="${x_soil_R-x_wall_R}" height="${y_bot-y_nf}"
+              fill="#1E88E5" opacity="0.15"/>`;
+    svg += `<line x1="${x_wall_L-10}" y1="${y_nf}" x2="${x_soil_R+5}" y2="${y_nf}"
+              stroke="#1E88E5" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+    svg += `<text x="${x_soil_R+6}" y="${y_nf+4}" font-size="8" fill="#1E88E5" font-weight="bold">NF</text>`;
+  }
+
+  // ── Muro (pared) ────────────────────────────────────────────────────────
+  svg += `<rect x="${x_wall_L}" y="${y_top}" width="${x_wall_R-x_wall_L}" height="${y_bot-y_top}"
+            fill="#8090A0" stroke="#37474F" stroke-width="1.5"/>`;
+
+  // ── Losas (apoyo superior e inferior) ─────────────────────────────────
+  const losa_h = 12;
+  // Losa superior
+  svg += `<rect x="${x_wall_L-20}" y="${y_top-losa_h}" width="${x_soil_R-x_wall_L+25}" height="${losa_h}"
+            fill="#8090A0" stroke="#37474F" stroke-width="1.2"/>`;
+  // Losa inferior
+  svg += `<rect x="${x_wall_L-20}" y="${y_bot}" width="${x_soil_R-x_wall_L+25}" height="${losa_h}"
+            fill="#8090A0" stroke="#37474F" stroke-width="1.2"/>`;
+
+  // Símbolos de apoyo
+  const symH = 8;
+  if (cond === 'empotrado_base') {
+    // Pin at top
+    svg += `<polygon points="${x_wall_L-5},${y_top} ${x_wall_L-5-symH},${y_top-symH} ${x_wall_L-5+symH},${y_top-symH}"
+              fill="none" stroke="#555" stroke-width="1.5"/>`;
+    // Fixed at bottom (hash marks)
+    for (let k = 0; k < 3; k++) {
+      const xk = x_wall_L - 8 + k * 8;
+      svg += `<line x1="${xk}" y1="${y_bot+losa_h}" x2="${xk-5}" y2="${y_bot+losa_h+6}"
+                stroke="#555" stroke-width="1.2"/>`;
+    }
+    svg += `<line x1="${x_wall_L-10}" y1="${y_bot+losa_h}" x2="${x_wall_L+10}" y2="${y_bot+losa_h}" stroke="#555" stroke-width="1.5"/>`;
+  } else {
+    // Pin at top
+    svg += `<polygon points="${x_wall_L-5},${y_top} ${x_wall_L-5-symH},${y_top-symH} ${x_wall_L-5+symH},${y_top-symH}"
+              fill="none" stroke="#555" stroke-width="1.5"/>`;
+    // Pin at bottom
+    svg += `<polygon points="${x_wall_L-5},${y_bot} ${x_wall_L-5-symH},${y_bot+symH} ${x_wall_L-5+symH},${y_bot+symH}"
+              fill="none" stroke="#555" stroke-width="1.5"/>`;
+  }
+
+  // ── Diagrama de presiones (a la derecha del suelo) ─────────────────────
+  const x_pres = x_soil_R + 5;
+
+  // Presión activa (naranja)
+  for (let i = 0; i <= 8; i++) {
+    const frac = i / 8;
+    const z    = H * frac;
+    const p_a  = Ka * (gr * z + qs);
+    const px   = p_a * p_scl;
+    const ya   = y_top + z * sc;
+    if (px > 1) {
+      svg += `<line x1="${x_pres}" y1="${ya}" x2="${x_pres+px}" y2="${ya}"
+                stroke="#E53935" stroke-width="1.0" opacity="0.7"/>`;
+    }
+  }
+  // Active triangle outline
+  svg += `<polygon points="${x_pres},${y_top} ${x_pres},${y_bot} ${x_pres+p_bot_a*p_scl},${y_bot} ${x_pres+p_top*p_scl},${y_top}"
+            fill="rgba(229,57,53,0.1)" stroke="#E53935" stroke-width="0.8" stroke-dasharray="3,2"/>`;
+  svg += `<text x="${x_pres+p_bot_a*p_scl+2}" y="${y_bot-2}" font-size="7" fill="#c62828">${p_bot_a.toFixed(1)}</text>`;
+  svg += `<text x="${x_pres+p_top*p_scl+2}" y="${y_top+8}" font-size="7" fill="#c62828">${p_top.toFixed(1)} kPa</text>`;
+
+  // Presión hidrostática (azul), si corresponde
+  if (hNF < H) {
+    const y_nf   = y_top + hNF * sc;
+    const h_agua = H - hNF;
+    const pw_max = gw * h_agua;
+    svg += `<polygon points="${x_pres},${y_nf} ${x_pres},${y_bot} ${x_pres+pw_max*p_scl},${y_bot}"
+              fill="rgba(30,136,229,0.18)" stroke="#1E88E5" stroke-width="1"/>`;
+    svg += `<text x="${x_pres+pw_max*p_scl+2}" y="${y_bot+2}" font-size="7" fill="#1E88E5">+${pw_max.toFixed(1)}</text>`;
+    // Suma total en la base
+    svg += `<text x="${x_pres}" y="${y_bot+14}" font-size="8" fill="#555">total: ${p_bot.toFixed(1)} kPa</text>`;
+  }
+
+  // ── Diagrama de momentos (a la izquierda del muro) ────────────────────
+  if (M_max !== null) {
+    const x_mom = x_wall_L - 15;
+    const m_scl = Math.min(30 / Math.max(Math.abs(M_max), Math.abs(M_base || 0), 0.1), 5);
+    const N_diag = 20;
+    let pts = `${x_mom},${y_top}`;
+
+    for (let i = 0; i <= N_diag; i++) {
+      const frac = i / N_diag;
+      const z    = H * frac;
+      const M    = d.M_nodes ? d.M_nodes[Math.round(frac * (d.M_nodes.length-1))] : 0;
+      pts += ` ${x_mom - M * m_scl},${y_top + z * sc}`;
+    }
+    pts += ` ${x_mom},${y_bot}`;
+    svg += `<polygon points="${pts}" fill="rgba(21,101,192,0.20)" stroke="#1565C0" stroke-width="1.2"/>`;
+    svg += `<text x="${x_mom - Math.abs(M_max)*m_scl - 2}" y="${y_top + d.z_max*sc + 4}"
+              text-anchor="end" font-size="8" fill="#1565C0" font-weight="bold">${M_max.toFixed(1)}</text>`;
+    if (M_base && Math.abs(M_base) > 0.1) {
+      svg += `<text x="${x_mom - Math.abs(M_base)*m_scl - 2}" y="${y_bot-2}"
+                text-anchor="end" font-size="8" fill="#1565C0">${M_base.toFixed(1)}</text>`;
+    }
+    svg += `<text x="${x_mom - 2}" y="${y_top + H/2*sc}" text-anchor="end" font-size="7" fill="#1565C0">M(kN·m/m)</text>`;
+  }
+
+  // ── Cotas ─────────────────────────────────────────────────────────────
+  const xd = PAD_L + 5;
+  svg += `<line x1="${xd}" y1="${y_top}" x2="${xd}" y2="${y_bot}" stroke="#555" stroke-width="0.8"/>`;
+  svg += `<line x1="${xd-4}" y1="${y_top}" x2="${xd+4}" y2="${y_top}" stroke="#555" stroke-width="0.8"/>`;
+  svg += `<line x1="${xd-4}" y1="${y_bot}" x2="${xd+4}" y2="${y_bot}" stroke="#555" stroke-width="0.8"/>`;
+  const ym = (y_top + y_bot)/2;
+  svg += `<text x="${xd-5}" y="${ym}" text-anchor="middle" font-size="9" fill="#333"
+    transform="rotate(-90,${xd-5},${ym})">H=${H.toFixed(2)}m</text>`;
+
+  // Labels losas
+  svg += `<text x="${x_wall_L-16}" y="${y_top-2}" font-size="7" fill="#85B7EB">losa techo</text>`;
+  svg += `<text x="${x_wall_L-16}" y="${y_bot+losa_h+9}" font-size="7" fill="#85B7EB">losa piso</text>`;
+
+  svg += '</svg>';
+  document.getElementById('diagramaBox').innerHTML = svg;
+}
+
+function redibuja() {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+}
+
+// ── Calcular ──────────────────────────────────────────────────────────────
+let _lastPayload = null;
+
+async function calcular() {
+  const btn     = document.getElementById('btnCalc');
+  const overlay = document.getElementById('loadingOverlay');
+  const cardRes = document.getElementById('cardResultados');
+
+  cardRes.style.display = '';
+  overlay.classList.add('active');
+  btn.classList.add('calc-btn-loading');
+  btn.disabled = true;
+
+  const payload = {
+    H:         parseFloat(v('H')),
+    e_muro:    parseFloat(v('e_muro')),
+    h_NF:      parseFloat(v('h_NF')),
+    condicion: v('condicion'),
+    phi_r:     parseFloat(v('phi_r')),
+    c_r:       parseFloat(v('c_r')),
+    gamma_r:   parseFloat(v('gamma_r')),
+    q_s:       parseFloat(v('q_s')),
+    gamma_w:   parseFloat(v('gamma_w')),
+    fc:        parseFloat(v('fc')),
+    fy:        parseFloat(v('fy')),
+    recub:     parseFloat(v('recub')) / 100,
+  };
+  _lastPayload = payload;
+
+  try {
+    const resp = await fetch('/api/muro-sotano/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error);
+    renderResultados(d);
+    actualizarDiagrama(d);
+    document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
+  } catch(err) {
+    alert('Error: ' + err.message);
+  } finally {
+    overlay.classList.remove('active');
+    btn.classList.remove('calc-btn-loading');
+    btn.disabled = false;
+  }
+}
+
+function renderResultados(d) {
+  const c  = d.cargas;
+  const m  = d.momentos;
+
+  const badge = (lbl) => `<span class="fs-badge-info">${lbl}</span>`;
+
+  let html = '';
+
+  // Badges informativos
+  html += '<div class="mb-3 d-flex flex-wrap gap-2">';
+  html += badge(`R_top = ${m.R_top.toFixed(2)} kN/m`);
+  html += badge(`R_bot = ${m.R_bot.toFixed(2)} kN/m`);
+  html += badge(`M_max = ${m.M_max.toFixed(2)} kN·m/m`);
+  if (d.condicion === 'empotrado_base')
+    html += badge(`M_base = ${m.M_base.toFixed(2)} kN·m/m`);
+  html += '</div>';
+
+  // Cargas
+  html += '<div class="sec-heading">Cargas Horizontales</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Ka = tan²(45°−φ/2)</td><td>${d.Ka.toFixed(4)}</td></tr>`;
+  html += `<tr><td>Presión activa en corona pa_top</td><td>${c.pa_corona.toFixed(2)} kPa</td></tr>`;
+  html += `<tr><td>Presión activa en base pa_base</td><td>${c.pa_base.toFixed(2)} kPa</td></tr>`;
+  if (c.tiene_nf)
+    html += `<tr><td>Presión hidrostática en base pw</td><td>${c.pw_base.toFixed(2)} kPa</td></tr>`;
+  html += `<tr><td>Presión TOTAL en la base</td><td><strong>${c.p_total_base.toFixed(2)} kPa</strong></td></tr>`;
+  html += `<tr><td>Empuje activo Ea</td><td>${c.Ea.toFixed(2)} kN/m</td></tr>`;
+  if (c.tiene_nf)
+    html += `<tr><td>Empuje hidrostático Ew</td><td>${c.Ew.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>Fuerza horizontal total</td><td><strong>${c.E_total.toFixed(2)} kN/m</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  // Momentos
+  html += '<div class="sec-heading">Diagrama de Momentos</div>';
+  const condLabel = d.condicion === 'empotrado_base' ? 'Empotrado en base · Articulado en corona' : 'Biapoyado';
+  html += `<div class="mb-2" style="font-size:12px;color:#555;">${condLabel}</div>`;
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>R_top (reacción en losa de techo)</td><td>${m.R_top.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>R_bot (reacción en losa de piso)</td><td>${m.R_bot.toFixed(2)} kN/m</td></tr>`;
+  html += `<tr><td>M_max positivo (vano)</td><td><strong>${m.M_max.toFixed(3)} kN·m/m</strong></td></tr>`;
+  html += `<tr><td>z donde ocurre M_max</td><td>${m.z_max.toFixed(3)} m desde corona</td></tr>`;
+  if (d.condicion === 'empotrado_base')
+    html += `<tr><td>M_base (empotramiento)</td><td><strong>${m.M_base.toFixed(3)} kN·m/m</strong></td></tr>`;
+  html += '</tbody></table>';
+
+  // Diseño RC
+  html += '<div class="sec-heading">Diseño de Armadura (ACI 318-19)</div>';
+  html += '<div class="table-responsive"><table class="table table-sm tbl-rc mb-2"><thead><tr>';
+  html += '<th>Elemento</th><th>Mu [kN·m/m]</th><th>d [m]</th><th>As_req [cm²/m]</th><th>As_mín [cm²/m]</th><th>As_dis [cm²/m]</th><th>Armadura</th></tr></thead><tbody>';
+
+  for (const el of [d.vert_cara_suelo, d.vert_cara_int, d.horiz_temp]) {
+    html += `<tr>
+      <td><strong>${el.nombre}</strong></td>
+      <td>${el.Mu > 0 ? el.Mu.toFixed(2) : '—'}</td>
+      <td>${el.d.toFixed(3)}</td>
+      <td>${el.As_req > 0 ? el.As_req.toFixed(2) : '—'}</td>
+      <td>${el.As_min.toFixed(2)}</td>
+      <td><strong>${el.As_dis.toFixed(2)}</strong></td>
+      <td><span class="badge bg-primary">${el.barra}</span></td>
+    </tr>`;
+    if (el.nota) html += `<tr><td colspan="7" style="font-size:10px;color:#888;padding:2px 8px;">↳ ${el.nota}</td></tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  // Sugerencias
+  html += generarSugerencias(d);
+
+  // Mensajes
+  html += '<div class="sec-heading">Mensajes</div>';
+  for (const msg of d.mensajes) {
+    const cls = {ok:'msg-ok', error:'msg-error', advertencia:'msg-warn'}[msg.tipo] || '';
+    html += `<div class="msg-item ${cls}">▸ ${msg.texto}</div>`;
+  }
+
+  document.getElementById('cuerpoResultados').innerHTML = html;
+}
+
+// ── Sugerencias de diseño ────────────────────────────────────────────────
+function sugBox(titulo, items) {
+  return `<div class="sug-box">
+    <div class="sug-header">&#9654; ${titulo}</div>
+    <ul class="sug-body">${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div>`;
+}
+
+function generarSugerencias(d) {
+  const m   = d.momentos;
+  const H   = parseFloat(v('H'));
+  const em  = parseFloat(v('e_muro'));
+
+  // Para muro de sótano no hay FS a verificar; sugerencias sobre dimensionamiento
+  let html = '';
+  const showSug = em < H / 15 || +v('h_NF') < H;
+  if (!showSug) return '';
+
+  html += '<div class="sec-heading" style="color:#e65100;border-color:#e65100;">&#9888; Sugerencias de Diseño</div>';
+
+  if (em < H / 15) {
+    html += sugBox(`Espesor — e_muro = ${em.toFixed(2)} m &lt; H/15 = ${(H/15).toFixed(2)} m`, [
+      'Aumentar <strong>e_muro</strong>: mejora la rigidez del muro y reduce el peralte efectivo requerido',
+      `Valor mínimo recomendado: <code>${(H/12).toFixed(2)} m</code> (H/12) para muros de altura media`,
+    ]);
+  }
+  if (+v('h_NF') < H) {
+    html += sugBox('Nivel freático — presencia de agua', [
+      'Diseñar <strong>impermeabilización</strong> exterior del muro (membrana, cristalización, etc.)',
+      'Verificar <strong>subpresión hidrostática</strong> en la losa de piso: F_up = γ_w × h_agua × área',
+      'Considerar <strong>drenaje</strong> perimetral para reducir o eliminar la presión hidrostática',
+      'Con drenaje eficaz, la presión hidrostática puede reducirse a 0 o a un valor residual',
+    ]);
+  }
+  return html;
+}
+
+async function exportarDXF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro-sotano/report/dxf', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando DXF');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'muro_sotano.dxf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+// ── PDF ────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro-sotano/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando PDF');
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'muro_sotano.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarKa();
+  actualizarDerived();
+  actualizarDiagrama({});
+});
+</script>
+</body>
+</html>
+
+

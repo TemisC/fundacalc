@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Pilote Individual</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+    .label-unit{font-size:10px;color:#888;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .res-table td:first-child{color:#555;font-size:12px;width:55%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .tbl-capas td,.tbl-capas th{font-size:11px;vertical-align:middle;}
+    .tbl-capas th{background:#E3F2FD;}
+    .result-big{font-size:22px;font-weight:700;color:#1565C0;}
+    .result-unit{font-size:13px;color:#555;margin-left:4px;}
+    .badge-ok{background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;
+      display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+    .badge-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;
+      display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;}
+    .msg-ok{color:#2e7d32;} .msg-error{color:#c62828;font-weight:600;} .msg-warn{color:#e65100;}
+    .msg-item{font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .capa-row input,.capa-row select{font-size:11px;padding:2px 5px;height:27px;}
+    .sug-box{margin-bottom:10px;border:1px solid #FFCC80;border-radius:6px;overflow:hidden;}
+    .sug-header{background:#FFF3E0;padding:5px 12px;font-size:11px;font-weight:700;
+      color:#e65100;letter-spacing:0.4px;text-transform:uppercase;border-bottom:1px solid #FFE0B2;}
+    .sug-body{padding:6px 12px 8px;background:#FFFDE7;margin:0;}
+    .sug-body li{font-size:12px;color:#444;padding:2px 0;line-height:1.5;}
+    .sug-body li strong{color:#1565C0;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect x="8" y="2" width="6" height="4" rx="0.5" fill="#85B7EB"/>
+        <rect x="9" y="6" width="4" height="14" rx="0.5" fill="#85B7EB"/>
+        <ellipse cx="11" cy="20" rx="3" ry="1.5" fill="#378ADD" opacity="0.7"/>
+        <line x1="5" y1="9"  x2="9"  y2="9"  stroke="#EF9F27" stroke-width="0.9"/>
+        <line x1="5" y1="13" x2="9"  y2="13" stroke="#EF9F27" stroke-width="0.9"/>
+        <line x1="13" y1="9"  x2="17" y2="9"  stroke="#EF9F27" stroke-width="0.9"/>
+        <line x1="13" y1="13" x2="17" y2="13" stroke="#EF9F27" stroke-width="0.9"/>
+        <circle cx="11" cy="9"  r="1" fill="#EF9F27" opacity="0.8"/>
+        <circle cx="11" cy="13" r="1" fill="#EF9F27" opacity="0.8"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 6B — Pilote Individual</div>
+    </div>
+    <a class="fc-tb-back" href="/pilotes">&#8592; Pilotes</a>
+    <div class="btn-group ms-2">
+      <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">&#9654; Calcular</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>&#8659; Exportar PDF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ PANEL IZQUIERDO ══ -->
+    <div class="col-lg-5">
+
+      <!-- Pilote -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9679; Pilote</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Diámetro D <span class="label-unit">[m]</span></label>
+              <input type="number" id="D" class="form-control form-control-sm" value="0.50" step="0.05" min="0.20" oninput="actualizarDerived()">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Longitud L <span class="label-unit">[m]</span></label>
+              <input type="number" id="L" class="form-control form-control-sm" value="12.0" step="0.5" min="2" oninput="actualizarDerived()">
+            </div>
+            <div class="col-7">
+              <label class="form-label mb-0" style="font-size:11px;">Tipo de pilote</label>
+              <select id="tipo" class="form-select form-select-sm">
+                <option value="vaciado_in_situ" selected>Vaciado in situ (barrenado)</option>
+                <option value="hincado">Hincado (concreto prefabricado)</option>
+              </select>
+            </div>
+            <div class="col-5 d-flex align-items-end">
+              <div id="piloteDerived" class="p-1 rounded text-center w-100" style="background:#EEF4FB;font-size:11px;color:#1565C0;"></div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Carga axial diseño Qa <span class="label-unit">[kN]</span></label>
+              <input type="number" id="Qa_dis" class="form-control form-control-sm" value="800" step="50" min="10">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">FS mínimo axial</label>
+              <select id="FS_min" class="form-select form-select-sm">
+                <option value="2.5" selected>2.5 (estándar)</option>
+                <option value="3.0">3.0 (conservador)</option>
+                <option value="2.0">2.0 (con prueba de carga)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Perfil de suelo -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex align-items-center justify-content-between fw-bold" style="font-size:13px;">
+          <span>&#9618; Perfil de Suelo (hasta 5 capas)</span>
+          <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="agregarCapa()" style="font-size:11px;">+ Capa</button>
+        </div>
+        <div class="card-body py-2">
+          <table class="table table-sm mb-1">
+            <thead>
+              <tr style="font-size:10px;">
+                <th>#</th><th>Tipo</th><th>Δz [m]</th><th>γ [kN/m³]</th><th>cu [kPa]</th><th>φ [°]</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCapas"></tbody>
+          </table>
+          <div style="font-size:10px;color:#888;">cu: solo para arcilla · φ: solo para arena</div>
+        </div>
+      </div>
+
+      <!-- Capacidad Lateral -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#8596; Carga Lateral (Broms)</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">H lateral <span class="label-unit">[kN]</span></label>
+              <input type="number" id="H_lat" class="form-control form-control-sm" value="80" step="10" min="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Excentricidad e <span class="label-unit">[m]</span></label>
+              <input type="number" id="e_lat" class="form-control form-control-sm" value="0.0" step="0.5" min="0">
+              <div class="form-text" style="font-size:9px;">Distancia desde terreno a la carga</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-0" style="font-size:11px;">Tipo de suelo para Broms</label>
+              <select id="tipo_lat" class="form-select form-select-sm" onchange="toggleLateral()">
+                <option value="granular" selected>Granular (arena, grava)</option>
+                <option value="cohesivo">Cohesivo (arcilla)</option>
+              </select>
+            </div>
+            <div id="granularInputs" class="col-12">
+              <div class="row g-2">
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">φ <span class="label-unit">[°]</span></label>
+                  <input type="number" id="phi_lat" class="form-control form-control-sm" value="32" step="1" min="20" max="45">
+                </div>
+                <div class="col-4">
+                  <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+                  <input type="number" id="gamma_lat" class="form-control form-control-sm" value="18" step="0.5" min="14">
+                </div>
+              </div>
+            </div>
+            <div id="cohesivoInputs" class="col-12" style="display:none;">
+              <label class="form-label mb-0" style="font-size:11px;">cu promedio <span class="label-unit">[kPa]</span></label>
+              <input type="number" id="cu_lat" class="form-control form-control-sm" value="50" step="5" min="10">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Materiales -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9632; Hormigón y Acero (ACI 318)</div>
+        <div class="card-body py-2">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">f'c <span class="label-unit">[MPa]</span></label>
+              <select id="fc" class="form-select form-select-sm">
+                <option value="25" selected>25 MPa</option>
+                <option value="28">28 MPa</option>
+                <option value="30">30 MPa</option>
+                <option value="35">35 MPa</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">fy <span class="label-unit">[MPa]</span></label>
+              <select id="fy" class="form-select form-select-sm">
+                <option value="420" selected>420 MPa</option>
+                <option value="500">500 MPa</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Recub. <span class="label-unit">[cm]</span></label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="7.5" step="0.5" min="5">
+              <div class="form-text" style="font-size:9px;">Mín. 7.5 cm en pilotes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagrama SVG -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9641; Diagrama del Pilote</div>
+        <div class="card-body p-1">
+          <div id="diagramaBox" style="background:#fff;border-radius:4px;overflow:hidden;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ PANEL DERECHO ══ -->
+    <div class="col-lg-7">
+
+      <div id="cardResultados" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="loadingOverlay">
+          <div class="spinner-border text-primary" style="width:1.6rem;height:1.6rem;"></div>
+          <div style="font-size:12px;color:#555;">Calculando…</div>
+        </div>
+        <div class="card-header py-2 fw-bold" style="font-size:13px;">&#9654; Resultados</div>
+        <div class="card-body" id="cuerpoResultados"></div>
+      </div>
+
+      <!-- Glosario -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 d-flex align-items-center justify-content-between"
+             style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#glosarioBody">
+          <span class="fw-bold" style="font-size:13px;">&#9432; Glosario + Alcance del Módulo</span>
+          <span style="font-size:11px;color:#666;">&#9660;</span>
+        </div>
+        <div id="glosarioBody" class="collapse">
+          <div class="card-body" style="font-size:12px;">
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">PARÁMETROS DEL PILOTE</p>
+                <p class="mb-1"><strong>D</strong> — Diámetro del pilote [m]. Pilotes corrientes: 0.3–1.5 m</p>
+                <p class="mb-1"><strong>L</strong> — Longitud total del pilote desde cabeza hasta punta [m]</p>
+                <p class="mb-1"><strong>Tipo pilote</strong> — Vaciado in situ (barrenado): menor fricción lateral (β más bajo), sin densificación del suelo. Hincado: mayor fricción por desplazamiento del suelo</p>
+                <p class="mb-1"><strong>Qa_dis</strong> — Carga axial de diseño que debe soportar el pilote [kN]</p>
+                <p class="mb-1"><strong>FS mínimo</strong> — Factor de seguridad axial requerido (Qu/Qa_dis); típico 2.5, o 2.0 con prueba de carga</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">PERFIL DE SUELO — CAPACIDAD AXIAL</p>
+                <p class="mb-1"><strong>Arcilla — método α</strong> — fs = α(cu) × cu. α = 1.0 para cu ≤ 25 kPa, disminuye linealmente hasta α = 0.5 para cu ≥ 70 kPa (API RP2A)</p>
+                <p class="mb-1"><strong>Arena — método β</strong> — fs = β × σ'v. β = K × tan(δ) donde K ≈ 0.7 (vaciado) o 1.0 (hincado) y δ = ángulo de fricción pilote-suelo ≈ 0.75φ (vaciado) o φ (hincado)</p>
+                <p class="mb-1"><strong>σ'v</strong> — Tensión efectiva vertical en el centroide de cada capa [kPa]</p>
+                <p class="mb-1"><strong>Punta — arcilla</strong> — Qp = 9 × cu_base × Ap (Nc = 9 para pilote profundo)</p>
+                <p class="mb-1"><strong>Punta — arena</strong> — Qp = Nq × σ'v_base × Ap; σ'v limitado a 200 kPa (pilote vaciado)</p>
+                <p class="mb-1"><strong>Qu = Qs + Qp</strong> — Capacidad última total [kN]</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 fw-bold text-primary" style="font-size:11px;">CAPACIDAD LATERAL — BROMS (1964)</p>
+                <p class="mb-1"><strong>H_lat</strong> — Carga horizontal de diseño en la cabeza del pilote [kN]</p>
+                <p class="mb-1"><strong>e</strong> — Distancia desde la superficie del terreno hasta el punto de aplicación de H [m]. e = 0 si la carga se aplica al nivel del terreno</p>
+                <p class="mb-1"><strong>Cabeza libre</strong> — El pilote puede girar libremente en la cabeza (no está empotrado en el encepado). Es el caso más conservador para el momento máximo</p>
+                <p class="mb-1"><strong>Pilote corto (rígido)</strong> — La capacidad la controla el suelo (falla por rotación del pilote). Hu depende de L</p>
+                <p class="mb-1"><strong>Pilote largo (flexible)</strong> — La capacidad la controla el momento de fluencia My del pilote. Hu depende de My y propiedades del suelo. Aumentar D o As mejora Hu</p>
+                <p class="mb-1"><strong>My</strong> — Momento de fluencia estimado de la sección RC [kN·m]. Se usa para determinar si el pilote es corto o largo</p>
+                <p class="mb-1"><strong>FS lateral ≥ 1.5</strong> — Factor de seguridad mínimo ante carga lateral</p>
+                <p class="mb-1 fw-bold text-primary mt-2" style="font-size:11px;">DISEÑO RC (ACI 318-19)</p>
+                <p class="mb-1"><strong>ρ_l ∈ [0.8%, 4%]</strong> — Cuantía longitudinal para pilotes según ACI. Mínimo 0.8% por ductilidad ante cargas laterales</p>
+                <p class="mb-1"><strong>Espiral mínima</strong> — ρ_s ≥ 0.45(Ag/Ach−1)f'c/fy provee confinamiento y ductilidad (ACI 10.9.3)</p>
+                <div class="alert alert-warning p-2 mt-2 mb-0" style="font-size:11px;">
+                  <strong>Alcance:</strong> Pilote aislado de sección circular, cabeza libre. Método α/β por capas para capacidad axial. Broms (1964) para lateral. No incluye: efecto de grupo, prueba de carga, pilotes inclinados, cortante en el pilote ni asentamientos.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const v = id => document.getElementById(id).value;
+
+// ── Capas de suelo ─────────────────────────────────────────────────────────
+let capas = [
+  {tipo:'arcilla', espesor:5.0, gamma:18.0, cu:50, phi:0},
+  {tipo:'arena',   espesor:8.0, gamma:19.0, cu:0,  phi:32},
+];
+
+function renderCapas() {
+  const tbody = document.getElementById('tbodyCapas');
+  tbody.innerHTML = '';
+  capas.forEach((c, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'capa-row';
+    tr.innerHTML = `
+      <td style="font-size:11px;color:#555;width:20px;">${i+1}</td>
+      <td><select class="form-select form-select-sm" style="width:90px" onchange="updateCapa(${i},'tipo',this.value);toggleCapaInputs(${i})">
+        <option value="arcilla" ${c.tipo==='arcilla'?'selected':''}>Arcilla</option>
+        <option value="arena"   ${c.tipo==='arena'?'selected':''}>Arena</option>
+      </select></td>
+      <td><input type="number" value="${c.espesor}" step="0.5" min="0.5" style="width:55px"
+          class="form-control form-control-sm" onchange="updateCapa(${i},'espesor',this.value)"></td>
+      <td><input type="number" value="${c.gamma}" step="0.5" min="14" style="width:55px"
+          class="form-control form-control-sm" onchange="updateCapa(${i},'gamma',this.value)"></td>
+      <td><input type="number" value="${c.cu}" step="5" min="0" style="width:55px"
+          class="form-control form-control-sm" id="cu_${i}"
+          ${c.tipo==='arena'?'disabled':''} onchange="updateCapa(${i},'cu',this.value)"></td>
+      <td><input type="number" value="${c.phi}" step="1" min="0" max="45" style="width:45px"
+          class="form-control form-control-sm" id="phi_${i}"
+          ${c.tipo==='arcilla'?'disabled':''} onchange="updateCapa(${i},'phi',this.value)"></td>
+      <td><button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="eliminarCapa(${i})"
+          style="font-size:10px;" ${capas.length<=1?'disabled':''}>✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+  actualizarDiagrama({});
+}
+
+function toggleCapaInputs(i) {
+  const tipo = capas[i].tipo;
+  const cuInput  = document.getElementById(`cu_${i}`);
+  const phiInput = document.getElementById(`phi_${i}`);
+  if (cuInput)  cuInput.disabled  = (tipo === 'arena');
+  if (phiInput) phiInput.disabled = (tipo === 'arcilla');
+}
+
+function updateCapa(i, field, val) {
+  capas[i][field] = field === 'tipo' ? val : parseFloat(val) || 0;
+}
+function agregarCapa() {
+  if (capas.length >= 5) return;
+  capas.push({tipo:'arena', espesor:3.0, gamma:18.5, cu:0, phi:30});
+  renderCapas();
+}
+function eliminarCapa(i) {
+  if (capas.length <= 1) return;
+  capas.splice(i, 1);
+  renderCapas();
+}
+
+function toggleLateral() {
+  const tipo = v('tipo_lat');
+  document.getElementById('granularInputs').style.display = tipo==='granular' ? '' : 'none';
+  document.getElementById('cohesivoInputs').style.display = tipo==='cohesivo' ? '' : 'none';
+}
+
+function actualizarDerived() {
+  const D = +v('D') || 0.5, L = +v('L') || 12;
+  const Ag = Math.PI * D*D/4;
+  document.getElementById('piloteDerived').innerHTML =
+    `Ag = <strong>${(Ag*1e4).toFixed(1)} cm²</strong><br>L/D = ${(L/D).toFixed(1)}`;
+  actualizarDiagrama({});
+}
+
+// ── Diagrama SVG ─────────────────────────────────────────────────────────────
+function actualizarDiagrama(d) {
+  const W = 280, SH = 320;
+  const cx = W * 0.35;
+  const D_val = +v('D') || 0.5;
+  const L_val = +v('L') || 12;
+  const H_lat_val = +v('H_lat') || 0;
+
+  const maxD = 1.5, maxL = 25;
+  const Dpx = Math.max(Math.min(D_val / maxD, 1) * 40, 15);
+  const Lpx = Math.max(Math.min(L_val / maxL, 1) * 200, 80);
+
+  const y_top = 30;
+  const y_bot = y_top + Lpx;
+
+  let svg = `<svg width="${W}" height="${SH}" viewBox="0 0 ${W} ${SH}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<rect width="${W}" height="${SH}" fill="#FAFAFA"/>`;
+
+  // Capas de suelo (colores alternos)
+  let yz = y_top;
+  const totalEsp = capas.reduce((s,c) => s+c.espesor, 0);
+  capas.forEach((c, i) => {
+    const h = (c.espesor / Math.max(totalEsp, 1)) * Lpx;
+    const col = c.tipo === 'arcilla' ? '#C9A96A' : '#D4B483';
+    svg += `<rect x="0" y="${yz}" width="${W}" height="${h}" fill="${col}" opacity="${0.15 + i*0.05}"/>`;
+    svg += `<text x="${W-5}" y="${yz+h/2+4}" text-anchor="end" font-size="8" fill="#8B6914">${c.tipo==='arcilla'?'Arc.':'Arena'} ${c.espesor.toFixed(1)}m</text>`;
+    yz += h;
+  });
+
+  // Terreno
+  svg += `<line x1="0" y1="${y_top}" x2="${W}" y2="${y_top}" stroke="#555" stroke-width="1.5"/>`;
+
+  // Pilote (rectangulo)
+  const xL = cx - Dpx/2, xR = cx + Dpx/2;
+  svg += `<rect x="${xL}" y="${y_top}" width="${Dpx}" height="${Lpx}" fill="#8090A0" stroke="#37474F" stroke-width="1.5"/>`;
+
+  // Punta del pilote
+  svg += `<polygon points="${xL},${y_bot} ${xR},${y_bot} ${cx},${y_bot+12}" fill="#5a6a7a" stroke="#37474F" stroke-width="1"/>`;
+
+  // Fricción (barras laterales)
+  for (let i=0; i<6; i++) {
+    const y = y_top + (i+0.5)*(Lpx/6);
+    svg += `<line x1="${xL-8}" y1="${y}" x2="${xL}" y2="${y}" stroke="#EF9F27" stroke-width="1.2"/>`;
+    svg += `<polygon points="${xL-2},${y-3} ${xL-2},${y+3} ${xL+2},${y}" fill="#EF9F27"/>`;
+  }
+
+  // Carga axial (flecha hacia abajo)
+  svg += `<line x1="${cx}" y1="${y_top-25}" x2="${cx}" y2="${y_top-5}" stroke="#E53935" stroke-width="2"/>`;
+  svg += `<polygon points="${cx-5},${y_top-8} ${cx+5},${y_top-8} ${cx},${y_top-2}" fill="#E53935"/>`;
+  svg += `<text x="${cx+6}" y="${y_top-14}" font-size="9" fill="#E53935" font-weight="bold">Qa</text>`;
+
+  // Carga lateral (si H_lat > 0)
+  if (H_lat_val > 0) {
+    const yH = y_top + 8;
+    svg += `<line x1="${xL-30}" y1="${yH}" x2="${xL-4}" y2="${yH}" stroke="#1E88E5" stroke-width="2"/>`;
+    svg += `<polygon points="${xL-6},${yH-5} ${xL-6},${yH+5} ${xL},${yH}" fill="#1E88E5"/>`;
+    svg += `<text x="${xL-32}" y="${yH+4}" text-anchor="end" font-size="8" fill="#1E88E5">H</text>`;
+  }
+
+  // Resultados si existen
+  if (d.Qu) {
+    const ok = d.FS_axial >= parseFloat(v('FS_min'));
+    const col = ok ? '#2e7d32' : '#c62828';
+    svg += `<rect x="${W-85}" y="5" width="83" height="38" rx="4" fill="white" stroke="#ddd"/>`;
+    svg += `<text x="${W-44}" y="19" text-anchor="middle" font-size="8" fill="${col}" font-weight="bold">Qu=${d.Qu.toFixed(0)} kN</text>`;
+    svg += `<text x="${W-44}" y="31" text-anchor="middle" font-size="8" fill="${col}" font-weight="bold">FS=${d.FS_axial.toFixed(2)}</text>`;
+    svg += `<text x="${W-44}" y="40" text-anchor="middle" font-size="7" fill="#555">Qs=${d.Qs_total.toFixed(0)} Qp=${d.Qp.toFixed(0)}</text>`;
+  }
+
+  // Cotas
+  svg += `<line x1="${xL-18}" y1="${y_top}" x2="${xL-18}" y2="${y_bot}" stroke="#555" stroke-width="0.8"/>`;
+  svg += `<line x1="${xL-22}" y1="${y_top}" x2="${xL-14}" y2="${y_top}" stroke="#555" stroke-width="0.8"/>`;
+  svg += `<line x1="${xL-22}" y1="${y_bot}" x2="${xL-14}" y2="${y_bot}" stroke="#555" stroke-width="0.8"/>`;
+  const ym = (y_top+y_bot)/2;
+  svg += `<text x="${xL-20}" y="${ym}" text-anchor="middle" font-size="8" fill="#333" transform="rotate(-90,${xL-20},${ym})">L=${L_val.toFixed(1)}m</text>`;
+
+  // D label
+  svg += `<line x1="${xL}" y1="${y_bot+22}" x2="${xR}" y2="${y_bot+22}" stroke="#555" stroke-width="0.8"/>`;
+  svg += `<text x="${cx}" y="${y_bot+33}" text-anchor="middle" font-size="8" fill="#333">D=${D_val.toFixed(2)}m</text>`;
+
+  svg += '</svg>';
+  document.getElementById('diagramaBox').innerHTML = svg;
+}
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+let _lastPayload = null;
+
+async function calcular() {
+  const btn     = document.getElementById('btnCalc');
+  const overlay = document.getElementById('loadingOverlay');
+  const card    = document.getElementById('cardResultados');
+  card.style.display = '';
+  overlay.classList.add('active');
+  btn.classList.add('calc-btn-loading');
+  btn.disabled = true;
+
+  const payload = {
+    D:         parseFloat(v('D')),
+    L:         parseFloat(v('L')),
+    tipo:      v('tipo'),
+    capas:     capas.map(c => ({...c})),
+    Qa_dis:    parseFloat(v('Qa_dis')),
+    FS_min:    parseFloat(v('FS_min')),
+    H_lat:     parseFloat(v('H_lat')),
+    e_lat:     parseFloat(v('e_lat')),
+    tipo_lat:  v('tipo_lat'),
+    cu_lat:    parseFloat(v('cu_lat')),
+    phi_lat:   parseFloat(v('phi_lat')),
+    gamma_lat: parseFloat(v('gamma_lat')),
+    fc:        parseFloat(v('fc')),
+    fy:        parseFloat(v('fy')),
+    recub:     parseFloat(v('recub')) / 100,
+  };
+  _lastPayload = payload;
+
+  try {
+    const resp = await fetch('/api/pilote/calcular', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const d = await resp.json();
+    if (d.error) throw new Error(d.error);
+    renderResultados(d);
+    actualizarDiagrama(d);
+    document.getElementById('btnPDF').disabled = false;
+  } catch(err) {
+    alert('Error: ' + err.message);
+  } finally {
+    overlay.classList.remove('active');
+    btn.classList.remove('calc-btn-loading');
+    btn.disabled = false;
+  }
+}
+
+function renderResultados(d) {
+  const ax  = d.axial;
+  const lat = d.lateral;
+  const rc  = d.rc;
+  const FSmin = parseFloat(v('FS_min'));
+
+  const badge = (lbl, ok) => ok
+    ? `<span class="badge-ok">✓ ${lbl}</span>`
+    : `<span class="badge-fail">✗ ${lbl}</span>`;
+
+  let html = '<div class="mb-3 d-flex flex-wrap gap-2">';
+  html += badge(`FS_ax = ${ax.FS_axial.toFixed(2)}`, ax.FS_axial >= FSmin);
+  if (d.H_lat > 0)
+    html += badge(`FS_lat = ${lat.FS_lateral.toFixed(2)}`, lat.ok_lateral);
+  html += badge(`ρ = ${(rc.rho_l*100).toFixed(2)}%`, rc.rho_l >= 0.008 && rc.rho_l <= 0.04);
+  html += '</div>';
+
+  // ── Capacidad Axial ──
+  html += '<div class="sec-heading">Capacidad Axial por Capas</div>';
+  html += '<div class="table-responsive"><table class="table table-sm tbl-capas mb-3"><thead><tr>';
+  html += '<th>#</th><th>Tipo</th><th>Δz [m]</th><th>cu / φ</th><th>α o β</th><th>fs [kPa]</th><th>Qs [kN]</th></tr></thead><tbody>';
+  ax.capas.forEach((c,i) => {
+    const prop = c.tipo==='arcilla' ? `cu=${c.cu.toFixed(0)} kPa` : `φ=${c.phi.toFixed(0)}°`;
+    const coef = c.tipo==='arcilla' ? `α=${c.alpha.toFixed(2)}` : `β=${c.beta.toFixed(3)}`;
+    html += `<tr>
+      <td>${c.numero}</td>
+      <td>${c.tipo==='arcilla'?'Arcilla':'Arena'}</td>
+      <td>${c.espesor.toFixed(2)}</td>
+      <td>${prop}</td>
+      <td>${coef}</td>
+      <td>${c.fs.toFixed(1)}</td>
+      <td>${c.Qs.toFixed(1)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Qs (fricción lateral total)</td><td>${ax.Qs_total.toFixed(1)} kN</td></tr>`;
+  html += `<tr><td>Qp (resistencia en punta)</td><td>${ax.Qp.toFixed(1)} kN</td></tr>`;
+  html += `<tr><td>Qu = Qs + Qp</td><td><strong>${ax.Qu.toFixed(1)} kN</strong></td></tr>`;
+  html += `<tr><td>Qa = Qu / FS</td><td><strong>${ax.Qa.toFixed(1)} kN</strong></td></tr>`;
+  html += `<tr><td>FS axial</td><td>${ax.FS_axial.toFixed(2)} ${ax.FS_axial>=FSmin?'✓':'✗'}</td></tr>`;
+  html += '</tbody></table>';
+
+  // ── Capacidad Lateral ──
+  if (d.H_lat > 0) {
+    html += '<div class="sec-heading">Capacidad Lateral — Broms (1964), Cabeza Libre</div>';
+    html += '<table class="table table-sm res-table mb-3"><tbody>';
+    html += `<tr><td>Tipo de suelo</td><td>${lat.metodo}</td></tr>`;
+    html += `<tr><td>Tipo de pilote</td><td>${lat.tipo_pilote==='largo'?'Largo (flexible — controla My)':'Corto (rígido — controla suelo)'}</td></tr>`;
+    html += `<tr><td>My estimado</td><td>${lat.My.toFixed(1)} kN·m</td></tr>`;
+    html += `<tr><td>Hu (capacidad última lateral)</td><td><strong>${lat.Hu.toFixed(1)} kN</strong></td></tr>`;
+    html += `<tr><td>FS lateral = Hu / H</td><td>${lat.FS_lateral.toFixed(2)} ${lat.ok_lateral?'✓':'✗'}</td></tr>`;
+    if (lat.z_max > 0)
+      html += `<tr><td>Profundidad M_máx</td><td>${lat.z_max.toFixed(2)} m</td></tr>`;
+    html += '</tbody></table>';
+  }
+
+  // ── Diseño RC ──
+  html += '<div class="sec-heading">Diseño de Armadura (ACI 318-19)</div>';
+  html += '<table class="table table-sm res-table mb-3"><tbody>';
+  html += `<tr><td>Área bruta Ag</td><td>${(rc.Ag*1e4).toFixed(1)} cm²</td></tr>`;
+  html += `<tr><td>As_mín (ρ=0.8%)</td><td>${rc.Ast_min.toFixed(2)} cm²</td></tr>`;
+  html += `<tr><td>As_req (por carga axial)</td><td>${rc.Ast_req.toFixed(2)} cm²</td></tr>`;
+  html += `<tr><td>As_dis diseñada</td><td><strong>${rc.Ast_dis.toFixed(2)} cm²</strong></td></tr>`;
+  html += `<tr><td>Barras longitudinales</td><td><span class="badge bg-primary">${rc.desc_long}</span></td></tr>`;
+  html += `<tr><td>Cuantía ρ_l</td><td>${(rc.rho_l*100).toFixed(2)}%</td></tr>`;
+  html += `<tr><td>Espiral mínima ρ_s</td><td>${rc.rho_s_min.toFixed(4)}</td></tr>`;
+  html += `<tr><td>Espiral</td><td>∅${rc.db_esp.toFixed(0)}mm @ ${rc.paso_esp.toFixed(0)}mm</td></tr>`;
+  html += '</tbody></table>';
+
+  // Sugerencias
+  html += generarSugerencias(d);
+
+  // ── Mensajes ──
+  html += '<div class="sec-heading">Mensajes</div>';
+  for (const msg of d.mensajes) {
+    const cls = {ok:'msg-ok', error:'msg-error', advertencia:'msg-warn'}[msg.tipo]||'';
+    html += `<div class="msg-item ${cls}">▸ ${msg.texto}</div>`;
+  }
+
+  document.getElementById('cuerpoResultados').innerHTML = html;
+}
+
+function sugBox(titulo, items) {
+  return `<div class="sug-box">
+    <div class="sug-header">&#9654; ${titulo}</div>
+    <ul class="sug-body">${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div>`;
+}
+
+function generarSugerencias(d) {
+  const ax  = d.axial;
+  const lat = d.lateral;
+  const FSmin = parseFloat(v('FS_min'));
+  const fallos = ax.FS_axial < FSmin || (d.H_lat > 0 && !lat.ok_lateral);
+  if (!fallos) return '';
+  let html = '<div class="sec-heading" style="color:#e65100;border-color:#e65100;">&#9888; Sugerencias de Diseño</div>';
+
+  if (ax.FS_axial < FSmin) {
+    html += sugBox(`Capacidad axial insuficiente — FS = ${ax.FS_axial.toFixed(2)} &lt; ${FSmin}`, [
+      'Aumentar <strong>L</strong>: incrementa la fricción lateral Qs (el efecto es proporcional a L)',
+      'Aumentar <strong>D</strong>: incrementa el perímetro (Qs ∝ π·D) y el área de punta (Qp ∝ D²)',
+      'Verificar la clasificación de las capas: una capa de arcilla asumida puede tener cu mayor',
+      'Usar pilote <strong>hincado</strong> en lugar de vaciado in situ: β y K mayores en arena',
+    ]);
+  }
+  if (d.H_lat > 0 && !lat.ok_lateral) {
+    html += sugBox(`Capacidad lateral insuficiente — FS = ${lat.FS_lateral.toFixed(2)} &lt; 1.5`, [
+      'Aumentar <strong>D</strong>: incrementa My (≈ D³) y la resistencia pasiva del suelo',
+      lat.tipo_pilote === 'largo'
+        ? 'Pilote largo → aumentar <strong>As</strong> (cuantía) para elevar My y con ello Hu'
+        : 'Pilote corto → aumentar <strong>L</strong> para movilizar más resistencia del suelo',
+      'Considerar <strong>pilotes inclinados</strong> (batter piles) para cargas horizontales elevadas',
+      'Empotrar la cabeza del pilote en el encepado: convierte cabeza libre en cabeza fija (duplica aproximadamente Hu)',
+    ]);
+  }
+  return html;
+}
+
+async function exportarPDF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/pilote/report/pdf', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando PDF');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pilote_individual.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderCapas();
+  actualizarDerived();
+});
+</script>
+</body>
+</html>

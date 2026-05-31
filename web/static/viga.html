@@ -1,0 +1,792 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Viga de Fundación</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .res-table td:first-child{color:#555;font-size:12px;width:55%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .chk-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .chk-ok  {background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;}
+    .chk-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;}
+    .chk-warn{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .plot-placeholder{min-height:120px;display:flex;align-items:center;justify-content:center;
+      color:#bbb;font-size:13px;border:1px dashed #ddd;border-radius:6px;}
+    .msg-ok   {color:#2e7d32;}
+    .msg-error{color:#c62828;font-weight:600;}
+    .msg-warn {color:#e65100;}
+    .msg-info {color:#555;}
+    .msg-item {font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .col-tbl th{font-size:11px;color:#555;font-weight:600;}
+    .col-tbl td{font-size:11px;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <!-- viga horizontal -->
+        <rect x="1" y="8" width="18" height="4" rx="1" fill="#85B7EB"/>
+        <!-- columnas apoyadas en la viga -->
+        <rect x="3"  y="1" width="2.5" height="7" rx="0.4" fill="#90A4AE"/>
+        <rect x="8.75" y="1" width="2.5" height="7" rx="0.4" fill="#90A4AE"/>
+        <rect x="14.5" y="1" width="2.5" height="7" rx="0.4" fill="#90A4AE"/>
+        <!-- suelo con resortes (wavy) -->
+        <line x1="1"  y1="17" x2="19" y2="17" stroke="#F9A825" stroke-width="1"/>
+        <line x1="5"  y1="12" x2="5"  y2="17" stroke="#B5D4F4" stroke-width="0.8" stroke-dasharray="1,1"/>
+        <line x1="10" y1="12" x2="10" y2="17" stroke="#B5D4F4" stroke-width="0.8" stroke-dasharray="1,1"/>
+        <line x1="15" y1="12" x2="15" y2="17" stroke="#B5D4F4" stroke-width="0.8" stroke-dasharray="1,1"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 7 — Viga de Fundación</div>
+    </div>
+    <a class="fc-tb-back" href="/">&#8592; Inicio</a>
+    <div class="btn-group ms-2">
+      <button id="topCalcular" class="btn btn-primary btn-sm" onclick="calcular()">&#9654; Calcular</button>
+      <button id="btnPDF" class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" disabled>&#8659; Exportar PDF</button>
+      <button id="btnDXF" class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" disabled>&#8659; Exportar DXF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ═══ ENTRADAS ═══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-5">
+
+      <!-- Card 1: Columnas (tabla dinámica) -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Columnas</div>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm col-tbl mb-2" id="tblColumnas">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>x [m]</th>
+                  <th>P<sub>D</sub> [kN]</th>
+                  <th>P<sub>L</sub> [kN]</th>
+                  <th>Etiqueta</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbodyColumnas"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-outline-primary btn-sm" onclick="agregarColumna()">+ Agregar columna</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Geometría de la Viga -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Geometría de la Viga</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">B [m]</label>
+              <input type="number" id="B" class="form-control form-control-sm" value="0.60" step="0.05" min="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">h [m]</label>
+              <input type="number" id="h" class="form-control form-control-sm" value="0.80" step="0.05" min="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Recubr. [m]</label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="0.075" step="0.005" min="0.02">
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Vuelo izq. [m]</label>
+              <input type="number" id="vuelo_izq" class="form-control form-control-sm" value="0.50" step="0.05" min="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">Vuelo der. [m]</label>
+              <input type="number" id="vuelo_der" class="form-control form-control-sm" value="0.50" step="0.05" min="0">
+            </div>
+          </div>
+          <div class="mt-2 p-2" style="background:#EEF5FF;border:1px solid #BBDEFB;border-radius:6px;font-size:12px;color:#1565C0;">
+            L se calcula automáticamente: L = x<sub>max</sub> &minus; x<sub>min</sub> + vuelo_izq + vuelo_der
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Suelo y Materiales -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Suelo</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">k<sub>s</sub> [kN/m³]</label>
+              <input type="number" id="ks" class="form-control form-control-sm" value="20000" min="100">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">q<sub>a</sub> [kN/m²]</label>
+              <input type="number" id="qa" class="form-control form-control-sm" value="150" min="10">
+            </div>
+          </div>
+          <div class="sec-heading">Materiales</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">f'c [MPa]</label>
+              <input type="number" id="fck" class="form-control form-control-sm" value="25" min="17">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">f<sub>y</sub> [MPa]</label>
+              <input type="number" id="fy" class="form-control form-control-sm" value="420" min="240">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Norma</label>
+              <select id="norma" class="form-select form-select-sm">
+                <option value="ACI318" selected>ACI 318</option>
+                <option value="EURO2">EURO2</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Varilla preferida</label>
+              <select id="varillaPref" class="form-select form-select-sm">
+                <option value="">Auto</option>
+                <option value="Ø8mm">&#216;8mm</option>
+                <option value="Ø10mm">&#216;10mm</option>
+                <option value="Ø12mm">&#216;12mm</option>
+                <option value="Ø16mm">&#216;16mm</option>
+                <option value="Ø20mm">&#216;20mm</option>
+                <option value="Ø25mm">&#216;25mm</option>
+                <option value="Ø32mm">&#216;32mm</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Esquema de refuerzo (visible tras calcular) -->
+      <div id="esquemaCard" class="card shadow-sm mb-3" style="display:none;">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Esquema de Refuerzo</div>
+          <div id="esquemaAlzado" class="mb-2"></div>
+          <div style="display:flex;justify-content:center;">
+            <div id="esquemaSeccion"></div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mb-3 d-lg-none" onclick="calcular()">Calcular</button>
+    </div>
+
+    <!-- ═══ RESULTADOS ══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-7">
+
+      <!-- Resultados card -->
+      <div id="resCard" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="overlayRes">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Calculando&hellip;</span>
+        </div>
+        <div class="card-body py-2 px-3">
+
+          <!-- Badges -->
+          <div class="d-flex flex-wrap gap-2 mb-3" id="checkBadges"></div>
+
+          <!-- Geometría de la viga -->
+          <div class="sec-heading">Geometría de la Viga</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblGeometria"></tbody>
+          </table>
+
+          <!-- Presión de contacto -->
+          <div class="sec-heading">Presión de Contacto</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblPresion"></tbody>
+          </table>
+
+          <!-- Envolventes de diseño -->
+          <div class="sec-heading">Envolventes de Diseño</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblEnvolventes"></tbody>
+          </table>
+
+          <!-- Armadura longitudinal -->
+          <div class="sec-heading">Armadura Longitudinal</div>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm col-tbl mb-3" id="tblArmadura">
+              <thead>
+                <tr>
+                  <th>Zona</th>
+                  <th>As req [cm²]</th>
+                  <th>Varilla</th>
+                  <th>N&#176; barras</th>
+                  <th>Sep. [cm]</th>
+                  <th>As dis [cm²]</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyArmadura"></tbody>
+            </table>
+          </div>
+
+          <!-- Estribos -->
+          <div class="sec-heading">Estribos</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblEstribos"></tbody>
+          </table>
+
+          <!-- Mensajes -->
+          <div class="sec-heading">Mensajes del c&#225;lculo</div>
+          <div id="mensajes" style="max-height:150px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Diagrama card -->
+      <div class="card shadow-sm" style="position:relative;">
+        <div class="loading-overlay" id="overlayPlot">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Generando diagrama&hellip;</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Diagramas (Deformada &middot; Presión &middot; Cortante &middot; Momento)</div>
+          <div id="plotBox">
+            <div class="plot-placeholder">Ejecute el c&#225;lculo para ver los diagramas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Glosario + Alcance -->
+      <div class="card shadow-sm mt-3">
+        <div class="card-header py-2 px-3" style="cursor:pointer;background:#EEF5FF;border-color:#BBDEFB;"
+             data-bs-toggle="collapse" data-bs-target="#glosarioVigaBody">
+          <span style="font-size:12px;font-weight:700;color:#1565C0;letter-spacing:0.5px;">
+            &#128218; Glosario &amp; Alcance &mdash; Viga de Fundaci&oacute;n
+          </span>
+          <span class="float-end" style="font-size:11px;color:#1565C0;">&#9660;</span>
+        </div>
+        <div id="glosarioVigaBody" class="collapse">
+          <div class="card-body py-2 px-3" style="font-size:12px;line-height:1.65;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="sec-heading">Geometr&iacute;a y materiales</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>L</b></td><td>Longitud total de la viga = x_max &minus; x_min + vuelo_izq + vuelo_der [m]</td></tr>
+                    <tr><td><b>B</b></td><td>Ancho de la viga de fundaci&oacute;n [m]</td></tr>
+                    <tr><td><b>h</b></td><td>Altura total de la viga [m]</td></tr>
+                    <tr><td><b>d</b></td><td>Canto &uacute;til = h &minus; recubrimiento &minus; db/2 [m]</td></tr>
+                    <tr><td><b>Vuelos</b></td><td>Prolongaci&oacute;n de la viga m&aacute;s all&aacute; de las columnas extremas [m]</td></tr>
+                    <tr><td><b>f'c</b></td><td>Resistencia caracter&iacute;stica del hormig&oacute;n a compresi&oacute;n [MPa]</td></tr>
+                    <tr><td><b>fy</b></td><td>L&iacute;mite de fluencia del acero de refuerzo [MPa]</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">Suelo y modelo Winkler</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>k<sub>s</sub></b></td><td>M&oacute;dulo de reacci&oacute;n del suelo (coeficiente de balasto) [kN/m&sup3;]. Determina la rigidez de los resortes distribuidos</td></tr>
+                    <tr><td><b>q<sub>a</sub></b></td><td>Presi&oacute;n admisible de contacto viga-suelo [kN/m&sup2;]</td></tr>
+                    <tr><td><b>q<sub>max</sub></b></td><td>Presi&oacute;n m&aacute;xima de contacto calculada por el MEF [kN/m&sup2;]. Debe ser &le; q<sub>a</sub></td></tr>
+                    <tr><td><b>&lambda;</b></td><td>Par&aacute;metro caracter&iacute;stico Hetenyi = (k<sub>s</sub>&middot;B / 4EI)<sup>0.25</sup> [1/m]</td></tr>
+                    <tr><td><b>&lambda;&middot;L</b></td><td>Longitud caracter&iacute;stica adimensional. &le; &pi;: viga r&iacute;gida; &gt; &pi;: viga flexible</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-md-6">
+                <div class="sec-heading">Cargas y dise&ntilde;o estructural</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>P<sub>D</sub> / P<sub>L</sub></b></td><td>Carga muerta y viva por columna [kN]. Se combinan seg&uacute;n la norma seleccionada</td></tr>
+                    <tr><td><b>M_max_pos</b></td><td>Momento flector m&aacute;ximo positivo en la viga (cara inferior traccionada) [kN&middot;m]</td></tr>
+                    <tr><td><b>M_max_neg</b></td><td>Momento flector m&aacute;ximo negativo (cara superior traccionada) [kN&middot;m]</td></tr>
+                    <tr><td><b>V_max</b></td><td>Cortante m&aacute;ximo de dise&ntilde;o [kN]</td></tr>
+                    <tr><td><b>As_req / As_dis</b></td><td>&Aacute;rea de acero requerida y dispuesta [cm&sup2;]. As_dis &ge; As_req y As_min</td></tr>
+                    <tr><td><b>As_min</b></td><td>Arm. m&iacute;nima por norma = m&aacute;x(0.25&radic;f'c/fy, 1.4/fy) &middot; b &middot; d [cm&sup2;] (ACI 318)</td></tr>
+                    <tr><td><b>&phi;Vc</b></td><td>Resistencia al cortante del hormig&oacute;n reducida por factor &phi;. Vu_max &le; &phi;Vc [kN]</td></tr>
+                    <tr><td><b>Av/s</b></td><td>Relaci&oacute;n &aacute;rea de estribo por unidad de longitud [cm&sup2;/m]</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">&#9888; Alcance del m&oacute;dulo</div>
+                <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:10px 12px;font-size:11.5px;color:#5D4037;line-height:1.7;">
+                  <b>Este m&oacute;dulo dise&ntilde;a la viga de fundaci&oacute;n continua sobre base el&aacute;stica (modelo Winkler).</b><br>
+                  El an&aacute;lisis estructural se realiza mediante el <b>M&eacute;todo de Elementos Finitos (MEF)</b> con viga Euler-Bernoulli sobre resortes de Winkler: 100 elementos, 101 nodos, rigidez de resorte k = k<sub>s</sub>&middot;B&middot;L<sub>e</sub>.<br><br>
+                  <b>No contempla:</b> empuje lateral del suelo, asentamientos diferenciales entre apoyos, an&aacute;lisis s&iacute;smico, ni vigas con secciones variables o discontinuas. El valor <b>k<sub>s</sub></b> debe provenir del informe geot&eacute;cnico o de correlaciones con ensayos de placa.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+// ── Tabla dinámica de columnas ─────────────────────────────────────────────────
+let colData = [
+  {x: 0,  Pd: 300, Pl: 150, etiqueta: 'C1'},
+  {x: 5,  Pd: 400, Pl: 200, etiqueta: 'C2'},
+  {x: 10, Pd: 300, Pl: 150, etiqueta: 'C3'},
+];
+
+function renderTablaColumnas() {
+  const tbody = document.getElementById('tbodyColumnas');
+  tbody.innerHTML = colData.map((c, i) => `
+    <tr>
+      <td style="font-size:11px;vertical-align:middle;">${i+1}</td>
+      <td><input type="number" class="form-control form-control-sm" style="min-width:60px;"
+          value="${c.x}" step="0.1"
+          onchange="colData[${i}].x=+this.value"></td>
+      <td><input type="number" class="form-control form-control-sm" style="min-width:65px;"
+          value="${c.Pd}" step="10"
+          onchange="colData[${i}].Pd=+this.value"></td>
+      <td><input type="number" class="form-control form-control-sm" style="min-width:65px;"
+          value="${c.Pl}" step="10"
+          onchange="colData[${i}].Pl=+this.value"></td>
+      <td><input type="text" class="form-control form-control-sm" style="min-width:50px;"
+          value="${c.etiqueta}"
+          onchange="colData[${i}].etiqueta=this.value"></td>
+      <td>
+        <button class="btn btn-outline-danger btn-sm py-0 px-1" style="font-size:11px;"
+          onclick="eliminarColumna(${i})" ${colData.length<=1?'disabled':''}>&#10005;</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function agregarColumna() {
+  const lastX = colData.length > 0 ? colData[colData.length-1].x + 5 : 0;
+  colData.push({x: lastX, Pd: 300, Pl: 150, etiqueta: 'C' + (colData.length+1)});
+  renderTablaColumnas();
+}
+
+function eliminarColumna(idx) {
+  if (colData.length <= 1) return;
+  colData.splice(idx, 1);
+  renderTablaColumnas();
+}
+
+// Inicializar tabla
+renderTablaColumnas();
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const n0 = x => (x == null ? '—' : (+x).toFixed(0));
+const n1 = x => (x == null ? '—' : (+x).toFixed(1));
+const n2 = x => (x == null ? '—' : (+x).toFixed(2));
+const n3 = x => (x == null ? '—' : (+x).toFixed(3));
+const n4 = x => (x == null ? '—' : (+x).toFixed(4));
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function badge(ok, label) {
+  return `<span class="chk-badge ${ok ? 'chk-ok' : 'chk-fail'}">${ok ? '&#10004;' : '&#10008;'} ${label}</span>`;
+}
+
+function tr(label, val) {
+  return `<tr><td>${label}</td><td>${val}</td></tr>`;
+}
+
+// ── Payload ───────────────────────────────────────────────────────────────────
+function getPayload() {
+  // Leer tabla dinámica de columnas
+  const columnas = colData.map(c => ({
+    x: +c.x,
+    Pd: +c.Pd,
+    Pl: +c.Pl,
+    etiqueta: c.etiqueta,
+  }));
+
+  return {
+    columnas,
+    B:            +v('B'),
+    h:            +v('h'),
+    recubrimiento: +v('recub'),
+    vuelo_izq:    +v('vuelo_izq'),
+    vuelo_der:    +v('vuelo_der'),
+    ks:           +v('ks'),
+    qa:           +v('qa'),
+    fck:          +v('fck'),
+    fy:           +v('fy'),
+    norma:         v('norma'),
+    varilla_pref:  v('varillaPref'),
+  };
+}
+
+// ── Estado ────────────────────────────────────────────────────────────────────
+let lastPayload = null;
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+async function calcular() {
+  const payload = getPayload();
+  lastPayload = payload;
+
+  document.getElementById('resCard').style.display = '';
+  document.getElementById('overlayRes').classList.add('active');
+  document.getElementById('overlayPlot').classList.add('active');
+  document.getElementById('topCalcular').classList.add('calc-btn-loading');
+  document.getElementById('plotBox').innerHTML =
+    '<div style="min-height:120px;display:flex;align-items:center;justify-content:center;gap:8px;color:#1565c0;font-size:13px;"><div class="spinner-border spinner-border-sm text-primary"></div> Calculando&hellip;</div>';
+
+  try {
+    const resp = await fetch('/api/viga/calcular', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      alert(data.error || 'Error en el servidor');
+      return;
+    }
+    renderResultados(data);
+    document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
+    actualizarPlot(payload);
+  } catch(e) {
+    alert('Error de red: ' + e.message);
+  } finally {
+    document.getElementById('overlayRes').classList.remove('active');
+    document.getElementById('topCalcular').classList.remove('calc-btn-loading');
+  }
+}
+
+// ── Render resultados ─────────────────────────────────────────────────────────
+function renderResultados(d) {
+  // Badges
+  document.getElementById('checkBadges').innerHTML = [
+    badge(d.ok_presion,  'Presión suelo'),
+    badge(d.ok_cortante, 'Cortante'),
+  ].join('');
+
+  // Clasificación
+  const clasif = d.flexible ? 'Flexible' : 'Rígida';
+  const clasifColor = d.flexible ? '#e65100' : '#2e7d32';
+
+  // Geometría
+  document.getElementById('tblGeometria').innerHTML = [
+    tr('L (total)',     `<b>${n2(d.L)} m</b>`),
+    tr('B (ancho)',     `${n2(d.B)} m`),
+    tr('h (altura)',    `${n2(d.h)} m`),
+    tr('d (peralte ef.)', `${n2(d.d)} m`),
+    tr('&lambda; (caract.) [1/m]', `${n4(d.lambda_char)}`),
+    tr('&lambda;&middot;L', `${n3(d.L_char)}`),
+    tr('Clasificación', `<span style="color:${clasifColor};font-weight:700;">${clasif}</span>`),
+  ].join('');
+
+  // Presión de contacto
+  const presionColor = d.ok_presion ? '#2e7d32' : '#c62828';
+  document.getElementById('tblPresion').innerHTML = [
+    tr('q_max [kN/m²]', `<b style="color:${presionColor};">${n1(d.q_max)}</b>`),
+    tr('q_a [kN/m²]', `${n1(d.qa || +v('qa'))}`),
+    tr('Verificación', badge(d.ok_presion, d.ok_presion ? 'OK' : 'FALLA')),
+  ].join('');
+
+  // Envolventes
+  document.getElementById('tblEnvolventes').innerHTML = [
+    tr('M_max_pos [kN&middot;m]', `<b>${n1(d.M_max_pos)}</b>`),
+    tr('M_max_neg [kN&middot;m]', `<b>${n1(d.M_max_neg)}</b>`),
+    tr('V_max [kN]',              `<b>${n1(d.V_max)}</b>`),
+  ].join('');
+
+  // Armadura longitudinal
+  const sep_inf_cm = d.sep_inf != null ? (d.sep_inf * 100).toFixed(1) : '—';
+  const sep_sup_cm = d.sep_sup != null ? (d.sep_sup * 100).toFixed(1) : '—';
+  document.getElementById('tbodyArmadura').innerHTML = `
+    <tr>
+      <td>Inferior (M+)</td>
+      <td>${n2(d.As_req_inf)}</td>
+      <td><b>${d.var_inf || '—'}</b></td>
+      <td>${d.n_barras_inf || '—'}</td>
+      <td>${sep_inf_cm}</td>
+      <td>${n2(d.As_dis_inf)}</td>
+    </tr>
+    <tr>
+      <td>Superior (M&minus;)</td>
+      <td>${n2(d.As_req_sup)}</td>
+      <td><b>${d.var_sup || '—'}</b></td>
+      <td>${d.n_barras_sup || '—'}</td>
+      <td>${sep_sup_cm}</td>
+      <td>${n2(d.As_dis_sup)}</td>
+    </tr>
+    <tr style="background:#f8f9fa;">
+      <td><i>As_min</i></td>
+      <td>${n2(d.As_min)}</td>
+      <td colspan="4" style="color:#888;font-size:11px;">mínimo por norma</td>
+    </tr>
+  `;
+
+  // Estribos
+  const cortColor = d.ok_cortante ? '#2e7d32' : '#c62828';
+  const s_est_cm = d.s_estribo != null ? (d.s_estribo * 100).toFixed(0) : '—';
+  document.getElementById('tblEstribos').innerHTML = [
+    tr('Vu_max [kN]',  `<b style="color:${cortColor};">${n1(d.Vu_max)}</b>`),
+    tr('&phi;Vc [kN]', `${n1(d.phi_Vc)}`),
+    tr('Verificación', badge(d.ok_cortante, d.ok_cortante ? 'OK' : 'FALLA')),
+    tr('Estribo',      `<b>${d.var_estribo || '—'} @ ${s_est_cm} cm</b>`),
+    tr('Av/s req. [cm²/m]', `${n3(d.Av_s)}`),
+  ].join('');
+
+  // Mensajes
+  const msgs = (d.mensajes || []).map(m => {
+    const tipo = m.tipo || 'info';
+    const cls = {ok:'msg-ok', error:'msg-error', advertencia:'msg-warn', warn:'msg-warn', info:'msg-info'}[tipo] || 'msg-info';
+    return `<div class="msg-item ${cls}">${m.texto}</div>`;
+  });
+  document.getElementById('mensajes').innerHTML = msgs.join('') ||
+    '<span class="text-muted" style="font-size:12px">Sin mensajes.</span>';
+
+  dibujarEsquema(d);
+}
+
+// ── Plot ──────────────────────────────────────────────────────────────────────
+async function actualizarPlot(payload) {
+  try {
+    const resp = await fetch('/api/viga/plot/diagramas', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({error: 'Error desconocido'}));
+      document.getElementById('plotBox').innerHTML =
+        `<div class="plot-placeholder text-danger">Error: ${err.error || resp.statusText}</div>`;
+      return;
+    }
+    const blob = await resp.blob();
+    document.getElementById('plotBox').innerHTML =
+      `<img src="${URL.createObjectURL(blob)}" style="width:100%;border-radius:6px;" alt="Diagramas viga de fundación">`;
+  } catch(e) {
+    document.getElementById('plotBox').innerHTML =
+      `<div class="plot-placeholder text-danger">Error generando diagrama: ${e.message}</div>`;
+  } finally {
+    document.getElementById('overlayPlot').classList.remove('active');
+  }
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnPDF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/viga/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar PDF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'memoria_viga_fundacion.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar PDF';
+  }
+}
+
+// ── Esquema SVG de refuerzo ───────────────────────────────────────────────────
+function dibujarEsquema(d) {
+  const recub = +v('recub');
+
+  function parseDb(s) {
+    const m = (s || '').match(/(\d+(?:\.\d+)?)\s*mm/);
+    if (m) return parseFloat(m[1]) / 1000;
+    const m2 = (s || '').match(/(\d+)/);
+    return m2 ? parseInt(m2[0]) / 1000 : 0.012;
+  }
+
+  const L = d.L, B = d.B, h = d.h;
+  const db_inf = parseDb(d.var_inf);
+  const db_sup = parseDb(d.var_sup);
+  const s_est  = d.s_estribo || 0;
+  const n_inf  = d.n_barras_inf || 0;
+  const n_sup  = d.n_barras_sup || 0;
+
+  // ── Alzado longitudinal ────────────────────────────────────────────
+  const PAD = 26, STUB = 30, LAB = 18;
+  const AW = 500;
+  const scX = (AW - 2 * PAD) / L;
+  const MIN_VH = 72;
+  const vh = Math.max(MIN_VH, h * scX);
+  const scY = vh / h;
+  const AH = STUB + vh + LAB;
+
+  const ax = x => (PAD + x * scX).toFixed(1);
+  const ay = y => (STUB + (h - y) * scY).toFixed(1);
+
+  let alz = `<svg width="100%" viewBox="0 0 ${AW} ${AH.toFixed(0)}" xmlns="http://www.w3.org/2000/svg">`;
+  alz += `<rect width="${AW}" height="${AH.toFixed(0)}" fill="#12172b" rx="5"/>`;
+  alz += `<text x="6" y="11" fill="#37597A" font-size="8" font-family="sans-serif">ALZADO</text>`;
+
+  // Estribos (máx 40 visibles)
+  if (s_est > 0) {
+    const totalSt = Math.floor((L - 2 * recub) / s_est) + 1;
+    const step = totalSt > 40 ? s_est * Math.ceil(totalSt / 40) : s_est;
+    let xst = recub;
+    while (xst <= L - recub + 1e-6) {
+      alz += `<line x1="${ax(xst)}" y1="${ay(recub)}" x2="${ax(xst)}" y2="${ay(h - recub)}" stroke="#5C7CFA" stroke-width="0.8" opacity="0.55"/>`;
+      xst += step;
+    }
+  }
+
+  // Contorno viga
+  alz += `<rect x="${ax(0)}" y="${ay(h)}" width="${(L * scX).toFixed(1)}" height="${vh.toFixed(1)}" fill="none" stroke="#85B7EB" stroke-width="2"/>`;
+
+  // Acero inferior (rojo)
+  const y_inf_m = recub + db_inf / 2;
+  alz += `<line x1="${ax(recub)}" y1="${ay(y_inf_m)}" x2="${ax(L - recub)}" y2="${ay(y_inf_m)}" stroke="#EF5350" stroke-width="2.5"/>`;
+
+  // Acero superior (verde)
+  const y_sup_m = h - recub - db_sup / 2;
+  alz += `<line x1="${ax(recub)}" y1="${ay(y_sup_m)}" x2="${ax(L - recub)}" y2="${ay(y_sup_m)}" stroke="#66BB6A" stroke-width="2.5"/>`;
+
+  // Columnas (trazos sobre la viga)
+  for (const col of colData) {
+    alz += `<line x1="${ax(col.x)}" y1="${ay(h)}" x2="${ax(col.x)}" y2="4" stroke="#90A4AE" stroke-width="2.5"/>`;
+    if (col.etiqueta) {
+      alz += `<text x="${ax(col.x)}" y="12" fill="#B0BEC5" font-size="9" text-anchor="middle" font-family="sans-serif">${col.etiqueta}</text>`;
+    }
+  }
+
+  // Etiquetas acero (entre las líneas para que no se superpongan)
+  const xmid = (AW / 2).toFixed(1);
+  const yiLabel = (parseFloat(ay(y_inf_m)) - 5).toFixed(1);
+  const ysLabel = (parseFloat(ay(y_sup_m)) + 14).toFixed(1);
+  alz += `<text x="${xmid}" y="${yiLabel}" fill="#EF5350" font-size="9" text-anchor="middle" font-family="sans-serif">${n_inf}×${d.var_inf} (inf.)</text>`;
+  alz += `<text x="${xmid}" y="${ysLabel}" fill="#66BB6A" font-size="9" text-anchor="middle" font-family="sans-serif">${n_sup}×${d.var_sup} (sup.)</text>`;
+
+  // Cota inferior
+  alz += `<text x="${xmid}" y="${(AH - 3).toFixed(1)}" fill="#546E7A" font-size="9" text-anchor="middle" font-family="sans-serif">L = ${L.toFixed(2)} m  |  Est. ${d.var_estribo} @ ${(s_est * 100).toFixed(0)} cm</text>`;
+  alz += '</svg>';
+
+  // ── Sección transversal ────────────────────────────────────────────
+  const SW = 200, SP = 18;
+  const scB = (SW - 2 * SP) / B;
+  const scH = Math.min(scB, 140 / h);
+  const sbW = B * scB;
+  const sbH = h * scH;
+  const bx0 = SP;
+  const by0 = 16;
+  const SH = by0 + sbH + 38;
+
+  let sec = `<svg width="${SW}" height="${SH.toFixed(0)}" viewBox="0 0 ${SW} ${SH.toFixed(0)}" xmlns="http://www.w3.org/2000/svg">`;
+  sec += `<rect width="${SW}" height="${SH.toFixed(0)}" fill="#12172b" rx="5"/>`;
+  sec += `<text x="6" y="11" fill="#37597A" font-size="8" font-family="sans-serif">SECCI&#211;N</text>`;
+
+  // Contorno
+  sec += `<rect x="${bx0}" y="${by0}" width="${sbW.toFixed(1)}" height="${sbH.toFixed(1)}" fill="none" stroke="#85B7EB" stroke-width="2"/>`;
+
+  // Estribo interior
+  const ep = recub * scB;
+  sec += `<rect x="${(bx0+ep).toFixed(1)}" y="${(by0+ep).toFixed(1)}" width="${(sbW-2*ep).toFixed(1)}" height="${(sbH-2*ep).toFixed(1)}" fill="none" stroke="#5C7CFA" stroke-width="1.4"/>`;
+
+  // Función para dibujar fila de barras
+  function drawBarsRow(n, db, yc, color) {
+    const r = Math.max(2.5, (db / 2) * scB);
+    const xi = bx0 + (recub + db / 2) * scB;
+    const xe = bx0 + sbW - (recub + db / 2) * scB;
+    const nFit = n <= 1 ? 1 : Math.max(1, Math.floor((xe - xi) / (r * 2 + 1)) + 1);
+    const nVis = Math.min(n, nFit);
+    const paso = nVis > 1 ? (xe - xi) / (nVis - 1) : 0;
+    let out = '';
+    for (let i = 0; i < nVis; i++) {
+      const xc = nVis === 1 ? bx0 + sbW / 2 : xi + i * paso;
+      out += `<circle cx="${xc.toFixed(1)}" cy="${yc.toFixed(1)}" r="${r.toFixed(1)}" fill="${color}"/>`;
+    }
+    if (n > nVis) {
+      out += `<text x="${(bx0+sbW/2).toFixed(1)}" y="${(yc+r+9).toFixed(1)}" fill="${color}" font-size="7.5" text-anchor="middle" font-family="sans-serif">+${n-nVis}</text>`;
+    }
+    return out;
+  }
+
+  sec += drawBarsRow(n_inf, db_inf, by0 + sbH - (recub + db_inf/2) * scH, '#EF5350');
+  sec += drawBarsRow(n_sup, db_sup, by0 + (recub + db_sup/2) * scH,       '#66BB6A');
+
+  // Etiquetas
+  const mx = (bx0 + sbW / 2).toFixed(1);
+  sec += `<text x="${mx}" y="${(by0+sbH+14).toFixed(1)}" fill="#90A4AE" font-size="9" text-anchor="middle" font-family="sans-serif">B=${B.toFixed(2)}m  h=${h.toFixed(2)}m</text>`;
+  sec += `<text x="${mx}" y="${(by0+sbH+27).toFixed(1)}" fill="#5C7CFA" font-size="8.5" text-anchor="middle" font-family="sans-serif">Est. ${d.var_estribo} @ ${(s_est*100).toFixed(0)} cm</text>`;
+  sec += '</svg>';
+
+  document.getElementById('esquemaCard').style.display = '';
+  document.getElementById('esquemaAlzado').innerHTML = alz;
+  document.getElementById('esquemaSeccion').innerHTML = sec;
+}
+
+// ── DXF ───────────────────────────────────────────────────────────────────────
+async function exportarDXF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnDXF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/viga/report/dxf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar DXF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'viga_fundacion.dxf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar DXF';
+  }
+}
+
+</script>
+</body>
+</html>
+
+

@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FundaCalc Web (Prototipo)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%);  }
+    }
+    @keyframes calcPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.55; }
+    }
+    .loading-overlay {
+      display: none;
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0.88);
+      align-items: center; justify-content: center;
+      z-index: 20; border-radius: 4px; overflow: hidden;
+      flex-direction: column; gap: 10px;
+    }
+    .loading-overlay.active { display: flex; }
+    .loading-overlay::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(90deg,
+        transparent 0%, rgba(25,118,210,0.12) 50%, transparent 100%);
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .calc-btn-loading {
+      animation: calcPulse 1.1s ease-in-out infinite;
+    }
+
+    /* ── info button ── */
+    .fc-info-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px;
+      background: #1976d2; color: #fff;
+      border: none; border-radius: 50%;
+      font-size: 10px; font-weight: 700; font-style: italic;
+      line-height: 1; cursor: pointer; vertical-align: middle;
+      margin-left: 5px; padding: 0;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .fc-info-btn:hover { background: #1565c0; transform: scale(1.15); }
+
+    /* ── info modal ── */
+    #infoModal .modal-header { background: #0D1B2A; border-bottom: 1px solid rgba(55,138,221,0.25); }
+    #infoModal .modal-title  { color: #E6F1FB; font-size: 15px; }
+    #infoModal .modal-body   { font-size: 13.5px; line-height: 1.65; }
+    #infoModal .info-section { margin-bottom: 14px; }
+    #infoModal .info-section h6 {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+      text-transform: uppercase; color: #1565c0; margin-bottom: 6px;
+    }
+    #infoModal .info-tag {
+      display: inline-block; background: #E3F2FD; color: #0D47A1;
+      border-radius: 4px; padding: 1px 7px; font-size: 12px;
+      font-family: monospace; font-weight: 600; margin-right: 4px;
+    }
+    #infoModal .info-formula {
+      background: #F3F4F6; border-left: 3px solid #1976d2;
+      padding: 6px 10px; border-radius: 0 4px 4px 0;
+      font-family: monospace; font-size: 12.5px; color: #222;
+      margin: 6px 0;
+    }
+    #infoModal ul { padding-left: 18px; margin: 4px 0; }
+    #infoModal ul li { margin-bottom: 3px; }
+
+    /* ── top bar dark texture (same as home) ── */
+    #fc-topbar {
+      background-color: #0D1B2A;
+      background-image:
+        linear-gradient(rgba(55,138,221,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55,138,221,0.07) 1px, transparent 1px);
+      background-size: 40px 40px;
+      padding: 12px 20px;
+      margin: -1rem -1rem 1rem -1rem;   /* bleed to container edges */
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(55,138,221,0.20);
+    }
+    .fc-tb-icon {
+      width: 34px; height: 34px; flex-shrink: 0;
+      background: #185FA5; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .fc-tb-icon svg { display: block; }
+    .fc-tb-texts { line-height: 1.2; }
+    .fc-tb-title { font-size: 15px; font-weight: 600; color: #E6F1FB; letter-spacing: 0.3px; }
+    .fc-tb-sub   { font-size: 10px; color: #85B7EB; letter-spacing: 1px; text-transform: uppercase; }
+    .fc-tb-back {
+      font-size: 11px; color: #85B7EB;
+      padding: 4px 10px;
+      border: 0.5px solid rgba(133,183,235,0.25);
+      border-radius: 6px; text-decoration: none;
+      transition: background 0.18s;
+    }
+    .fc-tb-back:hover { background: rgba(133,183,235,0.10); color: #B5D4F4; }
+    #fc-topbar .btn-group { margin-left: auto; }
+    #fc-topbar .btn-primary {
+      background: #185FA5; border-color: #185FA5; font-size: 13px;
+    }
+    #fc-topbar .btn-primary:hover { background: #1a6dbf; border-color: #1a6dbf; }
+    #fc-topbar .btn-outline-primary {
+      color: #85B7EB; border-color: rgba(133,183,235,0.45); font-size: 13px;
+    }
+    #fc-topbar .btn-outline-primary:hover { background: rgba(133,183,235,0.12); color: #B5D4F4; }
+    #fc-topbar .btn-outline-secondary {
+      color: #85B7EB; border-color: rgba(133,183,235,0.25); font-size: 13px;
+    }
+    #fc-topbar .btn-outline-secondary:hover { background: rgba(133,183,235,0.08); color: #B5D4F4; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- top bar — dark navy + grid texture matching home page -->
+  <div id="fc-topbar">
+    <!-- logo icon -->
+    <div class="fc-tb-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="2" y="10" width="14" height="6" rx="1" fill="#85B7EB"/>
+        <rect x="5" y="6"  width="8"  height="5" rx="1" fill="#B5D4F4"/>
+        <rect x="7" y="2"  width="4"  height="5" rx="1" fill="white"/>
+      </svg>
+    </div>
+    <!-- texts -->
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Zapata Aislada</div>
+    </div>
+    <!-- back link -->
+    <a class="fc-tb-back" href="/">← Inicio</a>
+    <!-- action buttons -->
+    <div class="btn-group ms-2">
+      <button id="topCalcular" class="btn btn-primary btn-sm">&#9654; Calcular</button>
+      <button id="topPdf" class="btn btn-outline-secondary btn-sm" disabled>&#8659; Exportar PDF</button>
+      <button id="topDxf" class="btn btn-outline-secondary btn-sm" disabled>&#8659; Exportar DXF</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-4">
+      <div class="card" style="height:78vh; overflow:auto;">
+        <div class="card-body">
+          <h5 class="card-title">Zapata Aislada</h5>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Unidades</label>
+            <select class="form-select form-select-sm" id="selectorUnidades">
+              <option value="kN_kN/m2">kN, kN/m²</option>
+              <option value="kip_kip/ft2">kip, kip/ft²</option>
+              <option value="tf_tf/m2">tf, tf/m²</option>
+              <option value="lbf_psf">lbf, psf</option>
+              <option value="ton_ton/m2">ton (métrica), ton/m²</option>
+              <option value="kg_kg/m2">kg, kg/m²</option>
+            </select>
+          </div>
+          <form id="formDatos">
+            <h6>Cargas en la columna</h6>
+            <div class="mb-2">
+              <label class="form-label">Carga muerta Pd (<span id="unitPd">kN</span>)</label>
+              <input class="form-control form-control-sm" name="Pd" value="500">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Carga viva Pl (<span id="unitPl">kN</span>)</label>
+              <input class="form-control form-control-sm" name="Pl" value="300">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Momento muerto Mxd (kN-m)</label>
+              <input class="form-control form-control-sm" name="Mxd" value="0">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Momento vivo Mxl (kN-m)</label>
+              <input class="form-control form-control-sm" name="Mxl" value="0">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Momento muerto Myd (kN-m)</label>
+              <input class="form-control form-control-sm" name="Myd" value="0">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Momento vivo Myl (kN-m)</label>
+              <input class="form-control form-control-sm" name="Myl" value="0">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Ancho columna (m)</label>
+              <input class="form-control form-control-sm" name="col_ancho" value="0.30">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Largo columna (m)</label>
+              <input class="form-control form-control-sm" name="col_largo" value="0.30">
+            </div>
+
+            <h6 class="mt-3">Geometría de la Zapata</h6>
+            <div class="mb-2">
+              <label class="form-label">Altura h (m)</label>
+              <input class="form-control form-control-sm" name="h" value="0.50" step="0.05">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Recubrimiento (m)</label>
+              <input class="form-control form-control-sm" name="recubrimiento" value="0.075" step="0.01">
+            </div>
+            <div class="mb-2">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="chkDimFijas">
+                <label class="form-check-label fw-semibold" for="chkDimFijas">Fijar dimensiones B × L</label>
+              </div>
+            </div>
+            <div id="divDimFijas" class="mb-2 p-2 border rounded bg-warning-subtle" style="display:none;">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label form-label-sm mb-1">B — Ancho (m)</label>
+                  <input type="number" class="form-control form-control-sm" id="inpBFijo" value="2.50" step="0.05" min="0.1">
+                </div>
+                <div class="col-6">
+                  <label class="form-label form-label-sm mb-1">L — Largo (m)</label>
+                  <input type="number" class="form-control form-control-sm" id="inpLFijo" value="2.50" step="0.05" min="0.1">
+                </div>
+              </div>
+              <small class="text-muted">El programa verificará presión, punzonado y cortante, y ajustará h si es necesario.</small>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">qa (<span id="unitQa">kN/m²</span>)</label>
+              <input class="form-control form-control-sm" name="qa" value="150">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Profundidad de desplante Df (m)</label>
+              <input class="form-control form-control-sm" name="Df" value="1.2" step="0.1">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">γ suelo (kN/m³)</label>
+              <input class="form-control form-control-sm" name="gamma_s" value="18.0" step="0.5">
+            </div>
+
+            <h6 class="mt-3">Pedestal</h6>
+            <div class="mb-2">
+              <label class="form-label">Altura pedestal hp (m)</label>
+              <input class="form-control form-control-sm" name="hp" value="0.40" step="0.05" min="0.20">
+            </div>
+            <div class="mb-2">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="chkPedFijo">
+                <label class="form-check-label" for="chkPedFijo">Fijar Bp × Lp manualmente</label>
+                <button class="fc-info-btn" type="button" data-bs-toggle="modal" data-bs-target="#infoModal" title="Explicación teórica"><i>i</i></button>
+              </div>
+            </div>
+            <div id="divPedFijo" class="mb-2 p-2 border rounded bg-info-subtle" style="display:none;">
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label form-label-sm mb-1">Bp (m)</label>
+                  <input type="number" class="form-control form-control-sm" id="inpBpFijo" value="0.50" step="0.05" min="0.1">
+                </div>
+                <div class="col-6">
+                  <label class="form-label form-label-sm mb-1">Lp (m)</label>
+                  <input type="number" class="form-control form-control-sm" id="inpLpFijo" value="0.50" step="0.05" min="0.1">
+                </div>
+              </div>
+              <small class="text-muted">Si no se fija, se auto-calcula como columna + 10 cm cada lado.</small>
+            </div>
+
+            <h6 class="mt-3">Materiales</h6>
+            <div class="mb-2">
+              <label class="form-label">fck (MPa)</label>
+              <input class="form-control form-control-sm" name="fck" value="25">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">fy (MPa)</label>
+              <input class="form-control form-control-sm" name="fy" value="420" step="10">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Norma</label>
+              <select class="form-select form-select-sm" name="norma">
+                <option value="ACI318">ACI 318</option>
+                <option value="CIRSOC201">CIRSOC201</option>
+                <option value="NCH170">NCH170</option>
+                <option value="NSR10">NSR10</option>
+                <option value="NTE_E060">NTE E.060</option>
+                <option value="NTC_CDMX">NTC CDMX</option>
+                <option value="EHE08">EHE08</option>
+                <option value="COVENIN1753">COVENIN 1753 (Venezuela)</option>
+              </select>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Varilla de diseño preferida</label>
+              <select class="form-select form-select-sm" id="varilla_pref" name="varilla_pref">
+                <option value="">Auto (recomendado)</option>
+                <option value="Ø8">Ø8 mm</option>
+                <option value="Ø10">Ø10 mm</option>
+                <option value="Ø12">Ø12 mm</option>
+                <option value="Ø16">Ø16 mm</option>
+                <option value="Ø20">Ø20 mm</option>
+                <option value="Ø25">Ø25 mm</option>
+                <option value="Ø32">Ø32 mm</option>
+              </select>
+              <div class="form-text" style="font-size:10.5px;">Fuerza un diámetro específico; el software calcula la separación resultante.</div>
+            </div>
+
+            <div class="d-flex gap-2 mt-3">
+              <button id="btnCalcular" class="btn btn-primary btn-sm" type="button">Calcular</button>
+              <button id="btnPdf" class="btn btn-outline-primary btn-sm" type="button">Descargar PDF</button>
+              <button id="btnDxf" class="btn btn-outline-secondary btn-sm" type="button">Descargar DXF</button>
+            </div>
+          </form>
+
+          <!-- Glosario -->
+          <div class="mt-3">
+            <button class="btn btn-link btn-sm p-0 text-secondary text-decoration-none"
+                    style="font-size:12px;"
+                    data-bs-toggle="collapse" data-bs-target="#glosarioM1" aria-expanded="false">
+              ▸ Glosario de parámetros
+            </button>
+            <div class="collapse" id="glosarioM1">
+              <div class="mt-2 p-2 rounded" style="background:#F8FAFC; border:1px solid #E2E8F0; font-size:11.5px; line-height:1.6;">
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Cargas (se ingresan sin mayorar)</div>
+                <div class="mb-1"><b>Pd</b> — Carga axial <em>muerta</em> (permanente): peso propio de losas, vigas, rellenos. No varía con el uso.</div>
+                <div class="mb-1"><b>Pl</b> — Carga axial <em>viva</em> (variable): ocupación, mobiliario, almacenamiento. El software aplica internamente <code>Pu = 1.2·Pd + 1.6·Pl</code>.</div>
+                <div class="mb-1"><b>Mxd / Mxl</b> — Momentos (muerto / vivo) alrededor del eje X en la base de la columna. Producen excentricidad en la dirección Y de la zapata.</div>
+                <div class="mb-2"><b>Myd / Myl</b> — Momentos (muerto / vivo) alrededor del eje Y en la base de la columna. Producen excentricidad en la dirección X de la zapata.</div>
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Geometría de la columna</div>
+                <div class="mb-1"><b>Ancho columna (bx)</b> — Dimensión de la columna en dirección X (paralela al ancho B de la zapata).</div>
+                <div class="mb-2"><b>Largo columna (by)</b> — Dimensión de la columna en dirección Y (paralela al largo L de la zapata).</div>
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Geometría de la zapata</div>
+                <div class="mb-1"><b>h</b> — Canto total de la zapata. Es un valor inicial; el software puede incrementarlo para satisfacer punzonado y cortante.</div>
+                <div class="mb-1"><b>Recubrimiento</b> — Distancia libre desde la cara del hormigón hasta la barra de refuerzo exterior. Protege el acero de la corrosión.</div>
+                <div class="mb-2"><b>Fijar B × L</b> — Permite imponer dimensiones en planta específicas. Si no se fija, el programa las calcula automáticamente para que la presión máxima no supere qa.</div>
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Suelo</div>
+                <div class="mb-1"><b>qa</b> — Capacidad admisible neta del suelo según estudio geotécnico. Incluye factor de seguridad implícito. <em>No se mayora.</em></div>
+                <div class="mb-1"><b>Df</b> — Profundidad de desplante: distancia vertical desde el nivel de terreno hasta la base de la zapata.</div>
+                <div class="mb-2"><b>γ suelo</b> — Peso unitario del suelo sobre la zapata, usado para descontar la presión de sobrecarga y obtener la presión neta disponible.</div>
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Pedestal</div>
+                <div class="mb-1"><b>hp</b> — Altura del pedestal (nudo de cimentación) que transfiere cargas de la columna a la zapata.</div>
+                <div class="mb-2"><b>Bp / Lp</b> — Dimensiones en planta del pedestal. A mayor tamaño, menor tensión de punzonado y cortante. El botón <i>i</i> junto al toggle tiene la explicación completa.</div>
+
+                <div class="fw-bold text-primary mb-1" style="font-size:11px; letter-spacing:.5px; text-transform:uppercase;">Materiales</div>
+                <div class="mb-1"><b>f'c / fck</b> — Resistencia característica a compresión del hormigón a 28 días (MPa).</div>
+                <div class="mb-0"><b>fy</b> — Tensión de fluencia del acero de refuerzo (MPa). Típico: 420 MPa (Grado 60), 500 MPa (B500S).</div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <!-- Vista en Planta — fila superior -->
+      <div class="card mb-2" style="background:#0a1929; border-color:#2a4060;">
+        <div class="card-body text-center">
+          <h6 style="color:#85B7EB;">Vista en Planta</h6>
+          <div style="height:300px; display:flex; align-items:center; justify-content:center; background:#0a1929; border:1px solid #2a4060; border-radius:4px; position:relative;">
+            <div id="loadingPlanta" class="loading-overlay">
+              <div class="spinner-border text-primary" style="width:2.8rem; height:2.8rem;"></div>
+              <span style="color:#85B7EB;" class="small fw-semibold">Generando vista en planta…</span>
+            </div>
+            <!-- placeholder -->
+            <div id="placeholderPlanta" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 300 280" width="260" height="260" xmlns="http://www.w3.org/2000/svg">
+                <rect width="300" height="280" fill="#0a1929"/>
+                <rect x="35" y="25" width="230" height="230" fill="#142233" stroke="#378ADD" stroke-width="1.5" rx="2"/>
+                <rect x="118" y="108" width="64" height="64" fill="#546E7A" stroke="#90A4AE" stroke-width="1.2"/>
+                <line x1="35" y1="268" x2="265" y2="268" stroke="#378ADD" stroke-width="1"/>
+                <line x1="35"  y1="263" x2="35"  y2="273" stroke="#378ADD" stroke-width="1"/>
+                <line x1="265" y1="263" x2="265" y2="273" stroke="#378ADD" stroke-width="1"/>
+                <text x="150" y="278" text-anchor="middle" font-size="11" fill="#85B7EB" font-family="sans-serif">B</text>
+                <line x1="278" y1="25" x2="278" y2="255" stroke="#378ADD" stroke-width="1"/>
+                <line x1="273" y1="25"  x2="283" y2="25"  stroke="#378ADD" stroke-width="1"/>
+                <line x1="273" y1="255" x2="283" y2="255" stroke="#378ADD" stroke-width="1"/>
+                <text x="292" y="144" text-anchor="middle" font-size="11" fill="#85B7EB" font-family="sans-serif">L</text>
+                <text x="150" y="14" text-anchor="middle" font-size="10" fill="#4a6080" font-family="sans-serif">Calcule para ver el resultado</text>
+              </svg>
+            </div>
+            <img id="imgPlanta" src="" alt="Planta" style="display:none; width:100%; height:100%; object-fit:contain;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección Transversal — fila completa -->
+      <div class="card mb-2" style="background:#0a1929; border-color:#2a4060;">
+        <div class="card-body text-center">
+          <h6 style="color:#85B7EB;">Sección Transversal</h6>
+          <div style="min-height:260px; display:flex; align-items:center; justify-content:center; background:#0a1929; border:1px solid #2a4060; border-radius:4px; position:relative;">
+            <div id="loadingSeccion" class="loading-overlay">
+              <div class="spinner-border text-primary" style="width:2.8rem; height:2.8rem;"></div>
+              <span class="text-muted small fw-semibold">Generando sección transversal…</span>
+            </div>
+            <!-- placeholder genérico -->
+            <div id="placeholderSeccion" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:16px;">
+              <svg viewBox="0 0 580 190" width="100%" style="max-height:220px;" xmlns="http://www.w3.org/2000/svg">
+                <rect width="580" height="190" fill="#0a1929"/>
+                <rect x="50"  y="100" width="480" height="65" fill="#142233" stroke="#378ADD" stroke-width="1.5"/>
+                <rect x="215" y="55"  width="150" height="50" fill="#1a3a5c" stroke="#378ADD" stroke-width="1.2"/>
+                <rect x="252" y="18"  width="76"  height="40" fill="#546E7A" stroke="#90A4AE" stroke-width="1.2"/>
+                <line x1="70" y1="150" x2="510" y2="150" stroke="#EF5350" stroke-width="1.8"/>
+                <line x1="70" y1="157" x2="510" y2="157" stroke="#AB47BC" stroke-width="1.8" stroke-dasharray="8,4"/>
+                <line x1="548" y1="100" x2="548" y2="165" stroke="#378ADD" stroke-width="1"/>
+                <line x1="543" y1="100" x2="553" y2="100" stroke="#378ADD" stroke-width="1"/>
+                <line x1="543" y1="165" x2="553" y2="165" stroke="#378ADD" stroke-width="1"/>
+                <text x="566" y="136" text-anchor="middle" font-size="11" fill="#85B7EB" font-family="sans-serif">h</text>
+                <line x1="548" y1="55" x2="548" y2="100" stroke="#378ADD" stroke-width="1"/>
+                <line x1="543" y1="55"  x2="553" y2="55"  stroke="#378ADD" stroke-width="1"/>
+                <text x="566" y="82"  text-anchor="middle" font-size="11" fill="#85B7EB" font-family="sans-serif">hp</text>
+                <text x="290" y="182" text-anchor="middle" font-size="10" fill="#4a6080" font-family="sans-serif">Calcule para ver la sección transversal</text>
+              </svg>
+            </div>
+            <img id="imgSeccion" src="" alt="Seccion" style="display:none; max-height:420px; width:100%; object-fit:contain;">
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-body">
+          <div class="d-flex gap-2 mb-3 flex-wrap">
+            <div id="badgePresion" class="badge bg-success p-2">✔ Presión</div>
+            <div id="badgePunz" class="badge bg-success p-2">✔ Punzonado</div>
+            <div id="badgeCort" class="badge bg-success p-2">✔ Cortante</div>
+            <div id="badgeDesarrollo" class="badge bg-danger p-2">✖ Desarrollo</div>
+            <div id="badgeAplastCol" class="badge bg-secondary p-2">— Aplast. Col</div>
+            <div id="badgeAplastZap" class="badge bg-secondary p-2">— Aplast. Zap</div>
+            <div id="badgeEsperas" class="badge bg-secondary p-2">— Esperas</div>
+          </div>
+
+          <h6>Parámetros</h6>
+          <table class="table table-sm" id="tablaResultados">
+            <thead><tr><th>Parámetro</th><th>Valor</th><th>Unidad</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <h6 class="mt-3">Pedestal</h6>
+          <table class="table table-sm" id="tablaPedestal">
+            <thead><tr><th>Parámetro</th><th>Valor</th><th>Unidad</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <h6>Verificaciones — Zapata</h6>
+          <div id="mensajesResultados" style="min-height:60px; border:1px solid #eee; padding:8px; background:#fafafa; overflow:auto"></div>
+          <h6 class="mt-2">Verificaciones — Pedestal</h6>
+          <div id="mensajesPedestal" style="min-height:60px; border:1px solid #eee; padding:8px; background:#fafafa; overflow:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Unit converter mapping
+const unitMap = {
+  'kN_kN/m2':   { cargas: 'kN',  presiones: 'kN/m²',   display_cargas: 'kN',  display_presiones: 'kN/m²'   },
+  'kip_kip/ft2':{ cargas: 'kip', presiones: 'kip/ft²',  display_cargas: 'kip', display_presiones: 'kip/ft²' },
+  'tf_tf/m2':   { cargas: 'tf',  presiones: 'tf/m²',    display_cargas: 'tf',  display_presiones: 'tf/m²'   },
+  'lbf_psf':    { cargas: 'lbf', presiones: 'psf',      display_cargas: 'lbf', display_presiones: 'psf'     },
+  'ton_ton/m2': { cargas: 'ton', presiones: 'ton/m²',   display_cargas: 'ton', display_presiones: 'ton/m²'  },
+  'kg_kg/m2':   { cargas: 'kg',  presiones: 'kg/m²',    display_cargas: 'kg',  display_presiones: 'kg/m²'   },
+};
+
+// Conversion factors to base units (kN, kN/m²)
+const FORCE_TO_KN    = { 'kN':1.0,'kip':4.44822,'tf':9.81,'lbf':0.00444822,'ton':9.81,'kg':0.00981 };
+const PRESS_TO_KNM2  = { 'kN/m²':1.0,'kip/ft²':47.88,'tf/m²':9.81,'psf':0.04788,'ton/m²':9.81,'kg/m²':0.00981 };
+
+function cvtForce(val, from, to)    { return val * FORCE_TO_KN[from]   / FORCE_TO_KN[to]; }
+function cvtPressure(val, from, to) { return val * PRESS_TO_KNM2[from] / PRESS_TO_KNM2[to]; }
+
+const form = document.getElementById('formDatos');
+let currentUnits = 'kN_kN/m2';
+
+// Update unit labels and convert existing form values when selector changes
+document.getElementById('selectorUnidades').addEventListener('change', function(e){
+  const oldUnits = unitMap[currentUnits];
+  currentUnits = e.target.value;
+  const newUnits = unitMap[currentUnits];
+
+  // Convert force fields (Pd, Pl, moments)
+  ['Pd','Pl','Mxd','Mxl','Myd','Myl'].forEach(name => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (el && el.value !== '' && parseFloat(el.value) !== 0) {
+      const converted = cvtForce(parseFloat(el.value), oldUnits.cargas, newUnits.cargas);
+      el.value = parseFloat(converted.toPrecision(5));
+    }
+  });
+  // Convert pressure field (qa)
+  const qaEl = form.querySelector('[name="qa"]');
+  if (qaEl && qaEl.value !== '') {
+    const converted = cvtPressure(parseFloat(qaEl.value), oldUnits.presiones, newUnits.presiones);
+    qaEl.value = parseFloat(converted.toPrecision(5));
+  }
+
+  document.getElementById('unitPd').textContent = newUnits.display_cargas;
+  document.getElementById('unitPl').textContent = newUnits.display_cargas;
+  document.getElementById('unitQa').textContent = newUnits.display_presiones;
+});
+
+// Toggle panel dimensiones fijas
+document.getElementById('chkDimFijas').addEventListener('change', function(){
+  document.getElementById('divDimFijas').style.display = this.checked ? '' : 'none';
+});
+
+// Toggle panel pedestal fijo
+document.getElementById('chkPedFijo').addEventListener('change', function(){
+  document.getElementById('divPedFijo').style.display = this.checked ? '' : 'none';
+});
+
+function buildData() {
+  const data = {};
+  new FormData(form).forEach((v,k)=> { data[k]= isNaN(v) ? v : parseFloat(v) });
+  data.cuadrada = true;
+  data.unidades = currentUnits;
+  const chk = document.getElementById('chkDimFijas');
+  if (chk.checked) {
+    const B = parseFloat(document.getElementById('inpBFijo').value);
+    const L = parseFloat(document.getElementById('inpLFijo').value);
+    if (B > 0 && L > 0) {
+      data.B_fijo = B;
+      data.L_fijo = L;
+      data.cuadrada = false;
+    }
+  }
+  const chkPed = document.getElementById('chkPedFijo');
+  if (chkPed.checked) {
+    const Bp = parseFloat(document.getElementById('inpBpFijo').value);
+    const Lp = parseFloat(document.getElementById('inpLpFijo').value);
+    if (Bp > 0 && Lp > 0) { data.Bp_fijo = Bp; data.Lp_fijo = Lp; }
+  }
+  return data;
+}
+
+function startLoading() {
+  ['btnCalcular','topCalcular'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.dataset.orig = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Calculando…';
+    btn.disabled = true;
+    btn.classList.add('calc-btn-loading');
+  });
+  document.getElementById('loadingPlanta').classList.add('active');
+  document.getElementById('loadingSeccion').classList.add('active');
+}
+
+function stopLoading() {
+  ['btnCalcular','topCalcular'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.innerHTML = btn.dataset.orig || 'Calcular';
+    btn.disabled = false;
+    btn.classList.remove('calc-btn-loading');
+  });
+  document.getElementById('loadingPlanta').classList.remove('active');
+  document.getElementById('loadingSeccion').classList.remove('active');
+}
+
+async function runCalculo(){
+  startLoading();
+  const minWait = new Promise(r => setTimeout(r, 2500));
+  const data = buildData();
+  let j;
+  try {
+    const res = await fetch('/api/calcular', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if (!res.ok) {
+      let msg;
+      try { const jj = await res.json(); msg = jj.error || JSON.stringify(jj); }
+      catch { msg = `Error ${res.status}`; }
+      throw new Error(msg);
+    }
+    j = await res.json();
+  } catch(err) {
+    await minWait;
+    stopLoading();
+    alert('Error al calcular: ' + err.message);
+    return;
+  }
+  renderResults(j);
+  renderPedestal(j.pedestal);
+  if (!document.getElementById('chkDimFijas').checked && j.geometria) {
+    document.getElementById('inpBFijo').value = (j.geometria.B || 0).toFixed(2);
+    document.getElementById('inpLFijo').value = (j.geometria.L || 0).toFixed(2);
+  }
+  const imgPlanta  = document.getElementById('imgPlanta');
+  const imgSeccion = document.getElementById('imgSeccion');
+  const p1 = fetch('/api/plot/planta',  { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
+    .then(r=>r.blob()).then(b=>{
+      imgPlanta.src = URL.createObjectURL(b);
+      imgPlanta.style.display = 'block';
+      document.getElementById('placeholderPlanta').style.display = 'none';
+    });
+  const p2 = fetch('/api/plot/seccion', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
+    .then(r=>r.blob()).then(b=>{
+      imgSeccion.src = URL.createObjectURL(b);
+      imgSeccion.style.display = 'block';
+      document.getElementById('placeholderSeccion').style.display = 'none';
+    });
+  await Promise.all([p1, p2, minWait]);
+  stopLoading();
+}
+
+document.getElementById('btnCalcular').addEventListener('click', runCalculo);
+document.getElementById('topCalcular').addEventListener('click', runCalculo);
+
+function renderResults(obj){
+  const res = obj.resultado || {};
+  const unidades = obj.unidades || {};
+  const force_unit = unidades.cargas || 'kN';
+  const pressure_unit = unidades.presiones || 'kN/m²';
+  
+  const tbody = document.querySelector('#tablaResultados tbody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['B requerido (m)', res.B_requerido?.toFixed(2)],
+    ['L requerido (m)', res.L_requerido?.toFixed(2)],
+    ['h requerido (m)', res.h_requerido?.toFixed(2)],
+    [`q máxima (${pressure_unit})`, res.q_max?.toFixed(1)],
+    [`q última (${pressure_unit})`, res.q_ultima?.toFixed(1)],
+    ['As_x inf. (cm²/m)', res.As_x_diseno?.toFixed(2)],
+    ['As_y inf. (cm²/m)', res.As_y_diseno?.toFixed(2)],
+    ['Varilla', res.varilla_x || res.varilla_y],
+    ['Separación (m)', res.separacion_x?.toFixed(2) || res.separacion_y?.toFixed(2)],
+    ['ld disponible (cm)', res.ld_disponible != null ? (res.ld_disponible * 100).toFixed(0) : '-'],
+    ['ld requerido (cm)', res.ld_requerido != null ? (res.ld_requerido * 100).toFixed(0) : '-'],
+  ];
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    const ldFalla = !res.ok_desarrollo && r[0].startsWith('ld disponible');
+    tr.innerHTML = `<th style="width:50%">${r[0]}</th><td${ldFalla ? ' class="text-danger fw-bold"' : ''}>${r[1] ?? '-'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const mensajesDiv = document.getElementById('mensajesResultados');
+  mensajesDiv.innerHTML = '';
+  (res.mensajes||[]).forEach(m=>{
+    const cls = m.tipo === 'ok' ? 'badge bg-success' : (m.tipo === 'advertencia' ? 'badge bg-warning text-dark' : (m.tipo==='error' ? 'badge bg-danger' : 'badge bg-info'));
+    const p = document.createElement('p');
+    p.innerHTML = `<span class="${cls}">${m.texto}</span>`;
+    mensajesDiv.appendChild(p);
+  });
+
+  // Update status badges — zapata
+  function setBadge(id, ok, label, warnOnFail) {
+    const el = document.getElementById(id);
+    el.className = ok ? 'badge bg-success p-2' : (warnOnFail ? 'badge bg-warning text-dark p-2' : 'badge bg-danger p-2');
+    el.textContent = (ok ? '✔ ' : '✖ ') + label;
+  }
+  setBadge('badgePresion',    res.ok_presion,    'Presión');
+  setBadge('badgePunz',       res.ok_punzonado,  'Punzonado');
+  setBadge('badgeCort',       res.ok_cortante,   'Cortante');
+  setBadge('badgeDesarrollo', res.ok_desarrollo, 'Desarrollo');
+}
+
+function renderPedestal(ped) {
+  if (!ped) return;
+  const tbody = document.querySelector('#tablaPedestal tbody');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Bp (m)', ped.Bp?.toFixed(2), 'm'],
+    ['Lp (m)', ped.Lp?.toFixed(2), 'm'],
+    ['hp (m)', ped.hp?.toFixed(2), 'm'],
+    ['Área bruta Ag', ped.Ag?.toFixed(1), 'cm²'],
+    ['φBn col→pedestal', ped.phi_Bn_col?.toFixed(1), 'kN'],
+    ['φBn pedestal→zapata', ped.phi_Bn_zap?.toFixed(1), 'kN'],
+    ['As longitudinal diseño', ped.As_diseno?.toFixed(2), 'cm²'],
+    ['Armadura long.', ped.n_barras + (ped.varilla_long || ''), ''],
+    ['Estribo', (ped.varilla_estribo || '') + ' @ ' + ((ped.separacion_estribo||0)*100).toFixed(0) + ' cm', ''],
+    ['Esperas', ped.n_esperas + (ped.varilla_espera || ''), ''],
+    ['ld esperas (compresión)', ped.ld_espera_comp != null ? (ped.ld_espera_comp*100).toFixed(0) : '-', 'cm'],
+  ];
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<th style="width:55%">${r[0]}</th><td>${r[1] ?? '-'}</td><td class="text-muted">${r[2]}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const div = document.getElementById('mensajesPedestal');
+  div.innerHTML = '';
+  (ped.mensajes || []).forEach(m => {
+    const cls = m.tipo === 'ok' ? 'badge bg-success' : (m.tipo === 'error' ? 'badge bg-danger' : (m.tipo === 'advertencia' ? 'badge bg-warning text-dark' : 'badge bg-info'));
+    const p = document.createElement('p');
+    p.innerHTML = `<span class="${cls}">${m.texto}</span>`;
+    div.appendChild(p);
+  });
+
+  // badges pedestal
+  function setPedBadge(id, ok, label, warn) {
+    const el = document.getElementById(id);
+    el.className = ok ? 'badge bg-success p-2' : (warn ? 'badge bg-warning text-dark p-2' : 'badge bg-danger p-2');
+    el.textContent = (ok ? '✔ ' : '✖ ') + label;
+  }
+  setPedBadge('badgeAplastCol', ped.ok_aplastamiento_col, 'Aplast. Col');
+  setPedBadge('badgeAplastZap', ped.ok_aplastamiento_zap, 'Aplast. Zap');
+  setPedBadge('badgeEsperas',   ped.ok_esperas_en_zapata, 'Esperas', true);
+}
+
+async function generarYDescargar(rutaApi, nombreArchivo) {
+  const data = buildData();
+  try {
+    const res = await fetch(rutaApi, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error('Error en la generación');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert('Error al generar el archivo: ' + err.message);
+  }
+}
+
+document.getElementById('btnPdf').addEventListener('click', function(){
+  generarYDescargar('/api/report/pdf', 'memoria_zapata.pdf');
+});
+document.getElementById('btnDxf').addEventListener('click', function(){
+  generarYDescargar('/api/report/dxf', 'dibujo_zapata.dxf');
+});
+document.getElementById('topPdf').addEventListener('click', function(){
+  generarYDescargar('/api/report/pdf', 'memoria_zapata.pdf');
+});
+document.getElementById('topDxf').addEventListener('click', function(){
+  generarYDescargar('/api/report/dxf', 'dibujo_zapata.dxf');
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- ── Modal info Bp × Lp ── -->
+<div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalLabel">
+          ¿Qué son Bp y Lp? — Dimensiones del Pedestal
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <div class="info-section">
+          <h6>Definición</h6>
+          <p>
+            <span class="info-tag">Bp</span> y <span class="info-tag">Lp</span> son las dimensiones
+            en planta del <strong>pedestal</strong> (o nudo de cimentación), el elemento estructural que
+            transfiere las cargas axiales y momentos de la columna hacia la zapata.
+          </p>
+          <p>
+            <span class="info-tag">Bp</span> = ancho del pedestal en la dirección X (paralelo a B de la zapata).<br>
+            <span class="info-tag">Lp</span> = largo del pedestal en la dirección Y (paralelo a L de la zapata).
+          </p>
+        </div>
+
+        <div class="info-section">
+          <h6>Por qué importan en el cálculo</h6>
+          <ul>
+            <li>
+              <strong>Punzonado (perforación):</strong> el perímetro crítico <em>b₀</em> se traza a
+              una distancia <em>d/2</em> alrededor del pedestal. A mayor Bp y Lp, mayor <em>b₀</em>
+              y menor tensión de punzonado → diseño más holgado.
+            </li>
+            <li>
+              <strong>Cortante unidireccional:</strong> el plano de falla por corte se ubica a
+              distancia <em>d</em> del borde del pedestal. Pedestales más grandes reducen la viga
+              volada efectiva y la solicitación de corte.
+            </li>
+            <li>
+              <strong>Esperas de columna (dowels):</strong> las barras de anclaje deben desarrollar
+              su longitud <em>ld</em> dentro del pedestal antes de doblarse hacia la columna.
+              Un pedestal demasiado pequeño puede impedir el anclaje correcto.
+            </li>
+            <li>
+              <strong>Esbeltez del pedestal:</strong> ACI 318 §15.4 recomienda que la relación
+              altura/dimensión mínima del pedestal sea <em>hp / min(Bp, Lp) ≤ 3</em> para asegurar
+              comportamiento como elemento de compresión y no como columna corta.
+            </li>
+          </ul>
+        </div>
+
+        <div class="info-section">
+          <h6>Auto-cálculo (toggle desactivado)</h6>
+          <p>Cuando no se fija manualmente, el programa asume:</p>
+          <div class="info-formula">Bp = bx_col + 2 × 0.10 m &nbsp;|&nbsp; Lp = by_col + 2 × 0.10 m</div>
+          <p>
+            Esto agrega <strong>10 cm por cada lado</strong> de la columna, garantizando espacio
+            suficiente para colocar los estribos del pedestal y el recubrimiento de las esperas.
+          </p>
+        </div>
+
+        <div class="info-section">
+          <h6>¿Cuándo fijar manualmente?</h6>
+          <ul>
+            <li>La columna es muy esbelta y se requiere un pedestal más robusto para reducir el punzonado.</li>
+            <li>Existen restricciones arquitectónicas de espacio en planta.</li>
+            <li>Se quiere ajustar el armado de esperas a una barra normalizada específica.</li>
+            <li>El ratio de punzonado ó cortante está fallando con las dimensiones automáticas.</li>
+          </ul>
+        </div>
+
+        <div class="alert alert-info py-2 px-3 mb-0" style="font-size:12.5px;">
+          <strong>Regla práctica:</strong> comenzar con el auto-cálculo (+10 cm/lado).
+          Si el punzonado falla, ampliar Bp y Lp en incrementos de 5 cm hasta que
+          <em>Vu / φVn ≤ 1.0</em>.
+        </div>
+
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

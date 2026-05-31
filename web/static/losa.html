@@ -1,0 +1,813 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FundaCalc — Losa de Fundación</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+    @keyframes calcPulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    .loading-overlay {
+      display:none; position:absolute; inset:0;
+      background:rgba(255,255,255,0.88); align-items:center; justify-content:center;
+      z-index:20; border-radius:4px; overflow:hidden; flex-direction:column; gap:10px;
+    }
+    .loading-overlay.active { display:flex; }
+    .loading-overlay::before {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(90deg,transparent 0%,rgba(25,118,210,0.12) 50%,transparent 100%);
+      animation:shimmer 1.4s ease-in-out infinite;
+    }
+    .calc-btn-loading { animation:calcPulse 1.1s ease-in-out infinite; }
+
+    #fc-topbar {
+      background-color:#0D1B2A;
+      background-image:
+        linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px; padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex; align-items:center; gap:14px;
+      border-radius:0;
+    }
+    .fc-tb-icon {
+      width:36px; height:36px; border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .fc-tb-texts { flex:1; }
+    .fc-tb-title { color:#fff; font-size:14px; font-weight:700; line-height:1.2; }
+    .fc-tb-sub   { color:#85B7EB; font-size:11px; }
+    .fc-tb-back  { color:#85B7EB; font-size:12px; text-decoration:none;
+                   border:1px solid rgba(133,183,235,0.35); padding:5px 12px;
+                   border-radius:5px; white-space:nowrap; }
+    .fc-tb-back:hover { background:rgba(133,183,235,0.12); color:#fff; }
+
+    .res-table td:first-child { color:#555; font-size:12px; width:58%; }
+    .res-table td:last-child  { font-size:12px; font-weight:600; text-align:right; }
+
+    .chk-badge { display:inline-block; padding:4px 10px; border-radius:20px;
+                 font-size:11px; font-weight:600; }
+    .chk-ok   { background:#E8F5E9; color:#2e7d32; border:1px solid #A5D6A7; }
+    .chk-fail { background:#FFEBEE; color:#c62828; border:1px solid #EF9A9A; }
+    .chk-warn { background:#FFF3E0; color:#e65100; border:1px solid #FFCC80; }
+    .chk-na   { background:#F5F5F5; color:#999;    border:1px solid #E0E0E0; }
+
+    .sec-heading { font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px; }
+
+    .plot-placeholder { min-height:120px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px;border:1px dashed #ddd;border-radius:6px; }
+    .plot-loading     { min-height:100px;display:flex;align-items:center;justify-content:center;gap:8px;color:#1565c0;font-size:13px; }
+
+    .msg-ok   { color:#2e7d32; }
+    .msg-error{ color:#c62828;font-weight:600; }
+    .msg-warn { color:#e65100; }
+    .msg-info { color:#555; }
+    .msg-item { font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5; }
+
+    .layer-badge {
+      display:inline-block; padding:2px 8px; border-radius:12px;
+      font-size:11px; font-weight:600; margin-right:4px;
+    }
+    .layer-sup-x { background:#FFEBEE; color:#c62828; border:1px solid #EF9A9A; }
+    .layer-sup-y { background:#F3E5F5; color:#7B1FA2; border:1px solid #CE93D8; }
+    .layer-inf-x { background:#E3F2FD; color:#1565C0; border:1px solid #90CAF9; }
+    .layer-inf-y { background:#E0F7FA; color:#00695C; border:1px solid #80CBC4; }
+
+    .mode-info { background:#EEF5FF; border:1px solid #BBDEFB; border-radius:8px;
+                 padding:10px 14px; font-size:12px; color:#1565C0; margin-bottom:12px; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="1" y="10" width="16" height="6" rx="1" fill="#85B7EB"/>
+        <rect x="3" y="7"  width="3"  height="3" rx="0.5" fill="#B5D4F4" opacity="0.9"/>
+        <rect x="7.5" y="7" width="3" height="3" rx="0.5" fill="#B5D4F4" opacity="0.9"/>
+        <rect x="12" y="7" width="3" height="3" rx="0.5" fill="#B5D4F4" opacity="0.9"/>
+        <line x1="1" y1="10" x2="17" y2="10" stroke="#F9A825" stroke-width="1.2"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 4 — Losa de Fundación (Mat Foundation)</div>
+    </div>
+    <a class="fc-tb-back" href="/">← Inicio</a>
+    <div class="btn-group ms-2">
+      <button id="topCalcular" class="btn btn-primary btn-sm" onclick="calcular()">&#9654; Calcular</button>
+      <button id="btnPDF" class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" disabled>&#8659; Exportar PDF</button>
+      <button id="btnDXF" class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" disabled>&#8659; Exportar DXF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ═══ COLUMNA IZQUIERDA — ENTRADA ═══════════════════════════════════════ -->
+    <div class="col-lg-5">
+
+      <!-- Modo -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading mb-2">Modo de entrada</div>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="modo" id="modoGrilla" value="grilla" checked onchange="onModoChange()">
+            <label class="btn btn-outline-primary btn-sm" for="modoGrilla">Grilla de columnas</label>
+            <input type="radio" class="btn-check" name="modo" id="modoGlobal" value="global" onchange="onModoChange()">
+            <label class="btn btn-outline-primary btn-sm" for="modoGlobal">Carga global</label>
+            <input type="radio" class="btn-check" name="modo" id="modoUniforme" value="uniforme" onchange="onModoChange()">
+            <label class="btn btn-outline-primary btn-sm" for="modoUniforme">Carga uniforme</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: GRILLA ─────────────────────────────────────────────────── -->
+      <div id="panelGrilla" class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="mode-info">Grilla regular de columnas: dimensiones de losa derivadas de nx·sx + 2·vuelo</div>
+          <div class="sec-heading">Cargas — Grilla</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>D</sub> total [kN]</label>
+              <input type="number" id="gPd" class="form-control form-control-sm" value="3000">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>L</sub> total [kN]</label>
+              <input type="number" id="gPl" class="form-control form-control-sm" value="1500">
+            </div>
+          </div>
+          <div class="sec-heading">Grilla</div>
+          <div class="row g-2 mb-2">
+            <div class="col-3">
+              <label class="form-label mb-1 small">n<sub>x</sub></label>
+              <input type="number" id="gNx" class="form-control form-control-sm" value="3" min="1">
+            </div>
+            <div class="col-3">
+              <label class="form-label mb-1 small">n<sub>y</sub></label>
+              <input type="number" id="gNy" class="form-control form-control-sm" value="3" min="1">
+            </div>
+            <div class="col-3">
+              <label class="form-label mb-1 small">s<sub>x</sub> [m]</label>
+              <input type="number" id="gSx" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+            <div class="col-3">
+              <label class="form-label mb-1 small">s<sub>y</sub> [m]</label>
+              <input type="number" id="gSy" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Vuelo borde X [m]</label>
+              <input type="number" id="gVx" class="form-control form-control-sm" value="0.50" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">Vuelo borde Y [m]</label>
+              <input type="number" id="gVy" class="form-control form-control-sm" value="0.50" step="0.05">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: GLOBAL ─────────────────────────────────────────────────── -->
+      <div id="panelGlobal" class="card shadow-sm mb-3" style="display:none">
+        <div class="card-body py-2 px-3">
+          <div class="mode-info">Carga total del edificio con momentos resultantes. Si L=B=0 se dimensiona automáticamente.</div>
+          <div class="sec-heading">Cargas — Global</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>D</sub> [kN]</label>
+              <input type="number" id="glPd" class="form-control form-control-sm" value="4000">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>L</sub> [kN]</label>
+              <input type="number" id="glPl" class="form-control form-control-sm" value="2000">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Dx</sub> [kN·m]</label>
+              <input type="number" id="glMdx" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Lx</sub> [kN·m]</label>
+              <input type="number" id="glMlx" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Dy</sub> [kN·m]</label>
+              <input type="number" id="glMdy" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Ly</sub> [kN·m]</label>
+              <input type="number" id="glMly" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">N° columnas</label>
+              <input type="number" id="glNcol" class="form-control form-control-sm" value="9" min="1">
+            </div>
+          </div>
+          <div class="sec-heading">Geometría (0 = auto)</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">L [m]</label>
+              <input type="number" id="glL" class="form-control form-control-sm" value="0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">B [m]</label>
+              <input type="number" id="glB" class="form-control form-control-sm" value="0" step="0.1">
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">Luz X [m]</label>
+              <input type="number" id="glLx" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Luz Y [m]</label>
+              <input type="number" id="glLy" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Vuelo X [m]</label>
+              <input type="number" id="glVx" class="form-control form-control-sm" value="0.50" step="0.05">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: UNIFORME ───────────────────────────────────────────────── -->
+      <div id="panelUniforme" class="card shadow-sm mb-3" style="display:none">
+        <div class="card-body py-2 px-3">
+          <div class="mode-info">Presión uniforme descendente (losa flotante / sótano). Sin punzonado.</div>
+          <div class="sec-heading">Cargas — Uniforme</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">q<sub>D</sub> [kN/m²]</label>
+              <input type="number" id="uqD" class="form-control form-control-sm" value="30">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">q<sub>L</sub> [kN/m²]</label>
+              <input type="number" id="uqL" class="form-control form-control-sm" value="15">
+            </div>
+          </div>
+          <div class="sec-heading">Dimensiones de losa</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">L [m]</label>
+              <input type="number" id="uL" class="form-control form-control-sm" value="10.0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">B [m]</label>
+              <input type="number" id="uB" class="form-control form-control-sm" value="8.0" step="0.1">
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">Luz X [m]</label>
+              <input type="number" id="uLx" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Luz Y [m]</label>
+              <input type="number" id="uLy" class="form-control form-control-sm" value="5.0" step="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Vuelo X [m]</label>
+              <input type="number" id="uVx" class="form-control form-control-sm" value="0.0" step="0.1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PARÁMETROS COMUNES ────────────────────────────────────────────── -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Suelo</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">q<sub>adm</sub> [kN/m²]</label>
+              <input type="number" id="qa" class="form-control form-control-sm" value="100">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">D<sub>f</sub> [m]</label>
+              <input type="number" id="Df" class="form-control form-control-sm" value="0.50" step="0.05">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">γ suelo [kN/m³]</label>
+              <input type="number" id="gamma" class="form-control form-control-sm" value="18">
+            </div>
+          </div>
+
+          <div class="sec-heading">Sección columna</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">c<sub>x</sub> [m]</label>
+              <input type="number" id="cx" class="form-control form-control-sm" value="0.35" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">c<sub>y</sub> [m]</label>
+              <input type="number" id="cy" class="form-control form-control-sm" value="0.35" step="0.05">
+            </div>
+          </div>
+
+          <div class="sec-heading">Losa</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">h inicial [m]</label>
+              <input type="number" id="h" class="form-control form-control-sm" value="0.40" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">Recubrimiento [m]</label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="0.075" step="0.005">
+            </div>
+          </div>
+
+          <div class="sec-heading">Materiales</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">f'c [MPa]</label>
+              <input type="number" id="fck" class="form-control form-control-sm" value="25">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">f<sub>y</sub> [MPa]</label>
+              <input type="number" id="fy" class="form-control form-control-sm" value="420">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Norma</label>
+              <select id="norma" class="form-select form-select-sm">
+                <option value="ACI318" selected>ACI 318</option>
+                <option value="CIRSOC201">CIRSOC 201</option>
+                <option value="NCH170">NCh 170</option>
+                <option value="NSR10">NSR-10</option>
+                <option value="NTE_E060">NTE E.060</option>
+                <option value="NTC_CDMX">NTC CDMX</option>
+                <option value="EHE08">EHE-08</option>
+                <option value="COVENIN1753">COVENIN 1753</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Varilla preferida</label>
+              <select id="varillaPref" class="form-select form-select-sm">
+                <option value="">Auto</option>
+                <option value="Ø10mm">Ø10mm</option>
+                <option value="Ø12mm">Ø12mm</option>
+                <option value="Ø16mm">Ø16mm</option>
+                <option value="Ø20mm">Ø20mm</option>
+                <option value="Ø25mm">Ø25mm</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón calcular móvil -->
+      <button class="btn btn-primary w-100 mb-3 d-lg-none" onclick="calcular()">Calcular</button>
+
+    </div><!-- /col-lg-5 -->
+
+    <!-- ═══ COLUMNA DERECHA — RESULTADOS ══════════════════════════════════════ -->
+    <div class="col-lg-7">
+      <div id="resCard" class="card shadow-sm mb-3" style="display:none; position:relative;">
+        <div class="loading-overlay" id="overlayRes">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Calculando…</span>
+        </div>
+        <div class="card-body py-2 px-3">
+
+          <!-- Verificaciones rápidas -->
+          <div class="d-flex flex-wrap gap-2 mb-3" id="checkBadges"></div>
+
+          <!-- Geometría y presiones -->
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <div class="sec-heading">Geometría de la losa</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblGeometria"></tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <div class="sec-heading">Presiones sobre el suelo</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblPresiones"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Momentos y acero -->
+          <div class="sec-heading">Momentos de diseño [kN·m/m]</div>
+          <table class="table table-sm res-table mb-3">
+            <thead><tr>
+              <th style="font-size:11px;color:#555;">Dirección</th>
+              <th style="font-size:11px;color:#555;text-align:right;">M sup (apoyo)</th>
+              <th style="font-size:11px;color:#555;text-align:right;">M inf (vano)</th>
+              <th style="font-size:11px;color:#555;text-align:right;">M voladizo</th>
+            </tr></thead>
+            <tbody id="tblMomentos"></tbody>
+          </table>
+
+          <div class="sec-heading">Armadura — 4 capas [cm²/m]</div>
+          <table class="table table-sm res-table mb-3">
+            <thead><tr>
+              <th style="font-size:11px;color:#555;">Capa</th>
+              <th style="font-size:11px;color:#555;text-align:right;">As requerido</th>
+              <th style="font-size:11px;color:#555;text-align:right;">Varilla</th>
+              <th style="font-size:11px;color:#555;text-align:right;">Separación</th>
+              <th style="font-size:11px;color:#555;text-align:right;">As diseño</th>
+            </tr></thead>
+            <tbody id="tblArmadura"></tbody>
+          </table>
+
+          <!-- Verificaciones -->
+          <div class="row g-2 mb-2">
+            <div class="col-md-6">
+              <div class="sec-heading">Punzonado (col. representativa)</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblPunzonado"></tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <div class="sec-heading">Cortante unidireccional [kN/m]</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblCortante"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Mensajes -->
+          <div class="sec-heading mt-2">Mensajes del cálculo</div>
+          <div id="mensajes" style="max-height:140px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Diagrama -->
+      <div class="card shadow-sm" style="position:relative;">
+        <div class="loading-overlay" id="overlayPlot">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Generando diagrama…</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Vista en Planta &amp; Sección — Diagrama de Armadura</div>
+          <div id="plotBox">
+            <div class="plot-placeholder">Ejecute el cálculo para ver el diagrama</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Glosario -->
+      <div class="card shadow-sm mt-3">
+        <div class="card-header py-2 px-3" style="cursor:pointer;background:#EEF5FF;border-color:#BBDEFB;"
+             data-bs-toggle="collapse" data-bs-target="#glosarioBody">
+          <span style="font-size:12px;font-weight:700;color:#1565C0;letter-spacing:0.5px;">
+            📖 Glosario — Losa de Fundación
+          </span>
+          <span class="float-end" style="font-size:11px;color:#1565C0;">▼</span>
+        </div>
+        <div id="glosarioBody" class="collapse">
+          <div class="card-body py-2 px-3" style="font-size:12px;line-height:1.65;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="sec-heading">Geometría y suelo</div>
+                <table class="table table-sm res-table">
+                  <tbody>
+                    <tr><td><b>L, B</b></td><td>Largo y ancho de la losa en planta [m]</td></tr>
+                    <tr><td><b>h</b></td><td>Espesor total de la losa [m]</td></tr>
+                    <tr><td><b>d</b></td><td>Canto útil = h − recubrimiento − db/2 [m]</td></tr>
+                    <tr><td><b>Df</b></td><td>Profundidad de desplante [m]</td></tr>
+                    <tr><td><b>qa</b></td><td>Presión admisible del suelo [kN/m²]</td></tr>
+                    <tr><td><b>q_max / q_min</b></td><td>Presiones extremas de servicio transmitidas al suelo [kN/m²]</td></tr>
+                    <tr><td><b>q_prom</b></td><td>Presión promedio de servicio = P_ser / (B·L) [kN/m²]</td></tr>
+                    <tr><td><b>γ suelo</b></td><td>Peso específico del suelo [kN/m³]</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">Presiones de diseño</div>
+                <table class="table table-sm res-table">
+                  <tbody>
+                    <tr><td><b>qu_net</b></td><td>Presión neta última = Pu/(B·L) − γ_c·h [kN/m²] — carga de diseño estructural</td></tr>
+                    <tr><td><b>Pu</b></td><td>Carga axial factorizada = 1.2·Pd + 1.6·Pl [kN]</td></tr>
+                    <tr><td><b>As_mín</b></td><td>Armado mínimo por temperatura y retracción = 0.0018·b·h [cm²/m]</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-md-6">
+                <div class="sec-heading">Momentos de diseño (strip method ACI 318)</div>
+                <table class="table table-sm res-table">
+                  <tbody>
+                    <tr><td><b>M₀</b></td><td>Momento estático total = qu_net · l² / 8 [kN·m/m]</td></tr>
+                    <tr><td><b>M⁻ (apoyo)</b></td><td>0.65 · M₀ → acero superior (Sup-X o Sup-Y)</td></tr>
+                    <tr><td><b>M⁺ (vano)</b></td><td>0.35 · M₀ → acero inferior (Inf-X o Inf-Y)</td></tr>
+                    <tr><td><b>M_cant</b></td><td>qu_net · a² / 2 — voladizo de borde → acero superior</td></tr>
+                    <tr><td><b>lx_diseno / ly_diseno</b></td><td>Luz libre de diseño en cada dirección [m]</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">Verificaciones</div>
+                <table class="table table-sm res-table">
+                  <tbody>
+                    <tr><td><b>Punzonado</b></td><td>Cortante bidireccional alrededor de la columna. Perímetro bo = 4·(c + d). φVc ≥ Vu</td></tr>
+                    <tr><td><b>Cortante unidireccional</b></td><td>Cortante como viga en franjas X e Y. φVc = φ·0.17·√f'c·b·d</td></tr>
+                    <tr><td><b>Sup-X / Sup-Y</b></td><td>Armado en cara superior (zona de apoyos y voladizos)</td></tr>
+                    <tr><td><b>Inf-X / Inf-Y</b></td><td>Armado en cara inferior (zona de vanos)</td></tr>
+                    <tr><td><b>Sep (separación)</b></td><td>Distancia entre centros de barras. Máx = min(3h, 450 mm) según ACI 318</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col-lg-7 -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Modo ──────────────────────────────────────────────────────────────────────
+function getModo() {
+  return document.querySelector('input[name="modo"]:checked').value;
+}
+
+function onModoChange() {
+  const modo = getModo();
+  document.getElementById('panelGrilla').style.display   = modo === 'grilla'   ? '' : 'none';
+  document.getElementById('panelGlobal').style.display   = modo === 'global'   ? '' : 'none';
+  document.getElementById('panelUniforme').style.display = modo === 'uniforme' ? '' : 'none';
+}
+
+// ── Payload ───────────────────────────────────────────────────────────────────
+function getPayload() {
+  const modo = getModo();
+  const base = {
+    modo,
+    // suelo
+    qa:      +document.getElementById('qa').value,
+    Df:      +document.getElementById('Df').value,
+    gamma_s: +document.getElementById('gamma').value,
+    // columna
+    cx: +document.getElementById('cx').value,
+    cy: +document.getElementById('cy').value,
+    // losa
+    h:             +document.getElementById('h').value,
+    recubrimiento: +document.getElementById('recub').value,
+    // materiales
+    fck:  +document.getElementById('fck').value,
+    fy:   +document.getElementById('fy').value,
+    norma: document.getElementById('norma').value,
+    varilla_pref: document.getElementById('varillaPref').value,
+    unidades: 'kN_kN/m2',
+  };
+
+  if (modo === 'grilla') {
+    Object.assign(base, {
+      Pd_total:  +document.getElementById('gPd').value,
+      Pl_total:  +document.getElementById('gPl').value,
+      nx:    +document.getElementById('gNx').value,
+      ny:    +document.getElementById('gNy').value,
+      spacing_x: +document.getElementById('gSx').value,
+      spacing_y: +document.getElementById('gSy').value,
+      vuelo_x:   +document.getElementById('gVx').value,
+      vuelo_y:   +document.getElementById('gVy').value,
+    });
+  } else if (modo === 'global') {
+    Object.assign(base, {
+      Pd: +document.getElementById('glPd').value,
+      Pl: +document.getElementById('glPl').value,
+      Mdx: +document.getElementById('glMdx').value,
+      Mlx: +document.getElementById('glMlx').value,
+      Mdy: +document.getElementById('glMdy').value,
+      Mly: +document.getElementById('glMly').value,
+      n_col: +document.getElementById('glNcol').value,
+      L:  +document.getElementById('glL').value,
+      B:  +document.getElementById('glB').value,
+      lx_span: +document.getElementById('glLx').value,
+      ly_span: +document.getElementById('glLy').value,
+      vuelo_x: +document.getElementById('glVx').value,
+      vuelo_y: +document.getElementById('glVx').value,
+    });
+  } else { // uniforme
+    Object.assign(base, {
+      q_D: +document.getElementById('uqD').value,
+      q_L: +document.getElementById('uqL').value,
+      L:   +document.getElementById('uL').value,
+      B:   +document.getElementById('uB').value,
+      lx_span: +document.getElementById('uLx').value,
+      ly_span: +document.getElementById('uLy').value,
+      vuelo_x: +document.getElementById('uVx').value,
+      vuelo_y: +document.getElementById('uVx').value,
+    });
+  }
+  return base;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const n1 = v => (v == null ? '—' : (+v).toFixed(1));
+const n2 = v => (v == null ? '—' : (+v).toFixed(2));
+const n3 = v => (v == null ? '—' : (+v).toFixed(3));
+
+function badge(ok, label) {
+  const cls = ok ? 'chk-ok' : 'chk-fail';
+  const ico = ok ? '✔' : '✘';
+  return `<span class="chk-badge ${cls}">${ico} ${label}</span>`;
+}
+
+function layerRow(label, cls, asReq, varilla, sep, asDis) {
+  const sepCm = sep ? (sep*100).toFixed(0) : '—';
+  return `<tr>
+    <td><span class="layer-badge ${cls}">${label}</span></td>
+    <td class="text-end">${n2(asReq)}</td>
+    <td class="text-end">${varilla || '—'}</td>
+    <td class="text-end">c/${sepCm} cm</td>
+    <td class="text-end">${n2(asDis)}</td>
+  </tr>`;
+}
+
+function tr(label, val) {
+  return `<tr><td>${label}</td><td>${val}</td></tr>`;
+}
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+let lastPayload = null;
+
+async function calcular() {
+  const payload = getPayload();
+  lastPayload = payload;
+
+  document.getElementById('resCard').style.display = '';
+  document.getElementById('overlayRes').classList.add('active');
+  document.getElementById('overlayPlot').classList.add('active');
+  document.getElementById('topCalcular').classList.add('calc-btn-loading');
+  document.getElementById('btnPDF').disabled = true;
+  document.getElementById('btnDXF').disabled = true;
+  document.getElementById('plotBox').innerHTML = '<div class="plot-loading"><div class="spinner-border spinner-border-sm text-primary"></div> Calculando…</div>';
+
+  try {
+    const resp = await fetch('/api/losa/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) { alert(data.error || 'Error en el servidor'); return; }
+    renderResultados(data);
+    document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
+    actualizarPlot(payload);
+  } catch(e) {
+    alert('Error de red: ' + e.message);
+  } finally {
+    document.getElementById('overlayRes').classList.remove('active');
+    document.getElementById('topCalcular').classList.remove('calc-btn-loading');
+  }
+}
+
+// ── Renderizar resultados ─────────────────────────────────────────────────────
+function renderResultados(d) {
+  // Badges
+  const badges = [
+    badge(d.ok_presion,  'Presión'),
+    d.ok_punzonado != null ? badge(d.ok_punzonado, 'Punzonado') : '',
+    badge(d.ok_cx,   'Cortante X'),
+    badge(d.ok_cy,   'Cortante Y'),
+  ];
+  document.getElementById('checkBadges').innerHTML = badges.join('');
+
+  // Geometría
+  document.getElementById('tblGeometria').innerHTML = [
+    tr('Largo L', `<b>${n2(d.L)} m</b>`),
+    tr('Ancho B', `<b>${n2(d.B)} m</b>`),
+    tr('Espesor h', `<b>${n2(d.h)} m</b>`),
+    tr('Canto útil d', `${n3(d.d)} m`),
+    tr('Área A', `${n2(d.A)} m²`),
+    tr('Luz diseño X', `${n2(d.lx_diseno)} m`),
+    tr('Luz diseño Y', `${n2(d.ly_diseno)} m`),
+  ].join('');
+
+  // Presiones
+  document.getElementById('tblPresiones').innerHTML = [
+    tr('q máx (servicio)', `<b class="${d.ok_presion?'text-success':'text-danger'}">${n1(d.q_max)} kN/m²</b>`),
+    tr('q mín (servicio)', `${n1(d.q_min)} kN/m²`),
+    tr('q promedio',       `${n1(d.q_prom)} kN/m²`),
+    tr('qu neto avg (diseño)', `${n1(d.qu_net_avg)} kN/m²`),
+    tr('As mín', `${n2(d.As_min)} cm²/m`),
+  ].join('');
+
+  // Momentos
+  document.getElementById('tblMomentos').innerHTML = [
+    `<tr><td>Dir. X</td><td class="text-end">${n1(d.Mu_sup_x)}</td><td class="text-end">${n1(d.Mu_inf_x)}</td><td class="text-end">${n1(d.Mu_cant_x)}</td></tr>`,
+    `<tr><td>Dir. Y</td><td class="text-end">${n1(d.Mu_sup_y)}</td><td class="text-end">${n1(d.Mu_inf_y)}</td><td class="text-end">${n1(d.Mu_cant_y)}</td></tr>`,
+  ].join('');
+
+  // Armadura
+  document.getElementById('tblArmadura').innerHTML = [
+    layerRow('Sup-X', 'layer-sup-x', d.As_req_sup_x, d.var_sup_x, d.sep_sup_x, d.As_dis_sup_x),
+    layerRow('Sup-Y', 'layer-sup-y', d.As_req_sup_y, d.var_sup_y, d.sep_sup_y, d.As_dis_sup_y),
+    layerRow('Inf-X', 'layer-inf-x', d.As_req_inf_x, d.var_inf_x, d.sep_inf_x, d.As_dis_inf_x),
+    layerRow('Inf-Y', 'layer-inf-y', d.As_req_inf_y, d.var_inf_y, d.sep_inf_y, d.As_dis_inf_y),
+  ].join('');
+
+  // Punzonado
+  const punch = d.ok_punzonado;
+  document.getElementById('tblPunzonado').innerHTML = [
+    tr('Pu por col.', `${n1(d.Pu_col)} kN`),
+    tr('Vu punzonado', `${n1(d.Vu_punch)} kN`),
+    tr('φVc', `${n1(d.phi_Vc_punch)} kN`),
+    tr('Estado', badge(punch, punch ? 'OK' : 'FALLA')),
+  ].join('');
+
+  // Cortante
+  document.getElementById('tblCortante').innerHTML = [
+    tr('Vu dir.X', `${n1(d.Vu_cx)} kN/m`),
+    tr('φVc dir.X', `${n1(d.phi_Vc_cx)} kN/m`),
+    tr('Estado X', badge(d.ok_cx, d.ok_cx ? 'OK' : 'FALLA')),
+    tr('Vu dir.Y', `${n1(d.Vu_cy)} kN/m`),
+    tr('φVc dir.Y', `${n1(d.phi_Vc_cy)} kN/m`),
+    tr('Estado Y', badge(d.ok_cy, d.ok_cy ? 'OK' : 'FALLA')),
+  ].join('');
+
+  // Mensajes
+  const msgs = (d.mensajes || []).map(m => {
+    const cls = {ok:'msg-ok', error:'msg-error', warn:'msg-warn', info:'msg-info'}[m.tipo] || 'msg-info';
+    return `<div class="msg-item ${cls}">${m.texto}</div>`;
+  });
+  document.getElementById('mensajes').innerHTML = msgs.join('') || '<span class="text-muted" style="font-size:12px">Sin mensajes.</span>';
+}
+
+// ── Plot ──────────────────────────────────────────────────────────────────────
+async function actualizarPlot(payload) {
+  document.getElementById('overlayPlot').classList.add('active');
+  try {
+    const resp = await fetch('/api/losa/plot/seccion', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    document.getElementById('plotBox').innerHTML =
+      `<img src="${url}" style="width:100%;border-radius:6px;" alt="Diagrama losa">`;
+  } catch(e) {
+    document.getElementById('plotBox').innerHTML = `<div class="plot-placeholder text-danger">Error generando diagrama</div>`;
+  } finally {
+    document.getElementById('overlayPlot').classList.remove('active');
+  }
+}
+
+// ── DXF ───────────────────────────────────────────────────────────────────────
+async function exportarDXF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnDXF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/losa/report/dxf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar DXF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'losa_fundacion.dxf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar DXF';
+  }
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnPDF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/losa/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar PDF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'memoria_losa_fundacion.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar PDF';
+  }
+}
+</script>
+</body>
+</html>
+
+

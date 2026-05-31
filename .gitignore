@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs y temporales
+*.log
+*.tmp
+*.bak
+
+# Archivos generados (PDFs y DXFs de prueba)
+*.pdf
+*.dxf
+
+# Secretos
+.env.local
+secrets.py
+
+# Claude Code (configuración local de la herramienta)
+.claude/

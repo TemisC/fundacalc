@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Capacidad Portante</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .res-table td:first-child{color:#555;font-size:12px;width:60%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .chk-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .chk-ok  {background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;}
+    .chk-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;}
+    .chk-warn{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .msg-ok   {color:#2e7d32;}
+    .msg-error{color:#c62828;font-weight:600;}
+    .msg-warn {color:#e65100;}
+    .msg-info {color:#555;}
+    .msg-item {font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .qa-highlight{background:#E8F5E9;font-weight:700;color:#2e7d32;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <!-- suelo estratificado -->
+        <rect x="1" y="14" width="20" height="6" rx="0.5" fill="#8D6E63" opacity="0.7"/>
+        <rect x="1" y="10" width="20" height="4" rx="0.5" fill="#A1887F" opacity="0.5"/>
+        <!-- fundacion -->
+        <rect x="6" y="7" width="10" height="3" rx="0.5" fill="#85B7EB"/>
+        <!-- columna -->
+        <rect x="9" y="1" width="4" height="6" rx="0.5" fill="#90A4AE"/>
+        <!-- flecha carga -->
+        <line x1="11" y1="1" x2="11" y2="4" stroke="#F9A825" stroke-width="1.2"/>
+        <polygon points="11,5 10,3 12,3" fill="#F9A825"/>
+        <!-- cuña de falla -->
+        <line x1="6"  y1="10" x2="1"  y2="20" stroke="#EF5350" stroke-width="0.8" stroke-dasharray="2,1"/>
+        <line x1="16" y1="10" x2="21" y2="20" stroke="#EF5350" stroke-width="0.8" stroke-dasharray="2,1"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 8 — Capacidad Portante</div>
+    </div>
+    <a class="fc-tb-back" href="/">&#8592; Inicio</a>
+    <a class="fc-tb-back ms-2" href="/asentamientos" style="background:rgba(133,183,235,0.12);">&#9660; Asentamientos</a>
+    <div class="btn-group ms-2">
+      <button id="topCalcular" class="btn btn-primary btn-sm" onclick="calcular()">&#9654; Calcular</button>
+      <button id="btnPDF" class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" disabled>&#8659; Exportar PDF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ═══ ENTRADAS ═══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-5">
+
+      <!-- Card 1: Geometría -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Geometría de la Fundación</div>
+          <div class="mb-2">
+            <label class="form-label mb-1 small">Forma</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="forma" id="fCorrida"     value="corrida"     onchange="onFormaChange()">
+              <label class="btn btn-outline-secondary btn-sm" for="fCorrida">Corrida</label>
+              <input type="radio" class="btn-check" name="forma" id="fCuadrada"    value="cuadrada"    onchange="onFormaChange()">
+              <label class="btn btn-outline-secondary btn-sm" for="fCuadrada">Cuadrada</label>
+              <input type="radio" class="btn-check" name="forma" id="fRectangular" value="rectangular" onchange="onFormaChange()" checked>
+              <label class="btn btn-outline-secondary btn-sm" for="fRectangular">Rectangular</label>
+              <input type="radio" class="btn-check" name="forma" id="fCircular"    value="circular"    onchange="onFormaChange()">
+              <label class="btn btn-outline-secondary btn-sm" for="fCircular">Circular</label>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small" id="lblB">B [m]</label>
+              <input type="number" id="B" class="form-control form-control-sm" value="1.50" step="0.10" min="0.1">
+            </div>
+            <div class="col-4" id="colL">
+              <label class="form-label mb-1 small">L [m]</label>
+              <input type="number" id="L" class="form-control form-control-sm" value="2.00" step="0.10" min="0.1">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Df [m]</label>
+              <input type="number" id="Df" class="form-control form-control-sm" value="1.50" step="0.10" min="0.1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Suelo -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Parámetros del Suelo</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">&#981; [°]</label>
+              <input type="number" id="phi" class="form-control form-control-sm" value="30" step="1" min="0" max="50">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">c [kPa]</label>
+              <input type="number" id="c" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">&#947; [kN/m³]</label>
+              <input type="number" id="gamma" class="form-control form-control-sm" value="18" step="0.5" min="10">
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">FS</label>
+              <input type="number" id="FS" class="form-control form-control-sm" value="3.0" step="0.5" min="1.5">
+            </div>
+            <div class="col-8">
+              <label class="form-label mb-1 small">&#947;' sumergido [kN/m³] <span class="text-muted">(opcional)</span></label>
+              <input type="number" id="gamma_sub" class="form-control form-control-sm" placeholder="default: &#947;&#8722;9.81" step="0.5" min="5">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Nivel freático -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center mb-2 gap-2">
+            <div class="sec-heading mb-0">Nivel Freático</div>
+            <div class="form-check form-switch ms-auto mb-0">
+              <input class="form-check-input" type="checkbox" id="chkNF" onchange="onNFChange()">
+              <label class="form-check-label small" for="chkNF">Activo</label>
+            </div>
+          </div>
+          <div id="nfInputs" style="display:none;">
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label mb-1 small">Prof. NF desde superficie [m]</label>
+                <input type="number" id="nf_prof" class="form-control form-control-sm" value="1.00" step="0.10" min="0">
+              </div>
+            </div>
+            <div class="mt-2 p-2" style="background:#E3F2FD;border:1px solid #BBDEFB;border-radius:5px;font-size:11px;color:#1565C0;">
+              Si NF ≤ Df: se usa &#947;' en la base y se corrige la sobrecarga q.<br>
+              Si Df &lt; NF &lt; Df+B: interpolación lineal de &#947; efectivo.
+            </div>
+          </div>
+          <div id="nfOff" class="text-muted" style="font-size:11px;">Sin corrección por nivel freático.</div>
+        </div>
+      </div>
+
+      <!-- Card 4: Correlación SPT -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Correlación SPT &#8594; &#981;</div>
+          <div class="row g-2 align-items-end">
+            <div class="col-4">
+              <label class="form-label mb-1 small">N<sub>60</sub> [golpes]</label>
+              <input type="number" id="N60" class="form-control form-control-sm" value="20" step="1" min="1" max="100">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">&#963;'v [kPa]</label>
+              <input type="number" id="sigma_v" class="form-control form-control-sm" value="100" step="10" min="10">
+            </div>
+            <div class="col-4">
+              <button class="btn btn-outline-primary btn-sm w-100" onclick="calcularSPT()">Aplicar &#981;</button>
+            </div>
+          </div>
+          <div id="sptResult" class="mt-2" style="display:none;font-size:11px;color:#1565c0;"></div>
+        </div>
+      </div>
+
+      <!-- Card 5: Diagrama esquemático -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Esquema de Falla</div>
+          <div id="diagramaBox">
+            <svg id="svgDiagrama" width="100%" viewBox="0 0 340 180" xmlns="http://www.w3.org/2000/svg">
+              <!-- dibujado por JS -->
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mb-3 d-lg-none" onclick="calcular()">Calcular</button>
+    </div>
+
+    <!-- ═══ RESULTADOS ══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-7">
+
+      <!-- Resultados card -->
+      <div id="resCard" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="overlayRes">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Calculando&hellip;</span>
+        </div>
+        <div class="card-body py-2 px-3">
+
+          <!-- Badges -->
+          <div class="d-flex flex-wrap gap-2 mb-3" id="checkBadges"></div>
+
+          <!-- Parámetros base -->
+          <div class="sec-heading">Parámetros Base</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblBase"></tbody>
+          </table>
+
+          <!-- Tabla comparativa de métodos -->
+          <div class="sec-heading">Comparativa de Métodos</div>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm mb-2" id="tblMetodos" style="font-size:11px;">
+              <thead>
+                <tr style="background:#E3F2FD;">
+                  <th>Método</th>
+                  <th class="text-center">Nc</th>
+                  <th class="text-center">Nq</th>
+                  <th class="text-center">N&#947;</th>
+                  <th class="text-center">sc·sq·s&#947;</th>
+                  <th class="text-center">dc·dq·d&#947;</th>
+                  <th class="text-center">qu [kPa]</th>
+                  <th class="text-center">qa [kPa]</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMetodos"></tbody>
+            </table>
+          </div>
+
+          <!-- Resumen qa -->
+          <div class="sec-heading">Capacidad Admisible</div>
+          <table class="table table-sm res-table mb-3">
+            <tbody id="tblQa"></tbody>
+          </table>
+
+          <!-- Mensajes -->
+          <div class="sec-heading">Mensajes del c&#225;lculo</div>
+          <div id="mensajes" style="max-height:160px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Glosario + Alcance -->
+      <div class="card shadow-sm mt-0">
+        <div class="card-header py-2 px-3" style="cursor:pointer;background:#EEF5FF;border-color:#BBDEFB;"
+             data-bs-toggle="collapse" data-bs-target="#glosarioCapBody">
+          <span style="font-size:12px;font-weight:700;color:#1565C0;letter-spacing:0.5px;">
+            &#128218; Glosario &amp; Alcance &mdash; Capacidad Portante
+          </span>
+          <span class="float-end" style="font-size:11px;color:#1565C0;">&#9660;</span>
+        </div>
+        <div id="glosarioCapBody" class="collapse">
+          <div class="card-body py-2 px-3" style="font-size:12px;line-height:1.65;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="sec-heading">Geometría y suelo</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>B</b></td><td>Ancho (menor dimensión) de la fundación [m]</td></tr>
+                    <tr><td><b>L</b></td><td>Largo de la fundación [m]. Corrida: L → ∞ (B/L = 0)</td></tr>
+                    <tr><td><b>Df</b></td><td>Profundidad de desplante desde la superficie [m]</td></tr>
+                    <tr><td><b>&#981;</b></td><td>Ángulo de fricción interna del suelo [°]</td></tr>
+                    <tr><td><b>c</b></td><td>Cohesión del suelo [kPa]. Cero para arenas limpias</td></tr>
+                    <tr><td><b>&#947;</b></td><td>Peso unitario natural del suelo [kN/m³]</td></tr>
+                    <tr><td><b>&#947;'</b></td><td>Peso unitario sumergido = &#947;<sub>sat</sub> − 9.81 [kN/m³]. Se usa cuando el NF está en la zona activa</td></tr>
+                    <tr><td><b>q</b></td><td>Presión de sobrecarga = &#947;·Df [kPa] (corregida si hay NF)</td></tr>
+                    <tr><td><b>FS</b></td><td>Factor de seguridad global. Mínimo recomendado: 2.5–3.0</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">Correlación SPT</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>N<sub>60</sub></b></td><td>Golpes SPT corregidos al 60% de energía del martillo</td></tr>
+                    <tr><td><b>&#963;'v</b></td><td>Tensión efectiva vertical en el punto de ensayo [kPa]. Se usa para corrección por confinamiento (Cn)</td></tr>
+                    <tr><td><b>Correlación</b></td><td>Schmertmann (1975) modificada: &#981; = 27.1 + 0.3·N<sub>1,60</sub> − 0.00054·N<sub>1,60</sub>²</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-md-6">
+                <div class="sec-heading">Factores de capacidad portante</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>Nc, Nq, N&#947;</b></td><td>Factores adimensionales función de &#981; (Reissner / Prandtl)</td></tr>
+                    <tr><td><b>sc, sq, s&#947;</b></td><td>Factores de forma: corrigen por geometría B/L de la fundación</td></tr>
+                    <tr><td><b>dc, dq, d&#947;</b></td><td>Factores de profundidad: incremento por confinamiento lateral (Df/B)</td></tr>
+                    <tr><td><b>qu</b></td><td>Capacidad portante última [kPa] = c·Nc·sc·dc + q·Nq·sq·dq + 0.5·&#947;·B·N&#947;·s&#947;·d&#947;</td></tr>
+                    <tr><td><b>qa</b></td><td>Capacidad portante admisible = qu / FS [kPa]</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">⚠ Alcance del módulo</div>
+                <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:10px 12px;font-size:11.5px;color:#5D4037;line-height:1.7;">
+                  <b>Este módulo calcula la capacidad portante de fundaciones superficiales</b> (Df/B ≤ 4, aprox.) mediante tres métodos clásicos.<br><br>
+                  <b>No contempla:</b> falla por corte local ni por punzonamiento (solo falla general), carga inclinada, fundaciones en talud, análisis sísmico, ni consolidación del suelo blando.<br><br>
+                  Los parámetros <b>&#981;</b> y <b>c</b> deben provenir del informe geotécnico (ensayos triaxiales o de corte directo). La correlación SPT es una estimación preliminar.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+// ── Forma ──────────────────────────────────────────────────────────────────────
+function getForma() {
+  return document.querySelector('input[name="forma"]:checked').value;
+}
+
+function onFormaChange() {
+  const f = getForma();
+  const colL = document.getElementById('colL');
+  const lblB = document.getElementById('lblB');
+  colL.style.display = (f === 'rectangular') ? '' : 'none';
+  lblB.textContent = f === 'circular' ? 'D [m]' : 'B [m]';
+  actualizarDiagrama();
+}
+
+// ── Nivel freático ─────────────────────────────────────────────────────────────
+function onNFChange() {
+  const on = document.getElementById('chkNF').checked;
+  document.getElementById('nfInputs').style.display = on ? '' : 'none';
+  document.getElementById('nfOff').style.display   = on ? 'none' : '';
+}
+
+// ── SPT ───────────────────────────────────────────────────────────────────────
+async function calcularSPT() {
+  const N60     = +document.getElementById('N60').value;
+  const sigma_v = +document.getElementById('sigma_v').value;
+  try {
+    const r = await fetch('/api/capacidad/spt', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({N60, sigma_v}),
+    });
+    const data = await r.json();
+    if (data.phi != null) {
+      document.getElementById('phi').value = data.phi.toFixed(1);
+      document.getElementById('sptResult').style.display = '';
+      document.getElementById('sptResult').textContent =
+        `N₁,₆₀ = ${data.N1_60.toFixed(1)} → φ = ${data.phi.toFixed(1)}°`;
+    }
+  } catch(e) {
+    alert('Error SPT: ' + e.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const n1 = x => x == null ? '—' : (+x).toFixed(1);
+const n2 = x => x == null ? '—' : (+x).toFixed(2);
+const n3 = x => x == null ? '—' : (+x).toFixed(3);
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+function badge(ok, label) {
+  return `<span class="chk-badge ${ok ? 'chk-ok' : 'chk-fail'}">${ok ? '&#10004;' : '&#10008;'} ${label}</span>`;
+}
+
+function tr(label, val) {
+  return `<tr><td>${label}</td><td>${val}</td></tr>`;
+}
+
+// ── Payload ───────────────────────────────────────────────────────────────────
+function getPayload() {
+  const forma = getForma();
+  const nfOn  = document.getElementById('chkNF').checked;
+  const gsubVal = +v('gamma_sub');
+  return {
+    phi:       +v('phi'),
+    c:         +v('c'),
+    gamma:     +v('gamma'),
+    Df:        +v('Df'),
+    B:         +v('B'),
+    L:         forma === 'rectangular' ? +v('L') : 0,
+    forma,
+    FS:        +v('FS'),
+    nf_prof:   nfOn ? +v('nf_prof') : null,
+    gamma_sub: gsubVal > 0 ? gsubVal : null,
+  };
+}
+
+let lastPayload = null;
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+async function calcular() {
+  const payload = getPayload();
+  lastPayload = payload;
+
+  document.getElementById('resCard').style.display = '';
+  document.getElementById('overlayRes').classList.add('active');
+  document.getElementById('topCalcular').classList.add('calc-btn-loading');
+
+  try {
+    const resp = await fetch('/api/capacidad/calcular', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      alert(data.error || 'Error en el servidor');
+      return;
+    }
+    renderResultados(data);
+    document.getElementById('btnPDF').disabled = false;
+  } catch(e) {
+    alert('Error de red: ' + e.message);
+  } finally {
+    document.getElementById('overlayRes').classList.remove('active');
+    document.getElementById('topCalcular').classList.remove('calc-btn-loading');
+  }
+}
+
+// ── Render resultados ─────────────────────────────────────────────────────────
+function renderResultados(d) {
+  // Badges
+  const okFS = d.FS >= 2.5;
+  document.getElementById('checkBadges').innerHTML = [
+    badge(d.ok,       'Capacidad portante'),
+    badge(d.qa_conserv > 50, `qa = ${n1(d.qa_conserv)} kPa`),
+    badge(okFS, `FS = ${n1(d.FS)}`),
+  ].join('');
+
+  // Parámetros base
+  document.getElementById('tblBase').innerHTML = [
+    tr('q — sobrecarga [kPa]',           `<b>${n1(d.q)}</b>`),
+    tr('&#947; efectivo base [kN/m³]',   `${n1(d.gamma_ef)}`),
+    tr('Nc (Prandtl)',                   `${n2(d.metodos[0].Nc)}`),
+    tr('Nq (Reissner)',                  `${n2(d.metodos[0].Nq)}`),
+  ].join('');
+
+  // Tabla comparativa
+  document.getElementById('tbodyMetodos').innerHTML = d.metodos.map(m => {
+    const sfProd = (m.sc * m.sq * m.sgamma).toFixed(3);
+    const dfProd = (m.dc * m.dq * m.dgamma).toFixed(3);
+    const isMin = Math.abs(m.q_adm - d.qa_conserv) < 0.1;
+    const rowCls = isMin ? 'table-success' : '';
+    return `<tr class="${rowCls}">
+      <td style="font-size:11px;"><b>${m.nombre}</b></td>
+      <td class="text-center">${n2(m.Nc)}</td>
+      <td class="text-center">${n2(m.Nq)}</td>
+      <td class="text-center">${n2(m.Ngamma)}</td>
+      <td class="text-center">${sfProd}</td>
+      <td class="text-center">${dfProd}</td>
+      <td class="text-center"><b>${n1(m.q_ult)}</b></td>
+      <td class="text-center"><b>${n1(m.q_adm)}</b></td>
+    </tr>`;
+  }).join('');
+
+  // qa summary
+  document.getElementById('tblQa').innerHTML = [
+    tr('qa conservador — mínimo [kPa]',
+       `<b style="color:#2e7d32;font-size:14px;">${n1(d.qa_conserv)}</b>`),
+    tr('qa promedio [kPa]',             `${n1(d.qa_medio)}`),
+    tr('FS aplicado',                   `${n1(d.FS)}`),
+  ].join('');
+
+  // Mensajes
+  const msgs = (d.mensajes || []).map(m => {
+    const tipo = m.tipo || 'info';
+    const cls  = {ok:'msg-ok', error:'msg-error', advertencia:'msg-warn', warn:'msg-warn', info:'msg-info'}[tipo] || 'msg-info';
+    return `<div class="msg-item ${cls}">${m.texto}</div>`;
+  });
+  document.getElementById('mensajes').innerHTML = msgs.join('') ||
+    '<span class="text-muted" style="font-size:12px">Sin mensajes.</span>';
+
+  actualizarDiagrama(d);
+}
+
+// ── Diagrama SVG de falla ─────────────────────────────────────────────────────
+function actualizarDiagrama(d) {
+  const phi  = d ? d.phi  : +v('phi');
+  const B    = +v('B');
+  const Df   = +v('Df');
+  const forma = getForma();
+
+  const W = 340, H = 180;
+  const PAD = 20;
+  // Surface at y=40, foundation bottom at y=40+Df*scale
+  const scaleV = Math.min(60, (H - 60) / Math.max(Df + B * 0.8, 1));
+  const groundY = 36;
+  const foundY  = groundY + Df * scaleV;
+  const bPx     = Math.min(100, B * scaleV * 1.5);
+  const cx      = W / 2;
+  const phi_r   = phi * Math.PI / 180;
+
+  // Failure wedge half-width at base level
+  const halfWedge = bPx / 2;
+  // Passive zone angle: 45 + phi/2 from horizontal
+  const passAngle  = Math.PI / 4 + phi_r / 2;
+  const zoneWidth  = halfWedge + (H - foundY - 10) / Math.tan(passAngle);
+
+  let s = `<svg width="100%" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Background sky / soil zones
+  s += `<rect width="${W}" height="${H}" fill="#12172b" rx="4"/>`;
+
+  // Soil (background fill)
+  s += `<rect x="0" y="${groundY}" width="${W}" height="${H - groundY}" fill="#2a1f14" opacity="0.8"/>`;
+
+  // Passive zone (Rankine) — left and right triangles
+  s += `<polygon points="${cx-halfWedge},${foundY} ${cx-zoneWidth},${H} ${cx-halfWedge},${H}" fill="#5C4A3A" opacity="0.6"/>`;
+  s += `<polygon points="${cx+halfWedge},${foundY} ${cx+halfWedge},${H} ${cx+zoneWidth},${H}" fill="#5C4A3A" opacity="0.6"/>`;
+
+  // Active wedge (zone I — below footing)
+  s += `<polygon points="${cx-halfWedge},${foundY} ${cx},${H} ${cx+halfWedge},${foundY}" fill="#6D3B1A" opacity="0.7"/>`;
+
+  // Failure surface lines
+  s += `<line x1="${cx-halfWedge}" y1="${foundY}" x2="${cx-zoneWidth}" y2="${H}" stroke="#EF5350" stroke-width="1.2" stroke-dasharray="4,2"/>`;
+  s += `<line x1="${cx+halfWedge}" y1="${foundY}" x2="${cx+zoneWidth}" y2="${H}" stroke="#EF5350" stroke-width="1.2" stroke-dasharray="4,2"/>`;
+  s += `<line x1="${cx-halfWedge}" y1="${foundY}" x2="${cx}" y2="${H}" stroke="#EF5350" stroke-width="1.0" stroke-dasharray="3,2"/>`;
+  s += `<line x1="${cx+halfWedge}" y1="${foundY}" x2="${cx}" y2="${H}" stroke="#EF5350" stroke-width="1.0" stroke-dasharray="3,2"/>`;
+
+  // Soil above foundation (backfill)
+  s += `<rect x="0" y="${groundY}" width="${cx-halfWedge}" height="${foundY-groundY}" fill="#3E2723" opacity="0.6"/>`;
+  s += `<rect x="${cx+halfWedge}" y="${groundY}" width="${W-cx-halfWedge}" height="${foundY-groundY}" fill="#3E2723" opacity="0.6"/>`;
+
+  // Ground surface line
+  s += `<line x1="0" y1="${groundY}" x2="${W}" y2="${groundY}" stroke="#90A4AE" stroke-width="1.5"/>`;
+
+  // Foundation rectangle
+  s += `<rect x="${cx-halfWedge}" y="${foundY-8}" width="${bPx}" height="8" fill="#85B7EB" rx="1"/>`;
+
+  // Column stub
+  const colW = Math.max(10, bPx * 0.25);
+  s += `<rect x="${cx-colW/2}" y="${groundY-28}" width="${colW}" height="${foundY-groundY+2}" fill="#546E7A" rx="1" opacity="0.9"/>`;
+
+  // Load arrow
+  s += `<line x1="${cx}" y1="4" x2="${cx}" y2="${groundY-30}" stroke="#F9A825" stroke-width="1.5"/>`;
+  s += `<polygon points="${cx},${groundY-28} ${cx-4},${groundY-36} ${cx+4},${groundY-36}" fill="#F9A825"/>`;
+  s += `<text x="${cx+6}" y="16" fill="#F9A825" font-size="9" font-family="sans-serif">P</text>`;
+
+  // Labels
+  // B label
+  s += `<line x1="${cx-halfWedge}" y1="${foundY+2}" x2="${cx+halfWedge}" y2="${foundY+2}" stroke="#85B7EB" stroke-width="0.8"/>`;
+  s += `<text x="${cx}" y="${foundY+12}" fill="#85B7EB" font-size="9" text-anchor="middle" font-family="sans-serif">B=${B.toFixed(2)}m</text>`;
+
+  // Df label
+  s += `<line x1="${PAD}" y1="${groundY}" x2="${PAD}" y2="${foundY}" stroke="#90A4AE" stroke-width="0.8"/>`;
+  s += `<text x="${PAD+4}" y="${(groundY+foundY)/2+4}" fill="#90A4AE" font-size="9" font-family="sans-serif">Df=${Df.toFixed(2)}m</text>`;
+
+  // phi label
+  s += `<text x="${W-PAD-2}" y="${H-6}" fill="#EF5350" font-size="9" text-anchor="end" font-family="sans-serif">φ=${phi.toFixed(0)}°</text>`;
+
+  // Method note
+  const formaLabel = {corrida:'Corrida',cuadrada:'Cuadrada',rectangular:'Rectangular',circular:'Circular'}[forma] || forma;
+  s += `<text x="${W/2}" y="${groundY-2}" fill="#546E7A" font-size="8" text-anchor="middle" font-family="sans-serif">${formaLabel} · Falla general de corte</text>`;
+
+  s += '</svg>';
+  document.getElementById('diagramaBox').innerHTML = s;
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnPDF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/capacidad/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar PDF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'capacidad_portante.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar PDF';
+  }
+}
+
+// Inicialización
+onFormaChange();
+
+</script>
+</body>
+</html>

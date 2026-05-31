@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FundaCalc — Diseño de Cimentaciones</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.26.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0D1B2A;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .fc-grid-lines {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(55,138,221,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55,138,221,0.07) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .fc-cross-section {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 160px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .fc-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(to bottom,
+        rgba(13,27,42,0.50) 0%,
+        rgba(13,27,42,0.70) 55%,
+        rgba(13,27,42,0.93) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .fc-wrap {
+      position: relative;
+      z-index: 10;
+      max-width: 1020px;
+      margin: 0 auto;
+      padding: 28px 24px 48px;
+    }
+
+    /* ── top bar ── */
+    .fc-topbar {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .fc-logo { display: flex; align-items: center; gap: 10px; }
+
+    .fc-logo-icon {
+      width: 38px; height: 38px;
+      background: #185FA5; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .fc-logo-text { font-size: 20px; font-weight: 500; color: #E6F1FB; letter-spacing: 0.5px; }
+    .fc-logo-sub  { font-size: 11px; color: #85B7EB; letter-spacing: 1.2px; text-transform: uppercase; }
+
+    .fc-nav { display: flex; gap: 8px; }
+    .fc-nav a {
+      font-size: 12px; color: #85B7EB;
+      padding: 5px 12px;
+      border: 0.5px solid rgba(133,183,235,0.25);
+      border-radius: 6px; text-decoration: none; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .fc-nav a:hover { background: rgba(133,183,235,0.10); }
+    .fc-nav a.active {
+      background: rgba(24,95,165,0.30);
+      border-color: rgba(55,138,221,0.50);
+      color: #B5D4F4;
+    }
+
+    /* ── hero ── */
+    .fc-hero { text-align: center; padding: 20px 0 22px; }
+
+    .fc-hero-tag {
+      display: inline-block;
+      font-size: 11px; letter-spacing: 1.5px; color: #378ADD;
+      border: 0.5px solid rgba(55,138,221,0.40);
+      padding: 3px 12px; border-radius: 20px;
+      margin-bottom: 10px; text-transform: uppercase;
+    }
+
+    .fc-hero h1 {
+      font-size: 28px; font-weight: 500; color: #E6F1FB;
+      line-height: 1.3; margin-bottom: 10px;
+    }
+
+    .fc-hero p {
+      font-size: 13px; color: #85B7EB;
+      max-width: 540px; margin: 0 auto; line-height: 1.6;
+    }
+
+    /* ── section label ── */
+    .fc-section-label {
+      font-size: 11px; letter-spacing: 1.2px;
+      color: #378ADD; text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .fc-section-label::after {
+      content: ''; flex: 1; height: 0.5px;
+      background: rgba(55,138,221,0.25);
+    }
+
+    /* ── cards ── */
+    .fc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .fc-pending {
+      font-size: 8.5px; color: #EF9F27;
+      margin-top: 6px; letter-spacing: 0.2px;
+    }
+
+    .fc-card {
+      border-radius: 10px;
+      border: 0.5px solid rgba(133,183,235,0.18);
+      background: rgba(13,27,42,0.72);
+      overflow: hidden; cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex; flex-direction: column;
+    }
+    .fc-card:hover { border-color: rgba(55,138,221,0.55); transform: translateY(-2px); }
+    .fc-card.featured {
+      border: 1.5px solid rgba(55,138,221,0.55);
+      background: rgba(24,95,165,0.18);
+    }
+    .fc-card.featured:hover { border-color: rgba(55,138,221,0.85); }
+
+    .fc-card-img { width: 100%; height: 82px; overflow: hidden; flex-shrink: 0; }
+
+    .fc-card-body { padding: 10px 12px 12px; flex: 1; }
+    .fc-card-title { font-size: 12px; font-weight: 500; color: #B5D4F4; margin-bottom: 3px; line-height: 1.3; }
+    .fc-card-desc  { font-size: 10px; color: #378ADD; line-height: 1.4; margin-bottom: 8px; }
+
+    .fc-card-badge {
+      display: inline-block; font-size: 9px; letter-spacing: 0.5px;
+      padding: 2px 7px; border-radius: 10px; text-transform: uppercase;
+    }
+    .badge-ready { background: rgba(99,153,34,0.20); color: #97C459; border: 0.5px solid rgba(99,153,34,0.35); }
+    .badge-soon  { background: rgba(186,117,23,0.20); color: #EF9F27; border: 0.5px solid rgba(186,117,23,0.35); }
+    .badge-pro   { background: rgba(83,74,183,0.25);  color: #AFA9EC; border: 0.5px solid rgba(83,74,183,0.35); }
+
+    /* ── feature strip ── */
+    .fc-bottom { display: flex; gap: 10px; }
+
+    .fc-feature-card {
+      flex: 1; border-radius: 8px;
+      border: 0.5px solid rgba(133,183,235,0.15);
+      background: rgba(13,27,42,0.65);
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .fc-feature-icon {
+      width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    }
+    .fc-feature-label { font-size: 11px; color: #85B7EB; line-height: 1.4; }
+    .fc-feature-label strong { display: block; color: #B5D4F4; font-weight: 500; font-size: 12px; }
+
+    /* ── toast ── */
+    .fc-toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18,32,48,0.96);
+      color: #85B7EB;
+      border: 0.5px solid rgba(55,138,221,0.40);
+      padding: 10px 22px; border-radius: 8px;
+      font-size: 13px; z-index: 9999;
+      transition: opacity 0.4s; white-space: nowrap;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="fc-grid-lines"></div>
+
+  <!-- Decorative cross-section silhouette -->
+  <svg class="fc-cross-section" viewBox="0 0 680 160" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0"   y="120" width="680" height="40" fill="#1a2a3a" opacity="0.9"/>
+    <rect x="0"   y="118" width="680" height="4"  fill="#185FA5" opacity="0.4"/>
+    <rect x="60"  y="80"  width="40"  height="44" fill="#0D1B2A" stroke="#185FA5" stroke-width="0.8" opacity="0.8"/>
+    <rect x="48"  y="108" width="64"  height="14" fill="#142233" stroke="#378ADD" stroke-width="0.6" opacity="0.85"/>
+    <rect x="180" y="88"  width="30"  height="34" fill="#0D1B2A" stroke="#185FA5" stroke-width="0.8" opacity="0.7"/>
+    <rect x="168" y="110" width="54"  height="12" fill="#142233" stroke="#378ADD" stroke-width="0.6" opacity="0.75"/>
+    <rect x="310" y="72"  width="50"  height="50" fill="#0D1B2A" stroke="#185FA5" stroke-width="1.0" opacity="0.9"/>
+    <rect x="295" y="106" width="80"  height="16" fill="#142233" stroke="#378ADD" stroke-width="0.8" opacity="0.9"/>
+    <rect x="460" y="85"  width="35"  height="37" fill="#0D1B2A" stroke="#185FA5" stroke-width="0.8" opacity="0.75"/>
+    <rect x="448" y="110" width="59"  height="12" fill="#142233" stroke="#378ADD" stroke-width="0.6" opacity="0.8"/>
+    <rect x="580" y="92"  width="28"  height="30" fill="#0D1B2A" stroke="#185FA5" stroke-width="0.7" opacity="0.7"/>
+    <rect x="570" y="112" width="48"  height="10" fill="#142233" stroke="#378ADD" stroke-width="0.5" opacity="0.75"/>
+    <line x1="80"  y1="120" x2="80"  y2="155" stroke="#378ADD" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.4"/>
+    <line x1="195" y1="120" x2="195" y2="155" stroke="#378ADD" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.4"/>
+    <line x1="335" y1="122" x2="335" y2="155" stroke="#378ADD" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>
+    <line x1="478" y1="120" x2="478" y2="155" stroke="#378ADD" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.4"/>
+    <line x1="594" y1="120" x2="594" y2="155" stroke="#378ADD" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.35"/>
+    <line x1="0"   y1="122" x2="680" y2="122" stroke="#85B7EB" stroke-width="0.5"             opacity="0.2"/>
+  </svg>
+
+  <div class="fc-overlay"></div>
+
+  <div class="fc-wrap">
+
+    <!-- Top bar -->
+    <div class="fc-topbar">
+      <div class="fc-logo">
+        <div class="fc-logo-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="12" width="16" height="7" rx="1" fill="#85B7EB"/>
+            <rect x="7" y="5"  width="8"  height="9" rx="1" fill="#B5D4F4"/>
+            <rect x="1" y="17" width="20" height="3" rx="1" fill="#378ADD"/>
+          </svg>
+        </div>
+        <div>
+          <div class="fc-logo-text">FundaCalc</div>
+          <div class="fc-logo-sub">Diseño de Cimentaciones</div>
+        </div>
+      </div>
+      <div class="fc-nav">
+        <a href="#" onclick="return false">Proyectos</a>
+        <a href="#" onclick="return false">Normas</a>
+        <a href="#" onclick="return false">Manual</a>
+        <a class="active" href="/zapata">Nuevo cálculo</a>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="fc-hero">
+      <div class="fc-hero-tag">Software de ingeniería estructural</div>
+      <h1>Diseño y verificación<br>de cimentaciones</h1>
+      <p>Cálculo estructural según ACI 318, CIRSOC 201, NCh 170, NSR-10, NTE E.060, NTC-CDMX y EHE-08.
+         Memoria de cálculo, detallado de acero y exportación CAD.</p>
+    </div>
+
+    <!-- Section label -->
+    <div class="fc-section-label">Módulos de cálculo disponibles</div>
+
+    <!-- Cards -->
+    <div class="fc-grid">
+
+      <!-- 1 — Zapata aislada (ACTIVO) -->
+      <div class="fc-card featured" onclick="window.location.href='/zapata'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="62" y="8"  width="36" height="30" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="48" y="38" width="64" height="18" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <line x1="56"  y1="56" x2="56"  y2="74" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="104" y1="56" x2="104" y2="74" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="80"  y1="56" x2="80"  y2="74" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <rect x="44" y="74" width="72" height="6" fill="#185FA5" opacity="0.5"/>
+            <text x="80" y="22" text-anchor="middle" font-size="7" fill="#85B7EB">columna</text>
+            <text x="80" y="50" text-anchor="middle" font-size="7" fill="#85B7EB">zapata</text>
+            <line x1="48" y1="44" x2="112" y2="44" stroke="#378ADD" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.5"/>
+            <rect x="52" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+            <rect x="60" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+            <rect x="68" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+            <rect x="88" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+            <rect x="96" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+            <rect x="104" y="40" width="4" height="14" fill="#378ADD" opacity="0.4"/>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Zapata aislada</div>
+          <div class="fc-card-desc">Cuadrada · rectangular · con momentos</div>
+          <span class="fc-card-badge badge-ready">Módulo 1 — activo</span>
+        </div>
+      </div>
+
+      <!-- 2 — Zapata combinada -->
+      <div class="fc-card" onclick="window.location.href='/zapata-combinada'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="28"  y="10" width="28" height="26" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="104" y="10" width="28" height="26" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="22"  y="36" width="116" height="16" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <line x1="42"  y1="52" x2="42"  y2="74" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="118" y1="52" x2="118" y2="74" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <rect x="18" y="74" width="124" height="5" fill="#185FA5" opacity="0.5"/>
+            <text x="42"  y="26" text-anchor="middle" font-size="6" fill="#85B7EB">col 1</text>
+            <text x="118" y="26" text-anchor="middle" font-size="6" fill="#85B7EB">col 2</text>
+            <line x1="28" y1="44" x2="138" y2="44" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Zapata combinada</div>
+          <div class="fc-card-desc">Dos columnas · presión uniforme</div>
+          <span class="fc-card-badge badge-ready">Módulo 2 — activo</span>
+        </div>
+      </div>
+
+      <!-- 3 — Zapata corrida -->
+      <div class="fc-card" onclick="window.location.href='/zapata-corrida'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="8" y="10"  width="144" height="22" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="8" y="32"  width="144" height="14" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <line x1="24"  y1="46" x2="24"  y2="68" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="56"  y1="46" x2="56"  y2="68" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="88"  y1="46" x2="88"  y2="68" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <line x1="120" y1="46" x2="120" y2="68" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <rect x="4" y="68" width="152" height="6" fill="#185FA5" opacity="0.5"/>
+            <text x="80" y="23" text-anchor="middle" font-size="6" fill="#85B7EB">muro portante</text>
+            <text x="80" y="42" text-anchor="middle" font-size="6" fill="#85B7EB">cimiento corrido</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Zapata corrida</div>
+          <div class="fc-card-desc">Bajo muro · carga lineal [kN/m]</div>
+          <span class="fc-card-badge badge-ready">Módulo 3 — activo</span>
+        </div>
+      </div>
+
+      <!-- 4 — Losa de fundación -->
+      <div class="fc-card" onclick="window.location.href='/losa-fundacion'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="12" y="32" width="136" height="16" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <rect x="28" y="10" width="14" height="24" fill="none" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="58" y="8"  width="14" height="26" fill="none" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="88" y="12" width="14" height="22" fill="none" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="118" y="9" width="14" height="25" fill="none" stroke="#378ADD" stroke-width="0.8"/>
+            <line x1="12" y1="38" x2="148" y2="38" stroke="#378ADD" stroke-width="0.4" opacity="0.5"/>
+            <line x1="20" y1="32" x2="20"  y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="36" y1="32" x2="36"  y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="52" y1="32" x2="52"  y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="68" y1="32" x2="68"  y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="84" y1="32" x2="84"  y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="100" y1="32" x2="100" y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="116" y1="32" x2="116" y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <line x1="132" y1="32" x2="132" y2="48" stroke="#378ADD" stroke-width="0.5" opacity="0.4"/>
+            <rect x="8" y="68" width="144" height="6" fill="#185FA5" opacity="0.5"/>
+            <text x="80" y="42" text-anchor="middle" font-size="6" fill="#85B7EB">losa flotante / mat</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Losa de fundación</div>
+          <div class="fc-card-desc">Mat foundation · 3 modos · ACI strip method · 4 capas armadura</div>
+          <span class="fc-card-badge badge-ready">Módulo 4 — activo</span>
+        </div>
+      </div>
+
+      <!-- 5 — Zapata excéntrica -->
+      <div class="fc-card" onclick="window.location.href='/modulo5'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="50" y="8"  width="28" height="26" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="30" y="34" width="80" height="16" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <path d="M64 34 L40 50" stroke="#EF9F27" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.7"/>
+            <path d="M90 34 L100 50" stroke="#EF9F27" stroke-width="0.8" stroke-dasharray="2,2" opacity="0.7"/>
+            <line x1="64" y1="50" x2="64" y2="70" stroke="#185FA5" stroke-width="0.7" stroke-dasharray="2,2"/>
+            <rect x="26" y="70" width="108" height="5" fill="#185FA5" opacity="0.5"/>
+            <text x="80" y="24" text-anchor="middle" font-size="6" fill="#EF9F27">excentricidad</text>
+            <text x="80" y="44" text-anchor="middle" font-size="6" fill="#85B7EB">presión trapezoidal</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Zapata excéntrica</div>
+          <div class="fc-card-desc">Con momento · presión variable</div>
+          <span class="fc-card-badge badge-ready">Módulo 5 — activo</span>
+        </div>
+      </div>
+
+      <!-- 6 — Pilotes -->
+      <div class="fc-card" onclick="window.location.href='/pilotes'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="56" y="6"  width="48" height="18" fill="none"    stroke="#378ADD" stroke-width="1"/>
+            <rect x="54" y="24" width="52" height="10" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <rect x="66" y="34" width="8"  height="38" fill="#142233" stroke="#185FA5" stroke-width="0.8"/>
+            <rect x="82" y="34" width="8"  height="38" fill="#142233" stroke="#185FA5" stroke-width="0.8"/>
+            <rect x="98" y="34" width="8"  height="38" fill="#142233" stroke="#185FA5" stroke-width="0.8"/>
+            <ellipse cx="70"  cy="72" rx="4" ry="2" fill="#378ADD" opacity="0.5"/>
+            <ellipse cx="86"  cy="72" rx="4" ry="2" fill="#378ADD" opacity="0.5"/>
+            <ellipse cx="102" cy="72" rx="4" ry="2" fill="#378ADD" opacity="0.5"/>
+            <text x="80" y="16" text-anchor="middle" font-size="6" fill="#85B7EB">encepado</text>
+            <text x="80" y="31" text-anchor="middle" font-size="6" fill="#85B7EB">cabeza pilote</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Pilotes y encepados</div>
+          <div class="fc-card-desc">Grilla nx×ny · pilotes circulares · ACI 318 · punzonado + cortante</div>
+          <span class="fc-card-badge badge-ready">Módulo 6 — activo</span>
+        </div>
+      </div>
+
+      <!-- 7 — Viga de fundación -->
+      <div class="fc-card" onclick="window.location='/viga'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="18"  y="10" width="20" height="22" fill="none"    stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="70"  y="10" width="20" height="22" fill="none"    stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="122" y="10" width="20" height="22" fill="none"    stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="10"  y="32" width="140" height="12" fill="#142233" stroke="#378ADD" stroke-width="1"/>
+            <rect x="18"  y="44" width="8"  height="20" fill="#142233" stroke="#185FA5" stroke-width="0.7"/>
+            <rect x="76"  y="44" width="8"  height="20" fill="#142233" stroke="#185FA5" stroke-width="0.7"/>
+            <rect x="134" y="44" width="8"  height="20" fill="#142233" stroke="#185FA5" stroke-width="0.7"/>
+            <line x1="10" y1="65" x2="150" y2="65" stroke="#185FA5" stroke-width="0.5" stroke-dasharray="3,2" opacity="0.4"/>
+            <text x="80" y="41" text-anchor="middle" font-size="6" fill="#85B7EB">viga de fundación</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Viga de fundación</div>
+          <div class="fc-card-desc">Viga corrida · suelo elástico</div>
+          <span class="fc-card-badge badge-ready">Módulo 7 — activo</span>
+        </div>
+      </div>
+
+      <!-- 8 — Capacidad portante -->
+      <div class="fc-card" onclick="window.location='/capacidad'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <rect x="10" y="56" width="140" height="6"  fill="#142233" stroke="#378ADD" stroke-width="0.5"/>
+            <rect x="10" y="44" width="140" height="12" fill="#0f1f30" stroke="#185FA5" stroke-width="0.5"/>
+            <rect x="10" y="32" width="140" height="12" fill="#0a1929" stroke="#185FA5" stroke-width="0.5"/>
+            <rect x="10" y="22" width="140" height="10" fill="#091622" stroke="#185FA5" stroke-width="0.5"/>
+            <text x="80" y="53" text-anchor="middle" font-size="5.5" fill="#85B7EB">Estrato 3 — arcilla blanda</text>
+            <text x="80" y="43" text-anchor="middle" font-size="5.5" fill="#85B7EB">Estrato 2 — arena media</text>
+            <text x="80" y="31" text-anchor="middle" font-size="5.5" fill="#85B7EB">Estrato 1 — grava compacta</text>
+            <line x1="26" y1="62" x2="26" y2="78" stroke="#EF9F27" stroke-width="1.5"/>
+            <polygon points="22,78 30,78 26,82" fill="#EF9F27" opacity="0.8"/>
+            <text x="36" y="73" font-size="5.5" fill="#EF9F27">SPT · Terzaghi · Meyerhof</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Capacidad portante</div>
+          <div class="fc-card-desc">Terzaghi · Meyerhof · Hansen · SPT · nivel freático</div>
+          <span class="fc-card-badge badge-ready">Módulo 8 — activo</span>
+        </div>
+      </div>
+
+      <!-- 9 — Muros de contención (HUB) -->
+      <div class="fc-card" onclick="window.location='/muros'">
+        <div class="fc-card-img">
+          <svg width="100%" height="82" viewBox="0 0 160 82" xmlns="http://www.w3.org/2000/svg">
+            <rect width="160" height="82" fill="#0a1929"/>
+            <line x1="80" y1="5" x2="80" y2="75" stroke="#185FA5" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.4"/>
+            <!-- Muro en voladizo (izq) -->
+            <rect x="8"  y="58" width="44" height="8"  fill="#142233" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="34" y="14" width="8"  height="44" fill="#142233" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="42" y="14" width="8"  height="44" fill="#1F3A1A" opacity="0.65"/>
+            <line x1="48" y1="24" x2="43" y2="24" stroke="#EF9F27" stroke-width="0.8"/>
+            <polygon points="43,22 43,26 40,24" fill="#EF9F27"/>
+            <line x1="48" y1="36" x2="43" y2="36" stroke="#EF9F27" stroke-width="1.0"/>
+            <polygon points="43,34 43,38 40,36" fill="#EF9F27"/>
+            <line x1="48" y1="50" x2="43" y2="50" stroke="#EF9F27" stroke-width="1.2"/>
+            <polygon points="43,48 43,52 40,50" fill="#EF9F27"/>
+            <text x="28" y="10" text-anchor="middle" font-size="5" fill="#85B7EB">voladizo</text>
+            <!-- Muro de gravedad (der) -->
+            <polygon points="95,14 112,14 118,58 89,58" fill="#142233" stroke="#378ADD" stroke-width="0.8"/>
+            <rect x="87" y="58" width="38" height="8" fill="#142233" stroke="#378ADD" stroke-width="0.5"/>
+            <rect x="118" y="14" width="9"  height="44" fill="#1F3A1A" opacity="0.65"/>
+            <line x1="125" y1="24" x2="120" y2="24" stroke="#EF9F27" stroke-width="0.8"/>
+            <polygon points="120,22 120,26 117,24" fill="#EF9F27"/>
+            <line x1="125" y1="36" x2="120" y2="36" stroke="#EF9F27" stroke-width="1.0"/>
+            <polygon points="120,34 120,38 117,36" fill="#EF9F27"/>
+            <line x1="125" y1="50" x2="120" y2="50" stroke="#EF9F27" stroke-width="1.2"/>
+            <polygon points="120,48 120,52 117,50" fill="#EF9F27"/>
+            <text x="106" y="10" text-anchor="middle" font-size="5" fill="#85B7EB">gravedad</text>
+            <rect x="4" y="68" width="152" height="5" fill="#185FA5" opacity="0.3"/>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">Muros de contención</div>
+          <div class="fc-card-desc">Voladizo · gravedad · gaviones · contrafuertes · sótano</div>
+          <span class="fc-card-badge badge-ready">Módulo 9 — activo</span>
+        </div>
+      </div>
+
+    </div><!-- /fc-grid -->
+
+    <!-- Feature strip -->
+    <div class="fc-bottom">
+      <div class="fc-feature-card">
+        <div class="fc-feature-icon" style="background:rgba(24,95,165,0.25)">
+          <i class="ti ti-file-text" style="color:#85B7EB; font-size:16px"></i>
+        </div>
+        <div class="fc-feature-label">
+          <strong>Memoria de cálculo PDF</strong>
+          Portada · resultados · tabla de acero · plano
+        </div>
+      </div>
+      <div class="fc-feature-card">
+        <div class="fc-feature-icon" style="background:rgba(99,153,34,0.2)">
+          <i class="ti ti-vector-triangle" style="color:#97C459; font-size:16px"></i>
+        </div>
+        <div class="fc-feature-label">
+          <strong>Exportación DXF / CAD</strong>
+          AutoCAD · LibreCAD · capas organizadas
+        </div>
+      </div>
+      <div class="fc-feature-card">
+        <div class="fc-feature-icon" style="background:rgba(83,74,183,0.2)">
+          <i class="ti ti-world" style="color:#AFA9EC; font-size:16px"></i>
+        </div>
+        <div class="fc-feature-label">
+          <strong>7 normas disponibles</strong>
+          ACI · CIRSOC · NCh · NSR-10 · NTE · NTC · EHE
+        </div>
+      </div>
+      <div class="fc-feature-card">
+        <div class="fc-feature-icon" style="background:rgba(186,117,23,0.2)">
+          <i class="ti ti-chart-bar" style="color:#EF9F27; font-size:16px"></i>
+        </div>
+        <div class="fc-feature-label">
+          <strong>Detallado de acero</strong>
+          Varillas · separaciones · ganchos · dowels
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /fc-wrap -->
+
+  <script>
+    function showComingSoon(mod) {
+      const existing = document.querySelector('.fc-toast');
+      if (existing) existing.remove();
+      const t = document.createElement('div');
+      t.className = 'fc-toast';
+      t.textContent = mod + ' en desarrollo — disponible próximamente';
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; }, 2200);
+      setTimeout(() => { if (t.parentNode) t.remove(); }, 2700);
+    }
+  </script>
+
+</body>
+</html>

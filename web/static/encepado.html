@@ -1,0 +1,672 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>FundaCalc — Encepado de Pilotes</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    @keyframes calcPulse{0%,100%{opacity:1}50%{opacity:0.55}}
+    .loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,0.88);
+      align-items:center;justify-content:center;z-index:20;border-radius:4px;
+      overflow:hidden;flex-direction:column;gap:10px;}
+    .loading-overlay.active{display:flex;}
+    .loading-overlay::before{content:'';position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(25,118,210,0.12),transparent);
+      animation:shimmer 1.4s ease-in-out infinite;}
+    .calc-btn-loading{animation:calcPulse 1.1s ease-in-out infinite;}
+
+    #fc-topbar{background-color:#0D1B2A;
+      background-image:linear-gradient(rgba(55,138,221,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(55,138,221,0.07) 1px,transparent 1px);
+      background-size:40px 40px;padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;}
+    .fc-tb-icon{width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#1565C0,#378ADD);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-tb-texts{flex:1;}
+    .fc-tb-title{color:#fff;font-size:14px;font-weight:700;line-height:1.2;}
+    .fc-tb-sub{color:#85B7EB;font-size:11px;}
+    .fc-tb-back{color:#85B7EB;font-size:12px;text-decoration:none;
+      border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap;}
+    .fc-tb-back:hover{background:rgba(133,183,235,0.12);color:#fff;}
+
+    .res-table td:first-child{color:#555;font-size:12px;width:55%;}
+    .res-table td:last-child{font-size:12px;font-weight:600;text-align:right;}
+    .chk-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .chk-ok  {background:#E8F5E9;color:#2e7d32;border:1px solid #A5D6A7;}
+    .chk-fail{background:#FFEBEE;color:#c62828;border:1px solid #EF9A9A;}
+    .chk-warn{background:#FFF3E0;color:#e65100;border:1px solid #FFCC80;}
+    .sec-heading{font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+      color:#1565c0;border-bottom:1.5px solid #1565c0;padding-bottom:3px;margin-bottom:8px;}
+    .plot-placeholder{min-height:120px;display:flex;align-items:center;justify-content:center;
+      color:#bbb;font-size:13px;border:1px dashed #ddd;border-radius:6px;}
+    .msg-ok   {color:#2e7d32;}
+    .msg-error{color:#c62828;font-weight:600;}
+    .msg-warn {color:#e65100;}
+    .msg-info {color:#555;}
+    .msg-item {font-size:12px;padding:2px 0;border-bottom:1px solid #f5f5f5;}
+    .mode-info{background:#EEF5FF;border:1px solid #BBDEFB;border-radius:8px;
+      padding:10px 14px;font-size:12px;color:#1565C0;margin-bottom:12px;}
+    .pile-table th{font-size:11px;color:#555;font-weight:600;}
+    .pile-table td{font-size:11px;}
+    .pile-ok  {color:#2e7d32;font-weight:600;}
+    .pile-warn{color:#e65100;font-weight:600;}
+    .pile-fail{color:#c62828;font-weight:600;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <!-- pile cap -->
+        <rect x="1" y="7" width="18" height="5" rx="1" fill="#85B7EB"/>
+        <!-- piles -->
+        <rect x="3"  y="12" width="3" height="7" rx="0.5" fill="#B5D4F4" opacity="0.8"/>
+        <rect x="8.5" y="12" width="3" height="7" rx="0.5" fill="#B5D4F4" opacity="0.8"/>
+        <rect x="14" y="12" width="3" height="7" rx="0.5" fill="#B5D4F4" opacity="0.8"/>
+        <!-- column -->
+        <rect x="7" y="1" width="6" height="7" rx="0.5" fill="#90A4AE"/>
+        <line x1="1" y1="12" x2="19" y2="12" stroke="#F9A825" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="fc-tb-texts">
+      <div class="fc-tb-title">FundaCalc</div>
+      <div class="fc-tb-sub">Módulo 6 — Encepado de Pilotes</div>
+    </div>
+    <a class="fc-tb-back" href="/pilotes">&#8592; Pilotes</a>
+    <div class="btn-group ms-2">
+      <button id="topCalcular" class="btn btn-primary btn-sm" onclick="calcular()">&#9654; Calcular</button>
+      <button id="btnPDF" class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" disabled>&#8659; Exportar PDF</button>
+      <button id="btnDXF" class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" disabled>&#8659; Exportar DXF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ═══ ENTRADAS ═══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-4">
+
+      <!-- Cargas -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Cargas en columna</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>D</sub> [kN]</label>
+              <input type="number" id="Pd" class="form-control form-control-sm" value="800">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">P<sub>L</sub> [kN]</label>
+              <input type="number" id="Pl" class="form-control form-control-sm" value="400">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Dx</sub> [kN·m]</label>
+              <input type="number" id="Mdx" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Lx</sub> [kN·m]</label>
+              <input type="number" id="Mlx" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Dy</sub> [kN·m]</label>
+              <input type="number" id="Mdy" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">M<sub>Ly</sub> [kN·m]</label>
+              <input type="number" id="Mly" class="form-control form-control-sm" value="0">
+            </div>
+          </div>
+          <div class="sec-heading">Sección de columna</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">c<sub>x</sub> [m]</label>
+              <input type="number" id="cx" class="form-control form-control-sm" value="0.40" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">c<sub>y</sub> [m]</label>
+              <input type="number" id="cy" class="form-control form-control-sm" value="0.40" step="0.05">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pilote -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Pilote</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Diámetro D [m]</label>
+              <input type="number" id="D_pil" class="form-control form-control-sm" value="0.40" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">Q<sub>adm</sub> por pilote [kN]</label>
+              <input type="number" id="Qa_pil" class="form-control form-control-sm" value="400">
+            </div>
+          </div>
+
+          <div class="sec-heading">Modo de dimensionado</div>
+          <div class="btn-group w-100 mb-2" role="group">
+            <input type="radio" class="btn-check" name="modoPil" id="modoAuto" value="auto" checked onchange="onModoChange()">
+            <label class="btn btn-outline-primary btn-sm" for="modoAuto">Automático</label>
+            <input type="radio" class="btn-check" name="modoPil" id="modoManual" value="manual" onchange="onModoChange()">
+            <label class="btn btn-outline-primary btn-sm" for="modoManual">Manual</label>
+          </div>
+
+          <!-- Panel auto -->
+          <div id="panelAuto">
+            <div class="mode-info">El software calcula el número óptimo de pilotes y la grilla nx×ny más cuadrada.</div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label mb-1 small">Separación [m] (0=3×D)</label>
+                <input type="number" id="aSx" class="form-control form-control-sm" value="0" step="0.1">
+              </div>
+              <div class="col-6">
+                <label class="form-label mb-1 small">Vuelo [m] (0=1×D)</label>
+                <input type="number" id="aVx" class="form-control form-control-sm" value="0" step="0.05">
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel manual -->
+          <div id="panelManual" style="display:none">
+            <div class="mode-info">Ingresa la configuración exacta de pilotes.</div>
+            <div class="row g-2 mb-2">
+              <div class="col-3">
+                <label class="form-label mb-1 small">n<sub>x</sub></label>
+                <input type="number" id="mNx" class="form-control form-control-sm" value="2" min="1">
+              </div>
+              <div class="col-3">
+                <label class="form-label mb-1 small">n<sub>y</sub></label>
+                <input type="number" id="mNy" class="form-control form-control-sm" value="2" min="1">
+              </div>
+              <div class="col-3">
+                <label class="form-label mb-1 small">s<sub>x</sub> [m]</label>
+                <input type="number" id="mSx" class="form-control form-control-sm" value="1.20" step="0.1">
+              </div>
+              <div class="col-3">
+                <label class="form-label mb-1 small">s<sub>y</sub> [m]</label>
+                <input type="number" id="mSy" class="form-control form-control-sm" value="1.20" step="0.1">
+              </div>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label mb-1 small">Vuelo X [m]</label>
+                <input type="number" id="mVx" class="form-control form-control-sm" value="0.40" step="0.05">
+              </div>
+              <div class="col-6">
+                <label class="form-label mb-1 small">Vuelo Y [m]</label>
+                <input type="number" id="mVy" class="form-control form-control-sm" value="0.40" step="0.05">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Encepado y materiales -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Encepado</div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">h inicial [m]</label>
+              <input type="number" id="h" class="form-control form-control-sm" value="0.60" step="0.05">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-1 small">Recubrimiento [m]</label>
+              <input type="number" id="recub" class="form-control form-control-sm" value="0.075" step="0.005">
+            </div>
+          </div>
+          <div class="sec-heading">Materiales</div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label mb-1 small">f'c [MPa]</label>
+              <input type="number" id="fck" class="form-control form-control-sm" value="25">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">f<sub>y</sub> [MPa]</label>
+              <input type="number" id="fy" class="form-control form-control-sm" value="420">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-1 small">Norma</label>
+              <select id="norma" class="form-select form-select-sm">
+                <option value="ACI318" selected>ACI 318</option>
+                <option value="CIRSOC201">CIRSOC 201</option>
+                <option value="NCH170">NCh 170</option>
+                <option value="NSR10">NSR-10</option>
+                <option value="NTE_E060">NTE E.060</option>
+                <option value="NTC_CDMX">NTC CDMX</option>
+                <option value="EHE08">EHE-08</option>
+                <option value="COVENIN1753">COVENIN 1753</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-1 small">Varilla preferida</label>
+              <select id="varillaPref" class="form-select form-select-sm">
+                <option value="">Auto</option>
+                <option value="Ø10mm">Ø10mm</option>
+                <option value="Ø12mm">Ø12mm</option>
+                <option value="Ø16mm">Ø16mm</option>
+                <option value="Ø20mm">Ø20mm</option>
+                <option value="Ø25mm">Ø25mm</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mb-3 d-lg-none" onclick="calcular()">Calcular</button>
+    </div>
+
+    <!-- ═══ RESULTADOS ══════════════════════════════════════════════════════════ -->
+    <div class="col-lg-8">
+
+      <div id="resCard" class="card shadow-sm mb-3" style="display:none;position:relative;">
+        <div class="loading-overlay" id="overlayRes">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Calculando…</span>
+        </div>
+        <div class="card-body py-2 px-3">
+
+          <!-- Badges -->
+          <div class="d-flex flex-wrap gap-2 mb-3" id="checkBadges"></div>
+
+          <div class="row g-2 mb-3">
+            <!-- Geometría -->
+            <div class="col-md-4">
+              <div class="sec-heading">Geometría del encepado</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblGeometria"></tbody>
+              </table>
+            </div>
+            <!-- Cargas por pilote -->
+            <div class="col-md-4">
+              <div class="sec-heading">Carga geotécnica</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblGeo"></tbody>
+              </table>
+            </div>
+            <!-- Verificaciones estructurales -->
+            <div class="col-md-4">
+              <div class="sec-heading">Verificaciones</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblVer"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabla de pilotes -->
+          <div class="sec-heading">Carga por pilote [kN] — servicio / última</div>
+          <div style="max-height:180px;overflow-y:auto;margin-bottom:12px;">
+            <table class="table table-sm table-hover pile-table mb-0" id="tblPilotes">
+              <thead><tr>
+                <th>#</th><th>x [m]</th><th>y [m]</th>
+                <th class="text-end">P serv.</th><th class="text-end">P ult.</th><th class="text-end">% Qa</th>
+              </tr></thead>
+              <tbody id="tbodyPilotes"></tbody>
+            </table>
+          </div>
+
+          <!-- Momentos + armadura -->
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <div class="sec-heading">Momentos de diseño [kN·m]</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblMomentos"></tbody>
+              </table>
+            </div>
+            <div class="col-md-6">
+              <div class="sec-heading">Armadura inferior</div>
+              <table class="table table-sm res-table mb-0">
+                <tbody id="tblArmadura"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Mensajes -->
+          <div class="sec-heading">Mensajes</div>
+          <div id="mensajes" style="max-height:130px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Diagrama -->
+      <div class="card shadow-sm" style="position:relative;">
+        <div class="loading-overlay" id="overlayPlot">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+          <span style="font-size:13px;color:#1565c0;">Generando diagrama…</span>
+        </div>
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Vista en Planta &amp; Sección Transversal</div>
+          <div id="plotBox">
+            <div class="plot-placeholder">Ejecute el cálculo para ver el diagrama</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Glosario + Alcance -->
+      <div class="card shadow-sm mt-3">
+        <div class="card-header py-2 px-3" style="cursor:pointer;background:#EEF5FF;border-color:#BBDEFB;"
+             data-bs-toggle="collapse" data-bs-target="#glosarioEncBody">
+          <span style="font-size:12px;font-weight:700;color:#1565C0;letter-spacing:0.5px;">
+            📖 Glosario &amp; Alcance — Encepado de Pilotes
+          </span>
+          <span class="float-end" style="font-size:11px;color:#1565C0;">▼</span>
+        </div>
+        <div id="glosarioEncBody" class="collapse">
+          <div class="card-body py-2 px-3" style="font-size:12px;line-height:1.65;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="sec-heading">Geometría y pilotes</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>L, B</b></td><td>Largo y ancho del encepado en planta [m]</td></tr>
+                    <tr><td><b>h</b></td><td>Altura total del encepado [m]</td></tr>
+                    <tr><td><b>d</b></td><td>Canto útil = h − recubrimiento − db/2 [m]</td></tr>
+                    <tr><td><b>D</b></td><td>Diámetro del pilote [m]</td></tr>
+                    <tr><td><b>Qa</b></td><td>Carga admisible de servicio por pilote [kN] — dato geotécnico</td></tr>
+                    <tr><td><b>sx / sy</b></td><td>Separación entre ejes de pilotes en X e Y [m]. Mínimo recomendado: 3·D</td></tr>
+                    <tr><td><b>vx / vy</b></td><td>Vuelo del encepado más allá del pilote extremo [m]. Mínimo: D</td></tr>
+                    <tr><td><b>nx × ny</b></td><td>Número de pilotes en dirección X e Y. En modo auto se elige la grilla más cuadrada posible</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">Cargas y distribución</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>P_max / P_min</b></td><td>Carga máx y mín de servicio por pilote = P/n ± M·x/Σx² [kN]</td></tr>
+                    <tr><td><b>P_max_u</b></td><td>Carga última máxima por pilote (para verificaciones estructurales)</td></tr>
+                    <tr><td><b>Ratio P_max/Qa</b></td><td>Nivel de aprovechamiento geotécnico. Debe ser ≤ 100%</td></tr>
+                    <tr><td><b>Mu_x / Mu_y</b></td><td>Momento total de diseño en cara de columna [kN·m], calculado como suma de fuerzas de pilotes × brazo</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-md-6">
+                <div class="sec-heading">Verificaciones estructurales (ACI 318)</div>
+                <table class="table table-sm" style="font-size:12px;">
+                  <tbody>
+                    <tr><td><b>Cortante X / Y</b></td><td>Cortante unidireccional en sección crítica a d de cara de columna. φVc = φ·0.17·√f'c·b·d</td></tr>
+                    <tr><td><b>Punzonado columna</b></td><td>Cortante bidireccional en perímetro b₀ a d/2 de la columna. φVc = φ·0.33·√f'c·b₀·d</td></tr>
+                    <tr><td><b>Punzonado pilote</b></td><td>Cortante bidireccional en perímetro circular a d/2 del pilote. Verifica que el pilote no perfore el encepado</td></tr>
+                    <tr><td><b>Sin tracción</b></td><td>P_min ≥ 0 en todos los pilotes (no hay levantamiento)</td></tr>
+                    <tr><td><b>As_min</b></td><td>Armado mínimo = 0.0018·b·h [cm²/m] por temperatura y retracción</td></tr>
+                  </tbody>
+                </table>
+                <div class="sec-heading mt-2">⚠ Alcance del módulo</div>
+                <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:10px 12px;font-size:11.5px;color:#5D4037;line-height:1.7;">
+                  <b>Este módulo calcula el cabezal (encepado) solamente.</b><br>
+                  <b>No calcula los pilotes individuales.</b> El diseño del pilote — profundidad, refuerzo longitudinal, espirales de confinamiento, dowels de empotramiento, capacidad por fricción lateral vs. punta y efectos de grupo — es determinado por el ingeniero geotecnista a partir del estudio de suelos.<br><br>
+                  El valor <b>Qa</b> (carga admisible por pilote) se ingresa como dato externo proveniente del informe geotécnico.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Modo ──────────────────────────────────────────────────────────────────────
+function getModo() {
+  return document.querySelector('input[name="modoPil"]:checked').value;
+}
+function onModoChange() {
+  const m = getModo();
+  document.getElementById('panelAuto').style.display   = m === 'auto'   ? '' : 'none';
+  document.getElementById('panelManual').style.display = m === 'manual' ? '' : 'none';
+}
+
+// ── Payload ───────────────────────────────────────────────────────────────────
+function getPayload() {
+  const modo = getModo();
+  const pay = {
+    Pd: +v('Pd'), Pl: +v('Pl'),
+    Mdx: +v('Mdx'), Mlx: +v('Mlx'),
+    Mdy: +v('Mdy'), Mly: +v('Mly'),
+    cx: +v('cx'), cy: +v('cy'),
+    D_pil: +v('D_pil'), Qa_pil: +v('Qa_pil'),
+    modo_pil: modo,
+    h: +v('h'), recubrimiento: +v('recub'),
+    fck: +v('fck'), fy: +v('fy'),
+    norma: v('norma'), varilla_pref: v('varillaPref'),
+    unidades: 'kN_kN/m2',
+  };
+  if (modo === 'auto') {
+    pay.spacing_x = +v('aSx'); pay.spacing_y = +v('aSx');
+    pay.vuelo_x   = +v('aVx'); pay.vuelo_y   = +v('aVx');
+  } else {
+    pay.nx = +v('mNx'); pay.ny = +v('mNy');
+    pay.spacing_x = +v('mSx'); pay.spacing_y = +v('mSy');
+    pay.vuelo_x   = +v('mVx'); pay.vuelo_y   = +v('mVy');
+  }
+  return pay;
+}
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const n1 = x => (x == null ? '—' : (+x).toFixed(1));
+const n2 = x => (x == null ? '—' : (+x).toFixed(2));
+const n0 = x => (x == null ? '—' : (+x).toFixed(0));
+function badge(ok, label) {
+  return `<span class="chk-badge ${ok?'chk-ok':'chk-fail'}">${ok?'✔':'✘'} ${label}</span>`;
+}
+function tr(label, val) { return `<tr><td>${label}</td><td>${val}</td></tr>`; }
+
+// ── Calcular ──────────────────────────────────────────────────────────────────
+let lastPayload = null;
+
+async function calcular() {
+  const payload = getPayload();
+  lastPayload = payload;
+
+  document.getElementById('resCard').style.display = '';
+  document.getElementById('overlayRes').classList.add('active');
+  document.getElementById('overlayPlot').classList.add('active');
+  document.getElementById('topCalcular').classList.add('calc-btn-loading');
+  document.getElementById('plotBox').innerHTML =
+    '<div style="min-height:120px;display:flex;align-items:center;justify-content:center;gap:8px;color:#1565c0;font-size:13px;"><div class="spinner-border spinner-border-sm text-primary"></div> Calculando…</div>';
+
+  try {
+    const resp = await fetch('/api/encepado/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) { alert(data.error || 'Error en el servidor'); return; }
+    renderResultados(data, payload.Qa_pil);
+    document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
+    actualizarPlot(payload);
+  } catch(e) {
+    alert('Error de red: ' + e.message);
+  } finally {
+    document.getElementById('overlayRes').classList.remove('active');
+    document.getElementById('topCalcular').classList.remove('calc-btn-loading');
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function renderResultados(d, Qa) {
+  // Badges
+  document.getElementById('checkBadges').innerHTML = [
+    badge(d.ok_capacidad, 'Cap. pilotes'),
+    badge(d.ok_tension,   'Sin tracción'),
+    badge(d.ok_cx,        'Cortante X'),
+    badge(d.ok_cy,        'Cortante Y'),
+    badge(d.ok_punch_col, 'Punz. columna'),
+    badge(d.ok_punch_pil, 'Punz. pilote'),
+  ].join('');
+
+  // Geometría
+  document.getElementById('tblGeometria').innerHTML = [
+    tr('Configuración', `<b>${d.nx}×${d.ny} = ${d.n} pilotes</b>`),
+    tr('Largo L', `<b>${n2(d.L)} m</b>`),
+    tr('Ancho B', `<b>${n2(d.B)} m</b>`),
+    tr('Espesor h', `<b>${n2(d.h)} m</b>`),
+    tr('Canto útil d', `${n2(d.d)} m`),
+    tr('Separación sx / sy', `${n2(d.spacing_x)} / ${n2(d.spacing_y)} m`),
+    tr('Vuelo borde', `${n2(d.vuelo_x)} / ${n2(d.vuelo_y)} m`),
+  ].join('');
+
+  // Geotécnica
+  const pct = d.P_max / Qa * 100;
+  document.getElementById('tblGeo').innerHTML = [
+    tr('P máx (servicio)', `<b class="${d.ok_capacidad?'text-success':'text-danger'}">${n1(d.P_max)} kN</b>`),
+    tr('P mín (servicio)', `${n1(d.P_min)} kN`),
+    tr('Qa por pilote',    `${n1(Qa)} kN`),
+    tr('Ratio P_max/Qa',   `${pct.toFixed(0)}%`),
+    tr('P máx (ult.)',     `${n1(d.P_max_u)} kN`),
+  ].join('');
+
+  // Verificaciones
+  document.getElementById('tblVer').innerHTML = [
+    tr('Vu_x / φVc_x', `${n1(d.Vu_x)} / ${n1(d.phi_Vc_x)} kN`),
+    tr('Vu_y / φVc_y', `${n1(d.Vu_y)} / ${n1(d.phi_Vc_y)} kN`),
+    tr('Vu_punz.col / φVc', `${n1(d.Vu_punch_col)} / ${n1(d.phi_Vc_col)} kN`),
+    tr('Vu_punz.pil / φVc', `${n1(d.Vu_punch_pil)} / ${n1(d.phi_Vc_pil)} kN`),
+    tr('b₀ columna',     `${n2(d.b0_col)} m`),
+    tr('b₀ pilote',      `${n2(d.b0_pil)} m`),
+  ].join('');
+
+  // Tabla de pilotes
+  const rows = d.pile_positions.map(([x, y], i) => {
+    const Ps  = d.pile_loads_ser[i];
+    const Pu_ = d.pile_loads_ult[i];
+    const pct = (Ps / Qa * 100).toFixed(0);
+    const cls = Ps > Qa ? 'pile-fail' : Ps > Qa*0.85 ? 'pile-warn' : 'pile-ok';
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${(+x).toFixed(2)}</td><td>${(+y).toFixed(2)}</td>
+      <td class="text-end ${cls}">${(+Ps).toFixed(1)}</td>
+      <td class="text-end">${(+Pu_).toFixed(1)}</td>
+      <td class="text-end ${cls}">${pct}%</td>
+    </tr>`;
+  });
+  document.getElementById('tbodyPilotes').innerHTML = rows.join('');
+
+  // Momentos
+  document.getElementById('tblMomentos').innerHTML = [
+    tr('Mu_x (en cara col.)', `${n1(d.Mu_x)} kN·m`),
+    tr('Mu_y (en cara col.)', `${n1(d.Mu_y)} kN·m`),
+    tr('As mín', `${n2(d.As_min)} cm²/m`),
+  ].join('');
+
+  // Armadura
+  document.getElementById('tblArmadura').innerHTML = [
+    tr('Dir. X', `<b>${d.var_x}  c/${(d.sep_x*100).toFixed(0)}cm</b>`),
+    tr('As req X / dis X', `${n2(d.As_req_x)} / ${n2(d.As_dis_x)} cm²/m`),
+    tr('N° barras X (total)', `${d.n_barras_x}`),
+    tr('Dir. Y', `<b>${d.var_y}  c/${(d.sep_y*100).toFixed(0)}cm</b>`),
+    tr('As req Y / dis Y', `${n2(d.As_req_y)} / ${n2(d.As_dis_y)} cm²/m`),
+    tr('N° barras Y (total)', `${d.n_barras_y}`),
+  ].join('');
+
+  // Mensajes
+  const msgs = (d.mensajes||[]).map(m => {
+    const cls = {ok:'msg-ok',error:'msg-error',warn:'msg-warn',info:'msg-info'}[m.tipo]||'msg-info';
+    return `<div class="msg-item ${cls}">${m.texto}</div>`;
+  });
+  document.getElementById('mensajes').innerHTML = msgs.join('') ||
+    '<span class="text-muted" style="font-size:12px">Sin mensajes.</span>';
+}
+
+// ── Plot ──────────────────────────────────────────────────────────────────────
+async function actualizarPlot(payload) {
+  try {
+    const resp = await fetch('/api/encepado/plot/seccion', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({error: 'Error desconocido'}));
+      document.getElementById('plotBox').innerHTML =
+        `<div class="plot-placeholder text-danger">Error: ${err.error || resp.statusText}</div>`;
+      return;
+    }
+    const blob = await resp.blob();
+    document.getElementById('plotBox').innerHTML =
+      `<img src="${URL.createObjectURL(blob)}" style="width:100%;border-radius:6px;" alt="Diagrama encepado">`;
+  } catch(e) {
+    document.getElementById('plotBox').innerHTML =
+      `<div class="plot-placeholder text-danger">Error generando diagrama: ${e.message}</div>`;
+  } finally {
+    document.getElementById('overlayPlot').classList.remove('active');
+  }
+}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+async function exportarPDF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnPDF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/encepado/report/pdf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar PDF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'memoria_encepado_pilotes.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar PDF';
+  }
+}
+
+// ── DXF ───────────────────────────────────────────────────────────────────────
+async function exportarDXF() {
+  if (!lastPayload) return;
+  const btn = document.getElementById('btnDXF');
+  btn.disabled = true; btn.textContent = 'Generando…';
+  try {
+    const r = await fetch('/api/encepado/report/dxf', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(lastPayload),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({error: 'Error ' + r.status}));
+      alert('Error al generar DXF: ' + (err.error || r.status));
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'encepado_pilotes.dxf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Exportar DXF';
+  }
+}
+</script>
+</body>
+</html>
+
+

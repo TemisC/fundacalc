@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FundaCalc — Módulo 6: Pilotes y Encepados</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.26.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0D1B2A; min-height: 100vh; position: relative; overflow-x: hidden;
+    }
+    .fc-grid-lines {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(55,138,221,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(55,138,221,0.07) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+    .fc-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(to bottom,rgba(13,27,42,0.50) 0%,rgba(13,27,42,0.70) 55%,rgba(13,27,42,0.93) 100%);
+      pointer-events: none; z-index: 2;
+    }
+    .fc-wrap {
+      position: relative; z-index: 10;
+      max-width: 900px; margin: 0 auto; padding: 40px 20px 80px;
+    }
+    .fc-header { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+    .fc-logo {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #1565C0 0%, #378ADD 100%);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(55,138,221,0.35); flex-shrink: 0;
+    }
+    .fc-brand { color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .fc-tagline { color: #85B7EB; font-size: 12px; margin-top: 2px; }
+    .fc-back {
+      margin-left: auto; color: #85B7EB; font-size: 13px; text-decoration: none;
+      border: 1px solid rgba(133,183,235,0.3); padding: 6px 14px; border-radius: 6px; transition: all 0.18s;
+    }
+    .fc-back:hover { background: rgba(133,183,235,0.12); color: #fff; }
+    .fc-breadcrumb { color: #85B7EB; font-size: 11.5px; margin-bottom: 36px; opacity: 0.7; }
+    .fc-breadcrumb span { color: #fff; opacity: 1; }
+    .fc-section-title { color: #fff; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .fc-section-sub { color: #85B7EB; font-size: 13px; margin-bottom: 32px; }
+    .fc-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .fc-card {
+      background: rgba(20,34,51,0.85); border: 1px solid rgba(55,138,221,0.22);
+      border-radius: 14px; overflow: hidden; cursor: pointer;
+      transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s; position: relative;
+    }
+    .fc-card:not(.fc-card-soon):hover {
+      transform: translateY(-3px); border-color: rgba(55,138,221,0.55);
+      box-shadow: 0 8px 32px rgba(55,138,221,0.18);
+    }
+    .fc-card.fc-card-soon { opacity: 0.60; cursor: default; }
+    .fc-card-img { width: 100%; background: #0a1929; border-bottom: 1px solid rgba(55,138,221,0.15); }
+    .fc-card-body { padding: 16px 18px 18px; }
+    .fc-card-title { color: #fff; font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+    .fc-card-desc { color: #85B7EB; font-size: 12px; line-height: 1.55; margin-bottom: 12px; }
+    .fc-card-features { list-style: none; margin-bottom: 12px; }
+    .fc-card-features li { font-size: 11px; color: #6A8FAD; padding: 1.5px 0; }
+    .fc-card-features li::before { content: "·  "; color: #378ADD; }
+    .fc-card-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.4px; padding: 3px 9px; border-radius: 20px;
+    }
+    .badge-ready { background: rgba(21,101,192,0.25); color: #64B5F6; border: 1px solid rgba(100,181,246,0.4); }
+    .badge-soon  { background: rgba(239,159,39,0.18); color: #EF9F27; border: 1px solid rgba(239,159,39,0.35); }
+    .fc-card-arrow {
+      position: absolute; top: 16px; right: 16px;
+      color: rgba(133,183,235,0.35); font-size: 18px; transition: color 0.18s;
+    }
+    .fc-card:not(.fc-card-soon):hover .fc-card-arrow { color: #85B7EB; }
+    .fc-info-bar {
+      margin-top: 32px; padding: 14px 18px;
+      background: rgba(21,101,192,0.10); border: 1px solid rgba(55,138,221,0.20);
+      border-radius: 10px; color: #85B7EB; font-size: 12px; line-height: 1.6;
+    }
+    .fc-info-bar strong { color: #B5D4F4; }
+  </style>
+</head>
+<body>
+  <div class="fc-grid-lines"></div>
+  <div class="fc-overlay"></div>
+
+  <div class="fc-wrap">
+
+    <!-- Header -->
+    <div class="fc-header">
+      <div class="fc-logo">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <!-- encepado -->
+          <rect x="4"  y="18" width="18" height="4"  rx="0.5" fill="#85B7EB"/>
+          <!-- pilotes -->
+          <rect x="7"  y="8"  width="3"  height="10" rx="0.3" fill="#85B7EB"/>
+          <rect x="12" y="8"  width="3"  height="10" rx="0.3" fill="#85B7EB"/>
+          <rect x="17" y="8"  width="3"  height="10" rx="0.3" fill="#85B7EB"/>
+          <!-- puntas -->
+          <polygon points="7,18  10,18  8.5,21"  fill="#378ADD" opacity="0.8"/>
+          <polygon points="12,18 15,18 13.5,21" fill="#378ADD" opacity="0.8"/>
+          <polygon points="17,18 20,18 18.5,21" fill="#378ADD" opacity="0.8"/>
+          <!-- carga -->
+          <line x1="13" y1="3" x2="13" y2="8" stroke="#EF9F27" stroke-width="1.5"/>
+          <polygon points="11,6 15,6 13,9" fill="#EF9F27"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-brand">FundaCalc</div>
+        <div class="fc-tagline">Módulo 6 — Pilotes y Encepados</div>
+      </div>
+      <a class="fc-back" href="/">&#8592; Inicio</a>
+    </div>
+
+    <div class="fc-breadcrumb">Inicio › <span>Módulo 6 — Pilotes y Encepados</span></div>
+
+    <div class="fc-section-title">Pilotes y Encepados</div>
+    <div class="fc-section-sub">Capacidad de pilotes individuales · Grupos y encepados · Diseño RC (ACI 318-19)</div>
+
+    <div class="fc-cards">
+
+      <!-- 6.1 — Encepado de Pilotes -->
+      <div class="fc-card" onclick="location.href='/encepado'">
+        <div class="fc-card-img">
+          <svg width="100%" height="110" viewBox="0 0 280 110" xmlns="http://www.w3.org/2000/svg">
+            <rect width="280" height="110" fill="#0a1929"/>
+            <!-- encepado (losa) -->
+            <rect x="50" y="20" width="180" height="20" fill="#142233" stroke="#378ADD" stroke-width="1.2"/>
+            <!-- pilotes (4) -->
+            <rect x="68"  y="40" width="14" height="52" fill="#142233" stroke="#185FA5" stroke-width="1"/>
+            <rect x="108" y="40" width="14" height="52" fill="#142233" stroke="#185FA5" stroke-width="1"/>
+            <rect x="148" y="40" width="14" height="52" fill="#142233" stroke="#185FA5" stroke-width="1"/>
+            <rect x="188" y="40" width="14" height="52" fill="#142233" stroke="#185FA5" stroke-width="1"/>
+            <!-- puntas -->
+            <polygon points="68,92  82,92  75,100"  fill="#378ADD" opacity="0.7"/>
+            <polygon points="108,92 122,92 115,100" fill="#378ADD" opacity="0.7"/>
+            <polygon points="148,92 162,92 155,100" fill="#378ADD" opacity="0.7"/>
+            <polygon points="188,92 202,92 195,100" fill="#378ADD" opacity="0.7"/>
+            <!-- carga -->
+            <line x1="140" y1="5" x2="140" y2="19" stroke="#EF9F27" stroke-width="2"/>
+            <polygon points="135,16 145,16 140,21" fill="#EF9F27"/>
+            <text x="140" y="108" text-anchor="middle" font-size="7" fill="#6A8FAD">Encepado nx×ny · Punzonado + Cortante</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">6.1 — Encepado de Pilotes</div>
+          <div class="fc-card-desc">Grilla nx×ny de pilotes circulares · losa de cabeza · ACI 318-19</div>
+          <ul class="fc-card-features">
+            <li>Cargas P, Mx, My sobre el grupo de pilotes</li>
+            <li>Reacción máxima por pilote y verificación de carga admisible</li>
+            <li>Diseño RC del encepado: punzonado + cortante + flexión</li>
+            <li>Exportación PDF + DXF con detallado de acero</li>
+          </ul>
+          <span class="fc-card-badge badge-ready">Módulo 6.1 — disponible</span>
+        </div>
+        <div class="fc-card-arrow">&#8250;</div>
+      </div>
+
+      <!-- 6.2 — Pilote Individual -->
+      <div class="fc-card" onclick="location.href='/pilote'">
+        <div class="fc-card-img">
+          <svg width="100%" height="110" viewBox="0 0 280 110" xmlns="http://www.w3.org/2000/svg">
+            <rect width="280" height="110" fill="#0a1929"/>
+            <!-- suelo (capas) -->
+            <rect x="90" y="10" width="100" height="28" fill="#1A2E1A" opacity="0.5"/>
+            <rect x="90" y="38" width="100" height="28" fill="#1A2E1A" opacity="0.7"/>
+            <rect x="90" y="66" width="100" height="28" fill="#1A2E1A" opacity="0.9"/>
+            <text x="192" y="27"  font-size="7" fill="#6A8FAD">Arcilla  cu=50kPa</text>
+            <text x="192" y="55"  font-size="7" fill="#6A8FAD">Arena   φ=32°</text>
+            <text x="192" y="83"  font-size="7" fill="#6A8FAD">Grava   φ=38°</text>
+            <!-- pilote -->
+            <rect x="126" y="5" width="18" height="91" fill="#142233" stroke="#378ADD" stroke-width="1.3"/>
+            <!-- punta -->
+            <polygon points="126,96 144,96 135,105" fill="#378ADD" opacity="0.8"/>
+            <!-- fricción (flechas) -->
+            <line x1="115" y1="25" x2="125" y2="25" stroke="#EF9F27" stroke-width="1.1"/><polygon points="125,23 125,27 128,25" fill="#EF9F27"/>
+            <line x1="115" y1="50" x2="125" y2="50" stroke="#EF9F27" stroke-width="1.3"/><polygon points="125,48 125,52 128,50" fill="#EF9F27"/>
+            <line x1="115" y1="75" x2="125" y2="75" stroke="#EF9F27" stroke-width="1.5"/><polygon points="125,73 125,77 128,75" fill="#EF9F27"/>
+            <!-- carga axial -->
+            <line x1="135" y1="0" x2="135" y2="4" stroke="#E53935" stroke-width="2"/>
+            <polygon points="131,2 139,2 135,6" fill="#E53935"/>
+            <!-- carga lateral -->
+            <line x1="144" y1="12" x2="156" y2="12" stroke="#1E88E5" stroke-width="1.5"/>
+            <polygon points="144,10 144,14 141,12" fill="#1E88E5"/>
+            <text x="157" y="15" font-size="7" fill="#1E88E5">H</text>
+            <text x="140" y="108" text-anchor="middle" font-size="7" fill="#6A8FAD">Pilote individual · α/β por capas · Broms lateral</text>
+          </svg>
+        </div>
+        <div class="fc-card-body">
+          <div class="fc-card-title">6.2 — Pilote Individual</div>
+          <div class="fc-card-desc">Capacidad axial por capas · capacidad lateral · diseño RC sección circular</div>
+          <ul class="fc-card-features">
+            <li>Capacidad axial: método α (arcilla) y β (arena) por capas</li>
+            <li>Punta: Nc·cu (arcilla) o Nq·σ'v (arena)</li>
+            <li>Capacidad lateral: Broms (1964) cabeza libre, cohesivo y granular</li>
+            <li>Diseño RC: barras longitudinales + espiral mínima (ACI 318)</li>
+          </ul>
+          <span class="fc-card-badge badge-ready">Módulo 6.2 — disponible</span>
+        </div>
+        <div class="fc-card-arrow">&#8250;</div>
+      </div>
+
+    </div>
+
+    <!-- Info bar -->
+    <div class="fc-info-bar">
+      <strong>Capacidad axial:</strong> método α para arcillas (undrained, API RP2A) y método β para arenas (K·tan δ · σ'v).
+      <strong>Capacidad lateral:</strong> Broms (1964) con distinción pilote corto (rígido) y largo (flexible) según el momento de fluencia My.
+      El encepado distribuye la carga de la columna entre los pilotes del grupo y diseña la losa de cabeza por punzonado, cortante y flexión.
+    </div>
+
+  </div>
+</body>
+</html>
