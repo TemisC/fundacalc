@@ -716,3 +716,133 @@ class GeneradorDXFMuroSotano(_DXFBase):
     def _fallback_txt(self, ruta, motor):
         with open(ruta, 'w', encoding='utf-8') as f:
             f.write("DXF no disponible: instalar ezdxf\n")
+
+
+# ─── M9.1 — Muro en Voladizo ─────────────────────────────────────────────────
+
+class GeneradorDXFMuroVoladizo(_DXFBase):
+
+    def generar(self, ruta: str, motor):
+        if not _HAS_EZDXF:
+            self._fallback_txt(ruta, motor)
+            return
+        doc, msp = self._setup_doc()
+        self._dibujar(msp, motor)
+        doc.saveas(ruta)
+
+    def _dibujar(self, msp, motor):
+        res      = motor.res
+        inp      = motor._inp
+        est      = res.estabilidad
+        H        = inp['H']
+        h_zapata = inp['h_zapata']
+        h_fuste  = res.h_fuste
+        b_base   = inp['b_base']
+        b_corona = inp['b_corona']
+        B_punta  = inp['B_punta']
+        B_talon  = inp['B_talon']
+        B_total  = res.B_total
+
+        # Origen: (0,0) = esquina inferior izquierda de la zapata (lado punta)
+        # Y crece hacia arriba; corona del fuste en Y = H
+
+        # ── Zapata ─────────────────────────────────────────────────────────────
+        self._poly(msp, [(0, 0), (B_total, 0), (B_total, h_zapata), (0, h_zapata)], "ZAPATA")
+
+        # ── Fuste (cara frontal vertical, trasdós inclinado) ───────────────────
+        self._poly(msp, [
+            (B_punta, h_zapata),
+            (B_punta + b_base, h_zapata),
+            (B_punta + b_corona, H),
+            (B_punta, H),
+        ], "MURO")
+
+        # ── Suelo retenido (talón) ─────────────────────────────────────────────
+        x_back_bot = B_punta + b_base
+        x_back_top = B_punta + b_corona
+        self._poly(msp, [
+            (x_back_bot, h_zapata), (B_total, h_zapata),
+            (B_total, H), (x_back_top, H),
+        ], "SUELO")
+        self._suelo_hatch(msp, x_back_bot, h_zapata, B_total, H, paso=0.25)
+
+        # Línea de terreno
+        self._line(msp, x_back_top, H, B_total + 0.30, H, "EJES")
+        self._text(msp, B_total + 0.10, H + 0.10, "N.T.N.", 0.09, "TEXTOS")
+
+        # ── Presión activa ─────────────────────────────────────────────────────
+        p_max = est.Ka * (inp['gamma_r'] * h_fuste + inp['q_s'])
+        p_scl = min(1.5 / max(p_max, 0.1), 0.12)
+        for i in range(9):
+            z = h_fuste * i / 8
+            y = H - z
+            p = est.Ka * (inp['gamma_r'] * z + inp['q_s'])
+            x_back = x_back_top + (x_back_bot - x_back_top) * (z / max(h_fuste, 0.01))
+            self._flecha_pres(msp, x_back, y, p * p_scl)
+
+        p_top_scl = est.Ka * inp['q_s'] * p_scl
+        p_bot_scl = p_max * p_scl
+        self._poly(msp, [
+            (x_back_top, H), (x_back_top + p_top_scl, H),
+            (x_back_bot + p_bot_scl, h_zapata), (x_back_bot, h_zapata),
+        ], "PRESION", closed=True)
+        self._text(msp, x_back_bot + p_bot_scl + 0.10, h_zapata + 0.10,
+                   f"{p_max:.1f} kPa", 0.10, "PRESION")
+
+        # ── Cotas ──────────────────────────────────────────────────────────────
+        DIM_L  = -0.55
+        DIM_L2 = -0.95
+        self._cota_v(msp, 0, H, DIM_L, 0, f"H={H:.2f}m")
+        self._cota_v(msp, 0, h_zapata, DIM_L2, 0, f"hz={h_zapata:.2f}m")
+
+        DIM_B = -0.55
+        self._cota_h(msp, 0, B_punta, DIM_B, 0, f"Bp={B_punta:.2f}m")
+        self._cota_h(msp, B_punta, B_punta + b_base, DIM_B - 0.50, h_zapata,
+                     f"bb={b_base:.2f}m")
+        self._cota_h(msp, B_punta + b_base, B_total, DIM_B, 0,
+                     f"Bt={B_talon:.2f}m")
+        self._cota_h(msp, B_punta, B_punta + b_corona, H + 0.50, H,
+                     f"bc={b_corona:.2f}m")
+
+        # ── Tabla de datos ──────────────────────────────────────────────────────
+        tx = DIM_L - 0.5
+        ty = -2.0
+        self._titulo_plano(msp, tx, ty,
+                           "MURO EN VOLADIZO — SECCIÓN TRANSVERSAL",
+                           f"H={H:.2f}m  B_total={B_total:.2f}m")
+        ty -= 0.80
+
+        filas_inp = [
+            ("Altura total H",     f"{H:.2f} m"),
+            ("Espesor zapata",     f"{h_zapata:.2f} m"),
+            ("Ancho fuste base",   f"{b_base:.2f} m"),
+            ("Ancho fuste corona", f"{b_corona:.2f} m"),
+            ("Proyeccion punta",   f"{B_punta:.2f} m"),
+            ("Proyeccion talon",   f"{B_talon:.2f} m"),
+            ("B_total zapata",     f"{B_total:.2f} m"),
+            ("gamma suelo ret.",   f"{inp['gamma_r']:.1f} kN/m3"),
+            ("phi suelo ret.",     f"{inp['phi_r']:.1f} deg"),
+            ("Sobrecarga q_s",     f"{inp['q_s']:.1f} kPa"),
+            ("Ka (Rankine)",       f"{est.Ka:.4f}"),
+            ("q_adm",              f"{inp['qa']:.1f} kPa"),
+        ]
+        filas_res = [
+            ("FS vuelco",          f"{est.FS_vuelco:.2f}  {'OK' if est.ok_vuelco else 'NO'}"),
+            ("FS deslizamiento",   f"{est.FS_desliz:.2f}  {'OK' if est.ok_desliz else 'NO'}"),
+            ("q_max base",         f"{est.q_max:.1f} kPa  {'OK' if est.ok_presion else 'NO'}"),
+            ("Excentricidad |e|",  f"{abs(est.e):.3f} m  {'OK' if est.ok_excentricidad else 'NO'}"),
+            ("Empuje activo Ea",   f"{est.Ea:.2f} kN/m"),
+            ("Momento volcador",   f"{est.Mo:.2f} kN.m/m"),
+        ]
+        filas_rc = [
+            ("Fuste As req.",      f"{res.fuste.As_req:.2f} cm2/m  {res.fuste.barra}"),
+            ("Punta As req.",      f"{res.punta.As_req:.2f} cm2/m  {res.punta.barra}"),
+            ("Talon As req.",      f"{res.talon.As_req:.2f} cm2/m  {res.talon.barra}"),
+        ]
+        ty = self._tabla(msp, tx, ty, filas_inp, "DATOS DE ENTRADA") - 0.40
+        ty = self._tabla(msp, tx, ty, filas_res, "ESTABILIDAD") - 0.40
+        self._tabla(msp, tx, ty, filas_rc, "ARMADURA RC")
+
+    def _fallback_txt(self, ruta, motor):
+        with open(ruta, 'w', encoding='utf-8') as f:
+            f.write("DXF no disponible: instalar ezdxf\n")

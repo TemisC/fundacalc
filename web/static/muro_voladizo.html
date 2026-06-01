@@ -97,6 +97,9 @@
       <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>
         &#8659; Exportar PDF
       </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" id="btnDXF" disabled>
+        &#8659; Exportar DXF
+      </button>
     </div>
   </div>
 
@@ -539,6 +542,7 @@ async function calcular() {
     renderResultados(d);
     actualizarDiagrama(d);
     document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
   } catch(err) {
     alert('Error: ' + err.message);
   } finally {
@@ -711,6 +715,26 @@ async function exportarPDF() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url; a.download = 'muro_voladizo.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+// ── Exportar DXF ──────────────────────────────────────────────────────────────
+async function exportarDXF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/muro-voladizo/report/dxf', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando DXF');
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'muro_voladizo.dxf'; a.click();
     URL.revokeObjectURL(url);
   } catch(err) {
     alert('Error: ' + err.message);

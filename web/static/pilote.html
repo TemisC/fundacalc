@@ -81,6 +81,7 @@
     <div class="btn-group ms-2">
       <button class="btn btn-primary btn-sm" onclick="calcular()" id="btnCalc">&#9654; Calcular</button>
       <button class="btn btn-outline-secondary btn-sm" onclick="exportarPDF()" id="btnPDF" disabled>&#8659; Exportar PDF</button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="exportarDXF()" id="btnDXF" disabled>&#8659; Exportar DXF</button>
     </div>
   </div>
 
@@ -490,6 +491,7 @@ async function calcular() {
     renderResultados(d);
     actualizarDiagrama(d);
     document.getElementById('btnPDF').disabled = false;
+    document.getElementById('btnDXF').disabled = false;
   } catch(err) {
     alert('Error: ' + err.message);
   } finally {
@@ -631,6 +633,22 @@ async function exportarPDF() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'pilote_individual.pdf'; a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) { alert('Error: ' + err.message); }
+}
+
+async function exportarDXF() {
+  if (!_lastPayload) return;
+  try {
+    const resp = await fetch('/api/pilote/report/dxf', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(_lastPayload),
+    });
+    if (!resp.ok) throw new Error('Error generando DXF');
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'pilote_individual.dxf'; a.click();
     URL.revokeObjectURL(url);
   } catch(err) { alert('Error: ' + err.message); }
 }

@@ -135,7 +135,9 @@ from reportes.generador_pdf_pilote import GeneradorPDFPilote
 from reportes.generador_dxf_muros import (
     GeneradorDXFMuroGravedad, GeneradorDXFMuroGaviones,
     GeneradorDXFMuroContrafuertes, GeneradorDXFMuroSotano,
+    GeneradorDXFMuroVoladizo,
 )
+from reportes.generador_dxf_pilote import GeneradorDXFPilote
 from core.losa_fundacion import (
     LosaFundacion, SueloLosa, GeometriaLosa,
     CargaGlobal, CargaGrilla, CargaUniforme,
@@ -3513,6 +3515,29 @@ async def api_muro_report_pdf(datos: DatosMuro):
             except Exception: pass
 
 
+@app.post("/api/muro-voladizo/report/dxf")
+async def api_muro_voladizo_dxf(datos: DatosMuro):
+    tmp = None
+    try:
+        motor = _build_motor_muro(datos)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.dxf')
+        tmp.close()
+        GeneradorDXFMuroVoladizo().generar(tmp.name, motor)
+        with open(tmp.name, 'rb') as f:
+            dxf_bytes = f.read()
+        return Response(
+            content=dxf_bytes,
+            media_type='application/dxf',
+            headers={'Content-Disposition': 'attachment; filename="muro_voladizo.dxf"'},
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        if tmp:
+            try: os.unlink(tmp.name)
+            except Exception: pass
+
+
 # ── Módulo 9.2 — Muro de Gravedad ────────────────────────────────────────────
 
 class DatosMuroGravedad(BaseModel):
@@ -4122,6 +4147,29 @@ async def api_pilote_report_pdf(datos: DatosPilote):
             pdf_bytes = f.read()
         return Response(content=pdf_bytes, media_type='application/pdf',
                         headers={'Content-Disposition': 'attachment; filename="pilote_individual.pdf"'})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        if tmp:
+            try: os.unlink(tmp.name)
+            except Exception: pass
+
+
+@app.post("/api/pilote/report/dxf")
+async def api_pilote_dxf(datos: DatosPilote):
+    tmp = None
+    try:
+        motor = _build_motor_pilote(datos)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.dxf')
+        tmp.close()
+        GeneradorDXFPilote().generar(tmp.name, motor)
+        with open(tmp.name, 'rb') as f:
+            dxf_bytes = f.read()
+        return Response(
+            content=dxf_bytes,
+            media_type='application/dxf',
+            headers={'Content-Disposition': 'attachment; filename="pilote_individual.dxf"'},
+        )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
     finally:
