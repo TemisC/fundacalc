@@ -14,6 +14,7 @@ class NormaBase(ABC):
     year: int = 0
     phi_flexion: float = 0.90
     phi_cortante: float = 0.75
+    seccion_as_min: str = ""   # sección de la norma que rige As_mín
 
     @abstractmethod
     def resistencia_punzonado(
@@ -108,6 +109,13 @@ class NormaBase(ABC):
             "con_viento": {"D": 1.2, "L": 1.0, "W": 1.6},
             "con_sismo": {"D": 1.2, "L": 1.0, "E": 1.0},
         }
+
+    def rige_label(self, As_req: float, As_min: float) -> str:
+        """Devuelve etiqueta indicando qué rige el acero de diseño."""
+        if As_req >= As_min - 1e-9:
+            return "rige flexión"
+        sec = f" {self.seccion_as_min}" if self.seccion_as_min else ""
+        return f"rige As_mín ({self.nombre}{sec})"
 
     def __str__(self):
         return f"{self.nombre} ({self.pais}, {self.year})"

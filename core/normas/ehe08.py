@@ -20,6 +20,7 @@ class EHE08(NormaBase):
     gamma_s = 1.15
     phi_flexion = 1.0 / 1.15
     phi_cortante = 1.0 / 1.5
+    seccion_as_min = "Art. 42.3"
 
     @property
     def alpha_cc(self):

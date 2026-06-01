@@ -18,6 +18,7 @@ class CIRSOC201(ACI318):
     year = 2005
     phi_flexion = 0.90
     phi_cortante = 0.75
+    seccion_as_min = "Art. 10.5.1"
 
     def area_acero_minimo(self, fck, fy, bw, d) -> float:
         """

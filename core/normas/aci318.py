@@ -13,6 +13,7 @@ class ACI318(NormaBase):
     pais = "USA / Internacional"
     year = 2019
     phi_flexion = 0.90
+    seccion_as_min = "§9.6.1.2"
     phi_cortante = 0.75
 
     def resistencia_punzonado(self, fck, b0, d, c1, c2) -> float:

@@ -510,9 +510,10 @@ class ZapataExcentricaRectangular:
         res.varilla_L    = varilla_L
         res.sep_L        = sep_L
         res.n_barras_L   = round(B / sep_L) if sep_L > 0 else 0
+        rige_L = self.norma.rige_label(As_req_L, As_min_L)
         res.agregar_mensaje(
             f"✔ Arm. dir.L: {varilla_L} @ {sep_L*100:.0f} cm  "
-            f"(As={As_dis_L:.2f} cm²/m) — {res.n_barras_L} barras en B={B:.2f} m", "ok")
+            f"(As={As_dis_L:.2f} cm²/m) — {res.n_barras_L} barras en B={B:.2f} m — {rige_L}", "ok")
 
         # Dirección B (barras paralelas a B — n_barras_B barras a lo largo de L)
         As_req_B = self.norma.area_acero_flexion(Mu=res.Mu_B, d=d, fck=fck, fy=fy)
@@ -525,6 +526,7 @@ class ZapataExcentricaRectangular:
         res.varilla_B    = varilla_B
         res.sep_B        = sep_B
         res.n_barras_B   = round(L / sep_B) if sep_B > 0 else 0
+        rige_B = self.norma.rige_label(As_req_B, As_min_B)
         res.agregar_mensaje(
             f"✔ Arm. dir.B: {varilla_B} @ {sep_B*100:.0f} cm  "
-            f"(As={As_dis_B:.2f} cm²/m) — {res.n_barras_B} barras en L={L:.2f} m", "ok")
+            f"(As={As_dis_B:.2f} cm²/m) — {res.n_barras_B} barras en L={L:.2f} m — {rige_B}", "ok")

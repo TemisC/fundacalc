@@ -529,28 +529,32 @@ class ZapataCombinadaRectangular:
         B = res.B
         fck, fy = self.hormigon.fck, self.acero.fy
 
+        As_min_long = self.norma.area_acero_minimo(fck=fck, fy=fy, bw=1.0, d=d)
+
         Mu_top = max(res.Mu_neg1, res.Mu_neg2)
         res.Mu_long_top = Mu_top
-        As_top = self.norma.area_acero_flexion(Mu=Mu_top, d=d, fck=fck, fy=fy) if Mu_top > 0 else 0
-        As_top = max(As_top, self.norma.area_acero_minimo(fck=fck, fy=fy, bw=1.0, d=d))
+        As_top_flex = self.norma.area_acero_flexion(Mu=Mu_top, d=d, fck=fck, fy=fy) if Mu_top > 0 else 0
+        As_top = max(As_top_flex, As_min_long)
         res.As_long_top_pm = As_top
         res.varilla_long_top, res.sep_long_top = _seleccionar_varilla(As_top, self.varilla_pref)
         res.n_long_top = max(int(np.ceil(B / res.sep_long_top)) + 1, 3) if res.sep_long_top > 0 else 3
 
         Mu_bot = max(res.Mu_pos, 0)
         res.Mu_long_bot = Mu_bot
-        As_bot = self.norma.area_acero_flexion(Mu=Mu_bot, d=d, fck=fck, fy=fy) if Mu_bot > 0 else 0
-        As_bot = max(As_bot, self.norma.area_acero_minimo(fck=fck, fy=fy, bw=1.0, d=d))
+        As_bot_flex = self.norma.area_acero_flexion(Mu=Mu_bot, d=d, fck=fck, fy=fy) if Mu_bot > 0 else 0
+        As_bot = max(As_bot_flex, As_min_long)
         res.As_long_bot_pm = As_bot
         res.varilla_long_bot, res.sep_long_bot = _seleccionar_varilla(As_bot, self.varilla_pref)
         res.n_long_bot = max(int(np.ceil(B / res.sep_long_bot)) + 1, 3) if res.sep_long_bot > 0 else 3
 
+        rige_top = self.norma.rige_label(As_top_flex, As_min_long)
+        rige_bot = self.norma.rige_label(As_bot_flex, As_min_long)
         res.agregar_mensaje(
             f"✔ Armadura long. superior: {res.varilla_long_top} @ {res.sep_long_top*100:.0f} cm "
-            f"(As={As_top:.2f} cm²/m)", "ok")
+            f"(As={As_top:.2f} cm²/m) — {rige_top}", "ok")
         res.agregar_mensaje(
             f"✔ Armadura long. inferior: {res.varilla_long_bot} @ {res.sep_long_bot*100:.0f} cm "
-            f"(As={As_bot:.2f} cm²/m)", "ok")
+            f"(As={As_bot:.2f} cm²/m) — {rige_bot}", "ok")
 
     # ── 7. Armadura transversal ─────────────────────────────────────────────
 

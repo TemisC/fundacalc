@@ -261,9 +261,10 @@ class ZapataCorridaRectangular:
                 f"⚠ Varilla forzada {varilla}: separación {sep*100:.0f} cm "
                 f"{'(muy estrecha)' if sep < 0.10 else '(muy amplia)'}", "info")
 
+        rige = self.norma.rige_label(As_req, As_min)
         res.agregar_mensaje(
             f"✔ Armadura trans.: {varilla} @ {sep*100:.0f} cm  "
-            f"(As={As_dis:.2f} cm²/m)", "ok")
+            f"(As={As_dis:.2f} cm²/m) — {rige}", "ok")
 
         # Armadura longitudinal mínima (paralela al muro)
         As_long = self.norma.area_acero_minimo(fck=fck, fy=fy, bw=1.0, d=d)

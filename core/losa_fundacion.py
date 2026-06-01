@@ -444,15 +444,15 @@ class LosaFundacion:
         As_min = norma.area_acero_minimo(fck, fy, 1.0, d)
         res.As_min = As_min
 
-        def layer(Mu: float) -> float:
-            if Mu < 0.01:
-                return As_min
-            return max(norma.area_acero_flexion(Mu, d, fck, fy), As_min)
+        def layer(Mu: float):
+            """Devuelve (As_req_flex, As_dis) donde As_dis = max(As_flex, As_min)."""
+            As_flex = norma.area_acero_flexion(Mu, d, fck, fy) if Mu >= 0.01 else 0.0
+            return As_flex, max(As_flex, As_min)
 
-        As_sup_x = layer(res.Mu_sup_x)
-        As_inf_x = layer(res.Mu_inf_x)
-        As_sup_y = layer(res.Mu_sup_y)
-        As_inf_y = layer(res.Mu_inf_y)
+        As_flex_sup_x, As_sup_x = layer(res.Mu_sup_x)
+        As_flex_inf_x, As_inf_x = layer(res.Mu_inf_x)
+        As_flex_sup_y, As_sup_y = layer(res.Mu_sup_y)
+        As_flex_inf_y, As_inf_y = layer(res.Mu_inf_y)
 
         res.As_req_sup_x = As_sup_x
         res.As_req_inf_x = As_inf_x
@@ -468,6 +468,19 @@ class LosaFundacion:
         res.As_dis_inf_x = _dis_As(res.var_inf_x, res.sep_inf_x)
         res.As_dis_sup_y = _dis_As(res.var_sup_y, res.sep_sup_y)
         res.As_dis_inf_y = _dis_As(res.var_inf_y, res.sep_inf_y)
+
+        # Mensajes de armadura con indicación de qué rige
+        for etiq, As_flex, As_dis, var, sep in [
+            ("Sup-X", As_flex_sup_x, As_sup_x, res.var_sup_x, res.sep_sup_x),
+            ("Sup-Y", As_flex_sup_y, As_sup_y, res.var_sup_y, res.sep_sup_y),
+            ("Inf-X", As_flex_inf_x, As_inf_x, res.var_inf_x, res.sep_inf_x),
+            ("Inf-Y", As_flex_inf_y, As_inf_y, res.var_inf_y, res.sep_inf_y),
+        ]:
+            rige = norma.rige_label(As_flex, As_min)
+            res.msg(
+                f"✔ Arm. {etiq}: {var} @ {sep*100:.0f} cm  "
+                f"(As={As_dis:.2f} cm²/m) — {rige}", "ok"
+            )
 
     # ── 5. Punzonado ─────────────────────────────────────────────────────────
 

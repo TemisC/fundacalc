@@ -404,13 +404,15 @@ class ZapataAislada:
         res.varilla_x, res.separacion_x = self._seleccionar_varilla(res.As_x_diseno)
         res.varilla_y, res.separacion_y = self._seleccionar_varilla(res.As_y_diseno)
 
+        rige_x = self.norma.rige_label(res.As_x_requerido, res.As_x_minimo)
+        rige_y = self.norma.rige_label(res.As_y_requerido, res.As_y_minimo)
         res.agregar_mensaje(
             f"✔ Armadura inf. X: {res.varilla_x} @ {res.separacion_x*100:.0f} cm "
-            f"(As={res.As_x_diseno:.2f} cm²/m)", "ok"
+            f"(As={res.As_x_diseno:.2f} cm²/m) — {rige_x}", "ok"
         )
         res.agregar_mensaje(
             f"✔ Armadura inf. Y: {res.varilla_y} @ {res.separacion_y*100:.0f} cm "
-            f"(As={res.As_y_diseno:.2f} cm²/m)", "ok"
+            f"(As={res.As_y_diseno:.2f} cm²/m) — {rige_y}", "ok"
         )
 
     def _seleccionar_varilla(self, As_cm2_por_m: float) -> tuple[str, float]:
