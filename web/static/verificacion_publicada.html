@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FundaCalc — Benchmark contra Ejemplos Publicados</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', sans-serif; }
+    .fc-header { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 24px; }
+    .fc-title  { color: #58a6ff; font-size: 1.1rem; font-weight: 700; }
+    .fc-sub    { color: #8b949e; font-size: 0.78rem; }
+    .page-hero { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+                 border-bottom: 1px solid #30363d; padding: 40px 0 30px; }
+    .page-hero h1 { color: #e6edf3; font-size: 1.6rem; font-weight: 700; }
+    .page-hero p  { color: #8b949e; max-width: 720px; }
+    .case-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 2rem; }
+    .case-header { background: #21262d; border-bottom: 1px solid #30363d;
+                   padding: 14px 20px; border-radius: 8px 8px 0 0; }
+    .case-header h5 { color: #58a6ff; font-size: 1.0rem; margin: 0; }
+    .source-badge { background: #1f6feb22; color: #79c0ff; border: 1px solid #1f6feb55;
+                    border-radius: 4px; padding: 2px 10px; font-size: 0.75rem; }
+    .case-body { padding: 20px; }
+    table { font-size: 0.83rem; }
+    thead th { background: #21262d; color: #8b949e; border-color: #30363d !important; }
+    tbody td { border-color: #30363d !important; color: #c9d1d9; vertical-align: middle; }
+    .badge-pass { background: #238636; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; }
+    .badge-src  { background: #1f6feb22; color: #79c0ff; border: 1px solid #1f6feb33;
+                  border-radius: 4px; padding: 3px 8px; font-size: 0.75rem; }
+    .formula-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+                   padding: 12px 16px; font-family: monospace; font-size: 0.82rem;
+                   color: #79c0ff; margin: 12px 0; line-height: 1.7; }
+    .arith-box  { background: #0d1117; border: 1px solid #238636; border-radius: 6px;
+                  padding: 12px 16px; font-family: monospace; font-size: 0.82rem;
+                  color: #3fb950; margin: 12px 0; line-height: 1.7; }
+    .diff-box   { background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+                  padding: 14px; margin: 12px 0; font-size: 0.83rem; }
+    .diff-box h6 { color: #8b949e; font-size: 0.78rem; text-transform: uppercase;
+                   letter-spacing: 0.05em; margin-bottom: 8px; }
+    code { background: #21262d; border-radius: 3px; padding: 1px 5px;
+           color: #79c0ff; font-size: 0.81rem; }
+    a { color: #58a6ff; }
+    .stat-box { background: #161b22; border: 1px solid #238636; border-radius: 8px;
+                padding: 16px; text-align: center; }
+    .stat-box .num { color: #3fb950; font-size: 2rem; font-weight: 700; }
+    .stat-box .lbl { color: #8b949e; font-size: 0.80rem; }
+    .methodology-note { background: #161b22; border: 1px solid #e3b341; border-radius: 8px;
+                        padding: 16px; font-size: 0.83rem; }
+    .methodology-note strong { color: #e3b341; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="fc-header d-flex align-items-center gap-3">
+  <div>
+    <div class="fc-title">FundaCalc</div>
+    <div class="fc-sub">Benchmark contra Ejemplos con Resultado Publicado</div>
+  </div>
+  <div class="ms-auto d-flex gap-2">
+    <a href="/verificacion" class="btn btn-sm btn-outline-secondary">Verificación Fórmulas</a>
+    <a href="/" class="btn btn-sm btn-outline-secondary">← Inicio</a>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="container">
+    <h1>Benchmark contra Ejemplos Publicados</h1>
+    <p>
+      Comparación directa de los resultados de FundaCalc contra casos con solución publicada
+      en fuentes de acceso libre y verificados aritméticamente de forma independiente.
+      Estos tests son un complemento a la
+      <a href="/verificacion">verificación a nivel de fórmulas</a>.
+    </p>
+    <div class="d-flex gap-2 flex-wrap mt-3">
+      <span class="badge bg-success fs-6 px-3 py-2">✔ 17 tests pasan</span>
+      <span class="badge bg-secondary fs-6 px-3 py-2">4 casos publicados</span>
+      <span class="badge" style="background:#1f6feb;font-size:0.85rem;padding:6px 12px;">
+        Fuentes verificadas aritméticamente
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="container my-4">
+
+  <!-- Nota metodológica -->
+  <div class="methodology-note mb-4">
+    <strong>Nota sobre la metodología:</strong> Los casos en esta página tienen un nivel de confianza
+    mayor que los tests de fórmulas porque comparan contra un resultado publicado por un tercero.
+    Sin embargo, las fuentes utilizadas son recursos educativos online, no el libro de texto
+    Das (2021) directamente. Para cada caso se incluye: (a) la URL de la fuente, (b) los datos
+    exactos del ejemplo publicado, y (c) la verificación aritmética independiente que confirma
+    que el resultado publicado es correcto antes de usarlo como referencia.
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-3"><div class="stat-box"><div class="num">17</div><div class="lbl">Tests publicados</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">3</div><div class="lbl">Fuentes externas</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">4</div><div class="lbl">Casos de referencia</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">17/17</div><div class="lbl">Tests pasan</div></div></div>
+  </div>
+
+  <!-- CASO 1 -->
+  <div class="case-card">
+    <div class="case-header d-flex align-items-center gap-3">
+      <h5>Caso 1 — Consolidación Primaria NC (H=4m, Cc=0.35)</h5>
+      <span class="source-badge ms-auto">EngineeringHulk.com</span>
+    </div>
+    <div class="case-body">
+
+      <div class="row">
+        <div class="col-md-6">
+          <p style="font-size:0.83rem;"><strong>Fuente:</strong><br>
+          EngineeringHulk.com — Consolidation Settlement, Example 1 (NC Clay)<br>
+          <a href="https://engineeringhulk.com/civil/geotechnical/consolidation/" target="_blank">
+            https://engineeringhulk.com/civil/geotechnical/consolidation/
+          </a></p>
+
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Parámetro</th><th>Valor publicado</th></tr></thead>
+            <tbody>
+              <tr><td>Espesor capa H_c</td><td>4 m</td></tr>
+              <tr><td>Relación de vacíos e₀</td><td>0.90</td></tr>
+              <tr><td>Índice de compresión Cc</td><td>0.35</td></tr>
+              <tr><td>Tensión efectiva σ'₀</td><td>80 kPa</td></tr>
+              <tr><td>Incremento de tensión Δσ</td><td>60 kPa</td></tr>
+              <tr><td>Estado</td><td>Normalmente consolidada (NC)</td></tr>
+              <tr style="background:#238636;"><td><strong>Resultado publicado</strong></td><td><strong>Sc = 179 mm</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="formula-box">
+Fórmula Terzaghi NC (Das §5.9):
+  δ_c = Cc/(1+e₀) · H_c · log₁₀((σ'₀+Δσ)/σ'₀)
+          </div>
+          <div class="arith-box">
+Verificación aritmética independiente:
+  δ_c = 0.35/1.90 × 4 × log₁₀(140/80)
+      = 0.73684 × 0.24304
+      = 0.17899 m  →  178.99 mm
+
+  Resultado publicado: 179 mm  ✓ (error &lt; 0.01%)
+          </div>
+          <p style="font-size:0.82rem;color:#3fb950;">
+            ✔ FundaCalc produce <code>179.0 mm</code> — coincide con el valor publicado.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASO 2 -->
+  <div class="case-card">
+    <div class="case-header d-flex align-items-center gap-3">
+      <h5>Caso 2 — Consolidación Primaria OC que cruza σ'p (H=3m)</h5>
+      <span class="source-badge ms-auto">EngineeringHulk.com</span>
+    </div>
+    <div class="case-body">
+
+      <div class="row">
+        <div class="col-md-6">
+          <p style="font-size:0.83rem;"><strong>Fuente:</strong><br>
+          EngineeringHulk.com — Consolidation Settlement, Example 2 (OC Clay)<br>
+          <a href="https://engineeringhulk.com/civil/geotechnical/consolidation/" target="_blank">
+            https://engineeringhulk.com/civil/geotechnical/consolidation/
+          </a></p>
+
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Parámetro</th><th>Valor publicado</th></tr></thead>
+            <tbody>
+              <tr><td>Espesor capa H_c</td><td>3 m</td></tr>
+              <tr><td>Relación de vacíos e₀</td><td>1.10</td></tr>
+              <tr><td>Índice de compresión Cc</td><td>0.42</td></tr>
+              <tr><td>Índice de hinchamiento Cs</td><td>0.07</td></tr>
+              <tr><td>Tensión efectiva σ'₀</td><td>60 kPa</td></tr>
+              <tr><td>Tensión de preconsolidación σ'p</td><td>120 kPa (OCR=2)</td></tr>
+              <tr><td>Incremento de tensión Δσ</td><td>100 kPa</td></tr>
+              <tr><td>σ'f = 160 kPa &gt; σ'p = 120 kPa</td><td>Cruza la preconsolidación</td></tr>
+              <tr style="background:#238636;"><td><strong>Resultado publicado</strong></td><td><strong>Sc = 105 mm</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="formula-box">
+Fórmula OC que cruza σ'p (Das §5.9):
+  δ_c = Cs/(1+e₀)·H·log₁₀(σ'p/σ'₀)
+       + Cc/(1+e₀)·H·log₁₀(σ'f/σ'p)
+          </div>
+          <div class="arith-box">
+Verificación aritmética independiente:
+  coef = 3/(1+1.10) = 1.42857 m
+
+  δ_c1 = 1.42857 × 0.07 × log₁₀(120/60)
+       = 1.42857 × 0.07 × 0.30103
+       = 0.03010 m  →  30.10 mm  (tramo OC)
+
+  δ_c2 = 1.42857 × 0.42 × log₁₀(160/120)
+       = 1.42857 × 0.42 × 0.12494
+       = 0.07496 m  →  74.96 mm  (tramo NC)
+
+  Total = 30.10 + 74.96 = 105.06 mm
+
+  Resultado publicado: 105 mm  ✓ (error &lt; 0.1%)
+          </div>
+          <p style="font-size:0.82rem;color:#3fb950;">
+            ✔ FundaCalc produce <code>105.1 mm</code> — coincide con el valor publicado.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASO 3 -->
+  <div class="case-card">
+    <div class="case-header d-flex align-items-center gap-3">
+      <h5>Caso 3 — Capacidad Axial de Pilote en Arcilla (Método α)</h5>
+      <span class="source-badge ms-auto">PEwise.com / FHWA NHI-16-009</span>
+    </div>
+    <div class="case-body">
+
+      <div class="row">
+        <div class="col-md-6">
+          <p style="font-size:0.83rem;"><strong>Fuente:</strong><br>
+          PEwise.com — PE Geotech Exam Prep: Pile Capacity (Alpha Method)<br>
+          Referencia normativa citada: FHWA NHI-16-009, Design and Construction of Driven Pile Foundations<br>
+          <a href="https://pewise.com/blog/pe-geotech-foundations-bearing-capacity-pile" target="_blank">
+            https://pewise.com/blog/pe-geotech-foundations-bearing-capacity-pile
+          </a></p>
+
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Parámetro</th><th>Publicado (US)</th><th>Convertido (SI)</th></tr></thead>
+            <tbody>
+              <tr><td>Diámetro D</td><td>1.0 ft</td><td>0.3048 m</td></tr>
+              <tr><td>Longitud L</td><td>50 ft</td><td>15.24 m</td></tr>
+              <tr><td>su (resistencia no drenada)</td><td>1500 psf</td><td>71.82 kPa</td></tr>
+              <tr><td>Factor α</td><td>0.5</td><td>0.5 (su &gt; 70 kPa)</td></tr>
+              <tr style="background:#21262d;"><td>Qs (fuste)</td><td>118 kip</td><td>524.9 kN</td></tr>
+              <tr style="background:#21262d;"><td>Qp (punta)</td><td>10.6 kip</td><td>47.1 kN</td></tr>
+              <tr style="background:#238636;"><td><strong>Qu (última)</strong></td><td><strong>128.6 kip</strong></td><td><strong>571.9 kN</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="formula-box">
+Método α — API (1984), citado en FHWA NHI-16-009:
+  Para su &gt; 70 kPa → α = 0.5
+  fs = α · su = 0.5 × 71.82 = 35.91 kPa
+  Qs = fs · π · D · L
+  Qp = 9 · su · Ag       (Nc=9 para arcilla)
+  Qu = Qs + Qp
+          </div>
+          <div class="arith-box">
+Verificación aritmética independiente:
+  perim = π × 0.3048 = 0.9576 m
+  Qs = 35.91 × 0.9576 × 15.24 = 524.6 kN  (118.0 kip) ✓
+
+  Ag = π/4 × 0.3048² = 0.07297 m²
+  Qp = 9 × 71.82 × 0.07297  = 47.18 kN  (10.61 kip) ✓
+
+  Qu = 524.6 + 47.18 = 571.8 kN  (128.6 kip) ✓
+          </div>
+          <p style="font-size:0.82rem;color:#3fb950;">
+            ✔ FundaCalc produce <code>Qs=524.9 kN, Qp=47.2 kN, Qu=572.0 kN</code>
+            — error &lt; 0.1% respecto al valor publicado.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASO 4 -->
+  <div class="case-card">
+    <div class="case-header d-flex align-items-center gap-3">
+      <h5>Caso 4 — Consolidación Primaria NC (H=5m, Cc=0.11, fuente alternativa)</h5>
+      <span class="source-badge ms-auto">Civil Engineering Things Undergrads</span>
+    </div>
+    <div class="case-body">
+
+      <div class="row">
+        <div class="col-md-6">
+          <p style="font-size:0.83rem;"><strong>Fuente:</strong><br>
+          Civil Engineering Things for Undergrads — Consolidation Settlement Part 02<br>
+          <a href="http://civilengineeringthingsforundergrads.blogspot.com/2018/10/consolidation-settlement-part-02.html" target="_blank">
+            blogspot.com/consolidation-settlement-part-02
+          </a></p>
+
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Parámetro</th><th>Valor publicado</th></tr></thead>
+            <tbody>
+              <tr><td>Espesor capa H_c</td><td>5 m</td></tr>
+              <tr><td>Relación de vacíos e₀</td><td>0.60</td></tr>
+              <tr><td>Índice de compresión Cc</td><td>0.11</td></tr>
+              <tr><td>Tensión efectiva σ'₀</td><td>75 kPa</td></tr>
+              <tr><td>Incremento de tensión Δσ</td><td>25 kPa</td></tr>
+              <tr style="background:#238636;"><td><strong>Resultado publicado</strong></td><td><strong>S = 43 mm</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="arith-box">
+Verificación aritmética independiente:
+  δ_c = 0.11/1.60 × 5 × log₁₀(100/75)
+      = 0.34375 × 0.12494
+      = 0.04295 m  →  42.95 mm
+
+  Resultado publicado: 43 mm  ✓ (redondeado)
+          </div>
+          <p style="font-size:0.82rem;color:#3fb950;">
+            ✔ FundaCalc produce <code>42.95 mm</code> — coincide con el valor publicado.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Diferencia con la otra página -->
+  <div class="diff-box mt-4">
+    <h6>¿En qué se diferencia esta página de la Verificación de Fórmulas?</h6>
+    <div class="row">
+      <div class="col-md-6">
+        <p style="font-size:0.83rem;">
+          <strong style="color:#58a6ff;">Verificación de Fórmulas</strong> (<a href="/verificacion">ver página</a>)<br>
+          Los casos de prueba fueron creados por el equipo de FundaCalc calculando a mano con
+          las fórmulas de referencia. Los valores esperados son correctos porque la fórmula
+          está bien aplicada, pero no existe un tercero que haya publicado ese resultado específico.
+        </p>
+      </div>
+      <div class="col-md-6">
+        <p style="font-size:0.83rem;">
+          <strong style="color:#3fb950;">Esta página — Benchmark Publicado</strong><br>
+          Los valores esperados provienen de un ejemplo que alguien más resolvió y publicó online.
+          FundaCalc no conocía ese resultado al momento de implementar el módulo.
+          La coincidencia es evidencia independiente de que el cálculo es correcto.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Limitaciones -->
+  <div class="case-card mt-3">
+    <div class="case-header"><h5 style="color:#e3b341;">Limitaciones y trabajo pendiente</h5></div>
+    <div class="case-body">
+      <ul style="font-size:0.83rem;">
+        <li><strong>Módulos no cubiertos aquí:</strong> Muros de contención, Zapatas, Encepado, Losa.
+          Para cubrir estos módulos se necesita acceso a un texto con ejemplos resueltos (Das u otro)
+          con los datos completos y el resultado publicado.</li>
+        <li><strong>Fuentes utilizadas:</strong> Son recursos educativos online, no el texto académico
+          principal. Para una validación formal en un proyecto profesional, se recomienda
+          verificar contra Das (2021) o un manual FHWA específico.</li>
+        <li><strong>Cómo contribuir:</strong> Si tienes acceso a un texto con ejemplos resueltos,
+          puedes agregar un nuevo test al archivo
+          <code>tests/test_benchmark_publicado.py</code> siguiendo el mismo patrón.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer class="text-center py-4" style="color:#484f58;font-size:0.78rem;border-top:1px solid #21262d;">
+  FundaCalc — Suite de benchmark publicado: <code>python -m pytest tests/test_benchmark_publicado.py -v</code>
+</footer>
+
+</body>
+</html>
