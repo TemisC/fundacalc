@@ -427,9 +427,12 @@ class VigaFundacion:
         As_min_cm2 = rho_min * B * d * 10000.0  # cm²
         res.As_min = As_min_cm2
 
+        def _rige(As_flex, As_min, ref="ACI 318-19 §9.6.1.2"):
+            return "rige flexión" if As_flex >= As_min - 1e-9 else f"rige As_mín ({ref})"
+
         # ── Armadura inferior (M_max_pos) ────────────────────────────────────
-        As_req_inf = _As_flexion(res.M_max_pos, d, B, fck, fy, phi)
-        As_req_inf = max(As_req_inf, As_min_cm2)
+        As_flex_inf = _As_flexion(res.M_max_pos, d, B, fck, fy, phi)
+        As_req_inf  = max(As_flex_inf, As_min_cm2)
         res.As_req_inf = As_req_inf
 
         nombre_inf, n_inf, As_dis_inf = _varilla_total(As_req_inf, self.varilla_pref)
@@ -445,14 +448,13 @@ class VigaFundacion:
 
         res.msg(
             f"Armadura inferior: {n_inf}{nombre_inf} "
-            f"(As_req={As_req_inf:.2f} cm2, As_dis={As_dis_inf:.2f} cm2, "
-            f"sep={sep_inf*100:.1f} cm)",
+            f"(As={As_dis_inf:.2f} cm2, sep={sep_inf*100:.1f} cm) — {_rige(As_flex_inf, As_min_cm2)}",
             "ok"
         )
 
         # ── Armadura superior (M_max_neg) ────────────────────────────────────
-        As_req_sup = _As_flexion(res.M_max_neg, d, B, fck, fy, phi)
-        As_req_sup = max(As_req_sup, As_min_cm2)
+        As_flex_sup = _As_flexion(res.M_max_neg, d, B, fck, fy, phi)
+        As_req_sup  = max(As_flex_sup, As_min_cm2)
         res.As_req_sup = As_req_sup
 
         nombre_sup, n_sup, As_dis_sup = _varilla_total(As_req_sup, self.varilla_pref)
@@ -466,8 +468,7 @@ class VigaFundacion:
 
         res.msg(
             f"Armadura superior: {n_sup}{nombre_sup} "
-            f"(As_req={As_req_sup:.2f} cm2, As_dis={As_dis_sup:.2f} cm2, "
-            f"sep={sep_sup*100:.1f} cm)",
+            f"(As={As_dis_sup:.2f} cm2, sep={sep_sup*100:.1f} cm) — {_rige(As_flex_sup, As_min_cm2)}",
             "ok"
         )
 

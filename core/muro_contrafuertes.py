@@ -338,6 +338,20 @@ class MuroContrafuertes:
         )
 
         # ── Mensajes ─────────────────────────────────────────────────────
+        def _rige(As_req, As_min, ref="ACI 318-19 §9.6.1.2"):
+            return "rige flexión" if As_req >= As_min - 1e-9 else f"rige As_mín ({ref})"
+
+        mensajes.append({"tipo": "ok", "texto":
+            f"Pantalla neg. (apoyo): {bar_pn}  (As={As_dis_pn:.2f} cm²/m) — {_rige(As_req_pn, As_min_pant)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Pantalla pos. (vano): {bar_pp}  (As={As_dis_pp:.2f} cm²/m) — {_rige(As_req_pp, As_min_pant)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Punta zapata: {bar_pt}  (As={As_dis_pt:.2f} cm²/m) — {_rige(As_req_pt, As_min_zap)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Talón zapata: {bar_tl}  (As={As_dis_tl:.2f} cm²/m) — {_rige(As_req_tl, As_min_zap)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Contrafuerte: {bar_cont}  (As={As_dis_cont:.2f} cm²) — {_rige(As_req_cont, As_min_cont)}"})
+
         chks = [
             (ok_v, f"Vuelco: FS = {FS_v:.2f}", "≥ 2.0"),
             (ok_d, f"Deslizamiento: FS = {FS_d:.2f}", "≥ 1.5"),

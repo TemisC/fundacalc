@@ -366,6 +366,11 @@ class PiloteIndividual:
         )
 
         # ── Mensajes ─────────────────────────────────────────────────────
+        rige_long = ("rige flexión/carga axial" if Ast_mm2 >= As_min_mm2 - 1e-6
+                     else "rige As_mín (ACI 318-19 §10.6.1.1 — 0.8% para pilotes)")
+        mensajes.append({"tipo": "ok", "texto":
+            f"Armadura long.: {desc_long}  (As={Ast_dis_cm2:.2f} cm²) — {rige_long}"})
+
         if FS_axial >= FS_min:
             mensajes.append({"tipo": "ok",
                              "texto": f"Capacidad axial: Qu = {Qu:.1f} kN, FS = {FS_axial:.2f} ≥ {FS_min:.1f} ✓"})

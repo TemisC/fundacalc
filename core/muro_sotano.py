@@ -263,6 +263,16 @@ class MuroSotano:
         )
 
         # ── Mensajes ─────────────────────────────────────────────────────
+        def _rige(As_req, As_min, ref="ACI 318-19 §11.6.1"):
+            return "rige flexión" if As_req >= As_min - 1e-9 else f"rige As_mín ({ref})"
+
+        mensajes.append({"tipo": "ok", "texto":
+            f"Vert. cara suelo: {bar_pos}  (As={As_dis_pos:.2f} cm²/m) — {_rige(As_req_pos, As_min_vert)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Vert. cara int.:  {bar_neg}  (As={As_dis_neg:.2f} cm²/m) — {_rige(As_req_neg, As_min_vert)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Horiz. temp./c/cara: {bar_h}  (As={As_dis_h:.2f} cm²/m) — rige As_mín (ACI 318-19 §11.6.1)"})
+
         mensajes.append({"tipo": "ok",
                          "texto": f"R_top (corona) = {R_top:.2f} kN/m"})
         mensajes.append({"tipo": "ok",

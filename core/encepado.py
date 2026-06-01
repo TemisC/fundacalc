@@ -436,14 +436,10 @@ class Encepado:
         res.As_min  = As_min
 
         # As por metro de ancho: Mu_x actúa sobre el ancho B; Mu_y actúa sobre el largo L
-        As_req_x = max(
-            norma.area_acero_flexion(res.Mu_x / B if B > 0 else 0.0, d, fck, fy),
-            As_min
-        )
-        As_req_y = max(
-            norma.area_acero_flexion(res.Mu_y / L if L > 0 else 0.0, d, fck, fy),
-            As_min
-        )
+        As_flex_x = norma.area_acero_flexion(res.Mu_x / B if B > 0 else 0.0, d, fck, fy)
+        As_flex_y = norma.area_acero_flexion(res.Mu_y / L if L > 0 else 0.0, d, fck, fy)
+        As_req_x  = max(As_flex_x, As_min)
+        As_req_y  = max(As_flex_y, As_min)
 
         res.As_req_x = As_req_x
         res.As_req_y = As_req_y
@@ -457,15 +453,17 @@ class Encepado:
         res.n_barras_x = max(2, math.ceil(B / res.sep_x)) if res.sep_x > 0 else 0
         res.n_barras_y = max(2, math.ceil(L / res.sep_y)) if res.sep_y > 0 else 0
 
+        rige_x = norma.rige_label(As_flex_x, As_min)
+        rige_y = norma.rige_label(As_flex_y, As_min)
         res.msg(
-            f"ℹ Armadura X: {res.var_x} @ {res.sep_x*100:.0f} cm "
-            f"(As_req={As_req_x:.2f}, As_dis={res.As_dis_x:.2f} cm²/m, n={res.n_barras_x})",
-            "info"
+            f"✔ Armadura X: {res.var_x} @ {res.sep_x*100:.0f} cm "
+            f"(As={res.As_dis_x:.2f} cm²/m, n={res.n_barras_x}) — {rige_x}",
+            "ok"
         )
         res.msg(
-            f"ℹ Armadura Y: {res.var_y} @ {res.sep_y*100:.0f} cm "
-            f"(As_req={As_req_y:.2f}, As_dis={res.As_dis_y:.2f} cm²/m, n={res.n_barras_y})",
-            "info"
+            f"✔ Armadura Y: {res.var_y} @ {res.sep_y*100:.0f} cm "
+            f"(As={res.As_dis_y:.2f} cm²/m, n={res.n_barras_y}) — {rige_y}",
+            "ok"
         )
 
     # ── 5. Cortante unidireccional ────────────────────────────────────────────

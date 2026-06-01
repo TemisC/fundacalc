@@ -295,6 +295,16 @@ class MuroVoladizo:
         bar_temp, As_dis_temp = _seleccionar_barra(As_temp_face)
 
         # ── Mensajes ─────────────────────────────────────────────────────
+        def _rige(As_req, As_min, ref="ACI 318-19 §9.6.1.2"):
+            return "rige flexión" if As_req >= As_min - 1e-9 else f"rige As_mín ({ref})"
+
+        mensajes.append({"tipo": "ok", "texto":
+            f"Fuste: {bar_f}  (As={As_dis_f:.2f} cm²/m) — {_rige(As_req_f, As_min_f)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Punta: {bar_p}  (As={As_dis_p:.2f} cm²/m) — {_rige(As_req_p, As_min_p)}"})
+        mensajes.append({"tipo": "ok", "texto":
+            f"Talón: {bar_t}  (As={As_dis_t:.2f} cm²/m) — {_rige(As_req_t, As_min_t)}"})
+
         if not ok_v:
             mensajes.append({"tipo": "error",
                              "texto": f"Vuelco insuficiente: FS = {FS_v:.2f} < 2.0"})
