@@ -274,17 +274,20 @@ class AsentamientoTerzaghi:
         H_dr = H_c / 2.0 if doble_dren else H_c
 
         def Tv_de_U(U_frac):
-            """T_v dado el grado de consolidación U [0..1]."""
+            """T_v dado el grado de consolidación U [0..1] — Das 9ª ed."""
             if U_frac <= 0.524:
                 return math.pi / 4 * U_frac ** 2
             else:
-                return 1.781 - 0.933 * math.log10(1.0 - U_frac) / math.log10(10)
+                # Tv = 1.781 - 0.933·log10(100·(1-U))
+                #    = -0.085 - 0.933·log10(1-U_frac)
+                return -0.085 - 0.933 * math.log10(1.0 - U_frac)
 
         def U_de_Tv(Tv):
-            """U [0..1] dado T_v (aprox. Sivaram & Swamee 1977)."""
+            """U [0..1] dado T_v — Sivaram & Swamee (1977)."""
             a = (4 * Tv / math.pi) ** 0.5
             b = (4 * Tv / math.pi) ** 2.8
-            return a / (1 + b ** 0.179) ** (1.0 / 0.358) if Tv < 5 else 1.0
+            # U = (4Tv/π)^0.5 / (1 + (4Tv/π)^2.8)^(1/5.6)
+            return a / (1 + b) ** (1.0 / 5.6) if Tv < 5 else 1.0
 
         t50 = Tv_de_U(0.50) * H_dr ** 2 / max(Cv, 1e-9)
         t90 = Tv_de_U(0.90) * H_dr ** 2 / max(Cv, 1e-9)
