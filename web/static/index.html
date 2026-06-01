@@ -601,6 +601,8 @@ async function runCalculo(){
     });
   await Promise.all([p1, p2, minWait]);
   stopLoading();
+  document.getElementById('topPdf').disabled = false;
+  document.getElementById('topDxf').disabled = false;
 }
 
 document.getElementById('btnCalcular').addEventListener('click', runCalculo);
