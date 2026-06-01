@@ -268,7 +268,8 @@ async def auth_middleware(request: Request, call_next):
         return Response(
             content=body,
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers={k: v for k, v in response.headers.items()
+                     if k.lower() != "content-length"},
             media_type="text/html",
         )
 
