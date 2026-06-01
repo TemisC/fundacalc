@@ -8,22 +8,68 @@ Provides:
 """
 import io
 import sys
+import hashlib
+import os
+import secrets
 from typing import Optional
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse
+from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import tempfile
-import os
 
 # ensure project root in path
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+# ── Cargar .env si existe ──────────────────────────────────────────────────────
+try:
+    from dotenv import load_dotenv
+    _env_path = ROOT / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+except ImportError:
+    pass  # python-dotenv no instalado → usar variables de entorno del sistema
+
+# ── Configuración de autenticación ────────────────────────────────────────────
+_SECRET_KEY   = os.getenv("FUNDACALC_SECRET_KEY", "")
+_ADMIN_USER   = os.getenv("FUNDACALC_USER", "admin")
+_ADMIN_HASH   = os.getenv("FUNDACALC_PASS_HASH", "")
+_AUTH_ENABLED = bool(_ADMIN_HASH)   # Si no hay hash, auth desactivada (dev)
+
+if not _SECRET_KEY:
+    _SECRET_KEY = secrets.token_hex(32)   # clave temporal por sesión
+
+def _check_password(plain: str) -> bool:
+    h = hashlib.sha256(plain.encode()).hexdigest()
+    return h == _ADMIN_HASH
+
+def _is_authenticated(request: Request) -> bool:
+    if not _AUTH_ENABLED:
+        return True
+    from itsdangerous import TimestampSigner, BadSignature
+    token = request.cookies.get("fc_session")
+    if not token:
+        return False
+    try:
+        signer = TimestampSigner(_SECRET_KEY)
+        signer.unsign(token, max_age=28800)  # 8 horas
+        return True
+    except Exception:
+        return False
+
+def _make_session_token() -> str:
+    from itsdangerous import TimestampSigner
+    signer = TimestampSigner(_SECRET_KEY)
+    return signer.sign(b"ok").decode()
+
+# Rutas que NO requieren autenticación
+_PUBLIC_PATHS = {"/login", "/api/login", "/favicon.ico"}
 
 from core.zapata_aislada import (
     CargasColumna, Columna, Suelo,
@@ -179,6 +225,93 @@ def _build_geo_pedestal(datos: "DatosEntrada") -> GeometriaPedestal:
 
 app = FastAPI(title="FundaCalc API")
 app.mount("/static", StaticFiles(directory=str(ROOT / "web" / "static")), name="static")
+
+
+# ── Middleware de autenticación ────────────────────────────────────────────────
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Protege todas las rutas excepto /login y /api/login."""
+    path = request.url.path
+
+    # Rutas públicas: login + assets estáticos
+    if path in _PUBLIC_PATHS or path.startswith("/static/"):
+        return await call_next(request)
+
+    # Verificar sesión
+    if not _is_authenticated(request):
+        # Si es llamada AJAX/API → 401 JSON
+        if path.startswith("/api/"):
+            return JSONResponse({"error": "No autenticado"}, status_code=401)
+        # Si es página HTML → redirigir al login
+        return RedirectResponse(url="/login", status_code=302)
+
+    response = await call_next(request)
+
+    # Inyectar botón de logout en todas las páginas HTML
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type:
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+        logout_btn = (
+            b'<a href="/logout" style="'
+            b'position:fixed;bottom:16px;right:16px;z-index:9999;'
+            b'background:#21262d;border:1px solid #30363d;color:#8b949e;'
+            b'font-size:11px;padding:5px 10px;border-radius:4px;'
+            b'text-decoration:none;font-family:sans-serif;'
+            b'opacity:0.7;transition:opacity 0.2s;" '
+            b'onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">'
+            b'Cerrar sesi\xc3\xb3n</a>'
+        )
+        body = body.replace(b"</body>", logout_btn + b"</body>")
+        return Response(
+            content=body,
+            status_code=response.status_code,
+            headers=dict(response.headers),
+            media_type="text/html",
+        )
+
+    return response
+
+
+# ── Rutas de autenticación ─────────────────────────────────────────────────────
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    return (ROOT / "web" / "static" / "login.html").read_text(encoding="utf-8")
+
+
+@app.post("/api/login")
+async def api_login(
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    if not _AUTH_ENABLED:
+        return JSONResponse({"ok": True, "redirect": "/"})
+
+    if username == _ADMIN_USER and _check_password(password):
+        token = _make_session_token()
+        resp = JSONResponse({"ok": True, "redirect": "/"})
+        resp.set_cookie(
+            key="fc_session",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            max_age=28800,   # 8 horas
+            secure=False,    # cambiar a True si tienes HTTPS terminado en app (no Nginx)
+        )
+        return resp
+
+    return JSONResponse({"ok": False, "error": "Credenciales incorrectas"}, status_code=401)
+
+
+@app.get("/logout")
+async def logout():
+    resp = RedirectResponse(url="/login", status_code=302)
+    resp.delete_cookie("fc_session")
+    return resp
 
 class DatosEntrada(BaseModel):
     Pd: float = 500.0
