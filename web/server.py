@@ -215,6 +215,11 @@ async def home():
 async def zapata():
     return (Path(ROOT / "web" / "static" / "index.html")).read_text(encoding="utf-8")
 
+
+@app.get("/verificacion", response_class=HTMLResponse)
+async def verificacion():
+    return (Path(ROOT / "web" / "static" / "verificacion.html")).read_text(encoding="utf-8")
+
 @app.post("/api/calcular")
 async def api_calcular(datos: DatosEntrada):
     # Parse units and convert input to base units

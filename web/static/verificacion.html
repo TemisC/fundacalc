@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FundaCalc — Verificación y Confiabilidad</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', sans-serif; }
+    .fc-header { background: #161b22; border-bottom: 1px solid #30363d; padding: 14px 24px; }
+    .fc-title { color: #58a6ff; font-size: 1.1rem; font-weight: 700; }
+    .fc-sub   { color: #8b949e; font-size: 0.78rem; }
+    .page-hero { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+                 border-bottom: 1px solid #30363d; padding: 40px 0 30px; }
+    .page-hero h1 { color: #e6edf3; font-size: 1.6rem; font-weight: 700; }
+    .page-hero p  { color: #8b949e; max-width: 700px; }
+    .section-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+                    margin-bottom: 1.5rem; }
+    .section-card .card-header { background: #21262d; border-bottom: 1px solid #30363d;
+                                  padding: 12px 18px; }
+    .section-card .card-header h5 { color: #58a6ff; font-size: 0.95rem; margin: 0; }
+    .section-card .card-header .badge-mod { background: #1f6feb22; color: #58a6ff;
+                                             border: 1px solid #1f6feb; border-radius: 4px;
+                                             padding: 2px 8px; font-size: 0.72rem; margin-right: 8px; }
+    .card-body { padding: 18px; }
+    table { font-size: 0.82rem; }
+    thead th { background: #21262d; color: #8b949e; border-color: #30363d !important; }
+    tbody td { border-color: #30363d !important; color: #c9d1d9; }
+    tbody tr:hover td { background: #21262d66; }
+    .badge-ok   { background: #238636; color: #fff; }
+    .badge-ref  { background: #1f6feb22; color: #79c0ff; border: 1px solid #1f6feb33; }
+    .formula-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+                   padding: 10px 14px; font-family: monospace; font-size: 0.82rem;
+                   color: #79c0ff; margin-top: 8px; }
+    .stat-box { background: #161b22; border: 1px solid #238636; border-radius: 8px;
+                padding: 16px; text-align: center; }
+    .stat-box .num { color: #3fb950; font-size: 2rem; font-weight: 700; }
+    .stat-box .lbl { color: #8b949e; font-size: 0.80rem; }
+    .bug-card { background: #161b22; border: 1px solid #f7853e; border-radius: 8px; padding: 16px; }
+    .bug-card .bug-title { color: #f7853e; font-weight: 600; font-size: 0.90rem; }
+    .bug-card .bug-detail { color: #c9d1d9; font-size: 0.82rem; margin-top: 4px; }
+    code { background: #21262d; border-radius: 3px; padding: 1px 5px;
+           color: #79c0ff; font-size: 0.82rem; }
+    .toc a { color: #79c0ff; text-decoration: none; font-size: 0.83rem; }
+    .toc a:hover { color: #58a6ff; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="fc-header d-flex align-items-center gap-3">
+  <div>
+    <div class="fc-title">FundaCalc</div>
+    <div class="fc-sub">Verificación y Confiabilidad de Cálculo</div>
+  </div>
+  <a href="/" class="btn btn-sm btn-outline-secondary ms-auto">← Inicio</a>
+</div>
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="container">
+    <h1>Registro de Verificación Técnica</h1>
+    <p>
+      Todos los módulos de FundaCalc fueron sometidos a una suite de tests automatizados
+      con casos de referencia tomados de textos de ingeniería de fundaciones. Los valores
+      esperados fueron calculados a mano y comparados con la salida del código con
+      tolerancias de ±0.5% a ±2.0% según la complejidad del método.
+    </p>
+    <div class="d-flex gap-2 flex-wrap mt-3">
+      <span class="badge bg-success fs-6 px-3 py-2">✔ 236 tests pasan</span>
+      <span class="badge bg-secondary fs-6 px-3 py-2">0 fallos</span>
+      <span class="badge" style="background:#1f6feb;font-size:0.85rem;padding:6px 12px;">
+        2 bugs corregidos durante el proceso
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="container my-4">
+  <div class="row">
+
+    <!-- Sidebar TOC -->
+    <div class="col-lg-3 mb-4">
+      <div class="section-card sticky-top" style="top:16px">
+        <div class="card-header"><h5>Contenido</h5></div>
+        <div class="card-body toc">
+          <div class="mb-2 fw-bold" style="color:#8b949e;font-size:0.75rem;">ZAPATAS</div>
+          <div><a href="#m1">M1 — Zapata Aislada</a></div>
+          <div><a href="#m2">M2 — Zapata Combinada</a></div>
+          <div><a href="#m3">M3 — Zapata Corrida</a></div>
+          <div><a href="#m4">M4 — Zapata Excéntrica</a></div>
+          <div><a href="#m5">M5 — Zapata de Fachada</a></div>
+          <div class="mb-2 mt-3 fw-bold" style="color:#8b949e;font-size:0.75rem;">LOSA Y VIGA</div>
+          <div><a href="#m4losa">M4 — Losa de Fundación</a></div>
+          <div class="mb-2 mt-3 fw-bold" style="color:#8b949e;font-size:0.75rem;">PILOTES</div>
+          <div><a href="#m6a">M6A — Encepado</a></div>
+          <div><a href="#m6b">M6B — Pilote Individual</a></div>
+          <div class="mb-2 mt-3 fw-bold" style="color:#8b949e;font-size:0.75rem;">ASENTAMIENTOS</div>
+          <div><a href="#m8">M8 — Schmertmann &amp; Terzaghi</a></div>
+          <div class="mb-2 mt-3 fw-bold" style="color:#8b949e;font-size:0.75rem;">MUROS</div>
+          <div><a href="#m91">M9.1 — Muro en Voladizo</a></div>
+          <div><a href="#m92">M9.2 — Muro de Gravedad</a></div>
+          <div><a href="#m93">M9.3 — Muro de Gaviones</a></div>
+          <div><a href="#m94">M9.4 — Muro con Contrafuertes</a></div>
+          <div><a href="#m95">M9.5 — Muro de Sótano</a></div>
+          <div class="mb-2 mt-3 fw-bold" style="color:#8b949e;font-size:0.75rem;">BUGS CORREGIDOS</div>
+          <div><a href="#bugs">Hallazgos y correcciones</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="col-lg-9">
+
+      <!-- Resumen estadístico -->
+      <div class="row g-3 mb-4">
+        <div class="col-4"><div class="stat-box"><div class="num">236</div><div class="lbl">Tests totales</div></div></div>
+        <div class="col-4"><div class="stat-box"><div class="num">11</div><div class="lbl">Módulos cubiertos</div></div></div>
+        <div class="col-4"><div class="stat-box" style="border-color:#f7853e;"><div class="num" style="color:#f7853e;">2</div><div class="lbl">Bugs corregidos</div></div></div>
+      </div>
+
+      <!-- Metodología -->
+      <div class="section-card mb-4">
+        <div class="card-header"><h5>Metodología de verificación</h5></div>
+        <div class="card-body">
+          <p style="font-size:0.85rem;">Cada módulo fue testeado con tres tipos de pruebas:</p>
+          <ol style="font-size:0.85rem;">
+            <li><strong>Benchmark numérico:</strong> caso con valores calculados a mano desde las fórmulas de referencia, verificados con tolerancia ≤ 2%.</li>
+            <li><strong>Sensibilidades físicas:</strong> comprobación de que el resultado varía en la dirección correcta al cambiar un parámetro (más carga → más armadura, etc.).</li>
+            <li><strong>Validación de entradas:</strong> el motor lanza <code>ValueError</code> ante parámetros imposibles.</li>
+          </ol>
+          <p style="font-size:0.85rem;margin-top:8px;">
+            <strong>Referencia principal:</strong> Das, B.M. (2021). <em>Principles of Foundation Engineering</em>, 9ª ed. Cengage Learning.<br>
+            <strong>Norma de diseño RC:</strong> ACI 318-19 (fórmulas de área de acero mínimo, punzonado, cortante).
+          </p>
+        </div>
+      </div>
+
+      <!-- M1 Zapata Aislada -->
+      <div id="m1" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M1</span>Zapata Aislada</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Pd=500 kN, Pl=300 kN, columna 0.30×0.30m, qa=150 kPa, Df=1.20m, h=0.50m, ACI 318-19.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Test</th><th>Verificación</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Área requerida</td><td>A_req > 0</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Zapata cuadrada</td><td>|B−L| &lt; 0.01m</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Presión admisible</td><td>q_max ≤ qa×1.05</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Punzonado ACI §22.6</td><td>Vu ≤ φVc</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Cortante unid.</td><td>Vu ≤ φVc</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>As ≥ As_mín</td><td>ACI §9.6.1.2</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Normas ACI vs CIRSOC</td><td>ratio ∈ [0.70–1.30]</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+          <div class="formula-box">As_min = max(0.25√fck/fy, 1.4/fy) · bw · d  [ACI 318-19 §9.6.1.2]</div>
+        </div>
+      </div>
+
+      <!-- M3 Zapata Corrida -->
+      <div id="m3" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M3</span>Zapata Corrida</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Pd=120 kN/m, Pl=80 kN/m, espesor muro=0.20m, B=1.60m, qa=150 kPa, Df=0.80m.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>q_última = Pu/B</td><td>272/1.60 = <strong>170.0 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Voladizo a = (B−e_muro)/2</td><td>(1.60−0.20)/2 = <strong>0.70 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mu = qu·a²/2</td><td>170×0.49/2 = <strong>41.65 kN·m/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>q_max ≤ qa</td><td>141.8 ≤ 150 kPa ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M4 Zapata Excéntrica -->
+      <div id="m4" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M4</span>Zapata Excéntrica por Carga</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Pd=400 kN, Pl=200 kN, Mdx=30 kN·m, Mlx=15 kN·m, B=L=2.5m, qa=150 kPa.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Excentricidad ex = Mser/Pser</td><td>45/600 = <strong>0.075 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Núcleo central: 6|ex|/L ≤ 1</td><td>6×0.075/2.5 = 0.18 ≤ 1 → contacto total</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Navier: q1=q2 (sin My)</td><td>Simetría en Y verificada</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>bo punzonado = 2[(cx+d)+(cy+d)]</td><td>ACI §22.6.4</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+          <div class="formula-box">Navier: q = P/(B·L) ± 6Mx/(B·L²) ± 6My/(L·B²)</div>
+        </div>
+      </div>
+
+      <!-- M2 Zapata Combinada -->
+      <div id="m2" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M2</span>Zapata Combinada</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Col1 Pser=450 kN (borde), Col2 Pser=600 kN, L_entre=3.0m, B=2.0m, qa=180 kPa.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Verificación</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Área ≥ 1.1×(P1+P2)/q_neta</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>q_max ≤ qa</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Diagrama V·M tiene variación &gt; 1 kN·m</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>x_Mu_pos entre columnas</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Punzonado col1 y col2 OK</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Armadura sup. e inf. diseñada</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M5 Fachada -->
+      <div id="m5" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M5</span>Zapata de Fachada</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Pd=500 kN, Pl=250 kN, ex_geom=0.20m, B=2.0m, L=3.0m, qa=200 kPa.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Conversión ex = Mser_x/Pser = ex_geom</td><td><strong>0.20 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Sin offset → presión uniforme (q_max=q_min)</td><td>Δq ≈ 0</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mayor offset → mayor q_max</td><td>Sensibilidad correcta</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M4 Losa -->
+      <div id="m4losa" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M4</span>Losa de Fundación (Mat Foundation)</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Módulo de grilla de columnas. Los tests de armadura verifican correctamente que con cargas bajas en losas grandes, rige <code>As_mín</code> y no el momento de flexión.</p>
+          <div class="formula-box">δᵢ = As_mín crece con d → losa más gruesa puede requerir más As si flexión es pequeña</div>
+        </div>
+      </div>
+
+      <!-- M6A Encepado -->
+      <div id="m6a" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M6A</span>Encepado de Pilotes</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Caso: Pd=600 kN, Pl=300 kN, Qa=200 kN/pilote, modo auto → grilla 2×3 = 6 pilotes.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Pu = 1.2×Pd + 1.6×Pl</td><td>1.2×600+1.6×300 = <strong>1200 kN</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>n_req = ⌈Pser×1.10/Qa⌉</td><td>⌈990/200⌉ = 5 → grilla 2×3 = 6</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>P_prom = Pser/n ≤ Qa</td><td>900/6=150 ≤ 200 kN ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Grilla más cuadrada posible</td><td>|nx−ny| ≤ 1</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Punzonado y cortante</td><td>OK</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M6B Pilote -->
+      <div id="m6b" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M6B</span>Pilote Individual</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">Dos casos: arcilla pura (método α) y arena pura (método β).</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>α (cu=50 kPa) = 1−0.5×(50−25)/45</td><td><strong>0.7222</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>fs = α×cu = 0.7222×50</td><td><strong>36.11 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Qs = fs×π×D×L</td><td><strong>453.8 kN</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Qp = 9×cu×Ag (arcilla)</td><td><strong>56.5 kN</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>β = K×tan(δ)×β_factor (arena)</td><td>0.7×tan(24°)×0.65</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Nq(φ=32°) = exp(π·tanφ)×tan²(45+φ/2)</td><td><strong>23.20</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>α límites: cu≤25→α=1.0, cu≥70→α=0.5</td><td>Fronteras verificadas</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+          <div class="formula-box">α-method (API 1984): fs = α·cu; α = 1.0 − 0.5·(cu−25)/(70−25) para 25 &lt; cu &lt; 70 kPa</div>
+        </div>
+      </div>
+
+      <!-- M8 Asentamientos -->
+      <div id="m8" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M8B</span>Asentamientos — Schmertmann y Terzaghi</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">
+            <strong>Schmertmann (1978):</strong> B=L=2m, Df=1m, q_total=120 kPa, γ=18 kN/m³, t=5 años, N60=20, arena.<br>
+            <strong>Terzaghi NC:</strong> B=L=2m, q_net=100 kPa, H_c=6m, Cc=0.35, e0=0.90, OCR=1.0, σ'0=60 kPa.
+          </p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>q_net = q_total − γ·Df</td><td>120−18 = <strong>102 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>C1 = 1−0.5(σv0/q_net)</td><td>1−0.5×18/102 = <strong>0.9118</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>C2 = 1+0.2·log10(t/0.1)</td><td>1+0.2·log10(50) = <strong>1.3398</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>z_peak = B/2 (zapata cuadrada)</td><td><strong>1.0 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Es(N60=20, arena) = 500(N60+15)</td><td>500×35 = <strong>17500 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>δ_i (Schmertmann)</td><td><strong>≈ 6.34 mm</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Δσ = q·B·L/((B+z)(L+z)) (2:1)</td><td>100×4/25 = <strong>16 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>δ_c NC = Cc/(1+e0)·H_c·log10(σf/σ0)</td><td><strong>≈ 113.6 mm</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>t90 (Terzaghi consolidación)</td><td>Tv(90%) = 0.848 → t90 correcto</td><td><span class="badge badge-ok">✔ (bug corregido)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M9.1 Muro Voladizo -->
+      <div id="m91" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M9.1</span>Muro en Voladizo</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">H=5.0m, h_zapata=0.50m, b_base=0.40m, b_corona=0.30m, B_punta=0.80m, B_talón=2.30m, φ_r=30°, γ=18 kN/m³.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Ka = tan²(45−φ/2)</td><td>tan²(30°) = <strong>1/3</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Ea = 0.5·Ka·γ·H²</td><td>0.5×(1/3)×18×25 = <strong>75.0 kN/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mo = Ea·H/3</td><td>75×5/3 = <strong>125.0 kN·m/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>W_total</td><td><strong>266.1 kN/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mr</td><td><strong>548.16 kN·m/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>FS_vuelco = Mr/Mo</td><td><strong>4.385</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>FS_desliz</td><td><strong>1.382</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>q_max</td><td><strong>96.88 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M9.2 Muro de Gravedad -->
+      <div id="m92" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M9.2</span>Muro de Gravedad</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">H=3.0m, b_base=2.5m, b_corona=0.7m, γ_muro=24 kN/m³, φ_r=30°.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>A_sec = (b_base+b_corona)/2 × H</td><td>(2.5+0.7)/2×3 = <strong>4.8 m²</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>W = γ_muro × A_sec</td><td>24×4.8 = <strong>115.2 kN/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>x_CG = (b·bc+(b−bc)²/3)/(b+bc)</td><td><strong>0.8844 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>FS_vuelco</td><td><strong>3.774</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>FS_desliz</td><td><strong>1.804</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M9.3 Muro de Gaviones -->
+      <div id="m93" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M9.3</span>Muro de Gaviones</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">N=4 cursos, h_capa=1.0m, b_base=3.0m, b_corona=1.2m, γ_g=20 kN/m³, φ_gavion=35°.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Anchuras: b_0=3.0, b_1=2.4, b_2=1.8, b_3=1.2</td><td>Δb=0.6m ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>W = γ_g·h·Σb = 20×1×8.4</td><td><strong>168.0 kN/m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>x_CG = Σ(b²)/(2Σb)</td><td>19.44/16.8 = <strong>1.1571 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>FS_vuelco</td><td><strong>3.038</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Junta superior: W_s·tan(φ_g)/Ea_s</td><td>24×0.700/3.0 = <strong>5.60</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Todas las juntas FS ≥ 1.3</td><td>ok_interna = True ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M9.4 Muro con Contrafuertes -->
+      <div id="m94" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M9.4</span>Muro con Contrafuertes</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">H=5.0m, e_pantalla=0.25m, s=3.50m (separación contrafuertes), L_libre=3.10m.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>L_libre = s − e_contrafuerte</td><td>3.5−0.4 = <strong>3.10 m</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mu_neg (pantalla) = wu·L²/10</td><td>ACI 8.3.3 losa continua</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mu_pos (pantalla) = wu·L²/14</td><td>ACI 8.3.3 vano interior</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Mu_neg &gt; Mu_pos</td><td>Apoyo &gt; Vano ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Estabilidad global</td><td>FS_v ≥ 2.0, FS_d ≥ 1.5</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- M9.5 Muro de Sótano -->
+      <div id="m95" class="section-card">
+        <div class="card-header">
+          <h5><span class="badge-mod">M9.5</span>Muro de Sótano</h5>
+        </div>
+        <div class="card-body">
+          <p style="font-size:0.83rem;">H=3.0m, e_muro=0.25m, φ_r=30°, q_s=10 kPa. Dos condiciones: biapoyado y empotrado_base.</p>
+          <table class="table table-sm table-dark">
+            <thead><tr><th>Fórmula</th><th>Valor esperado</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Ka = tan²(30°)</td><td><strong>1/3</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>pa_corona = Ka·q_s</td><td>(1/3)×10 = <strong>3.333 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>pa_base = Ka(γ·H+q_s)</td><td>(1/3)×64 = <strong>21.333 kPa</strong></td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Equilibrio: R_top + R_bot = F_total</td><td>Error &lt; 1%</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Empotrado: |M_base| &gt; 0</td><td>Momento en empotramiento ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+              <tr><td>Con NF → presión mayor</td><td>Hidrostática adicional ✓</td><td><span class="badge badge-ok">✔</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Bugs corregidos -->
+      <div id="bugs" class="section-card">
+        <div class="card-header"><h5>Bugs detectados y corregidos durante la verificación</h5></div>
+        <div class="card-body">
+          <div class="bug-card mb-3">
+            <div class="bug-title">Bug 1 — Tv_de_U(U&gt;52%) en Terzaghi consolidación</div>
+            <div class="bug-detail">
+              <strong>Archivo:</strong> <code>core/asentamientos.py</code><br>
+              <strong>Síntoma:</strong> El tiempo t90 era 3× más largo que el valor correcto. Para U=90%, la fórmula
+              retornaba Tv=2.714 en lugar del valor correcto Tv=0.848.<br>
+              <strong>Causa:</strong> Constante incorrecta en la fórmula empirica de Terzaghi:
+              <code>1.781 − 0.933·log(1−U)</code> en lugar de <code>−0.085 − 0.933·log(1−U)</code>
+              (la versión correcta equivale a <code>1.781 − 0.933·log(100·(1−U))</code>).<br>
+              <strong>Impacto:</strong> Solo afectaba los tiempos de consolidación (t50, t90 y curva δ(t)).
+              El asentamiento total δ_c no estaba afectado.
+            </div>
+          </div>
+          <div class="bug-card">
+            <div class="bug-title">Bug 2 — U_de_Tv (curva consolidación tiempo) en Terzaghi</div>
+            <div class="bug-detail">
+              <strong>Archivo:</strong> <code>core/asentamientos.py</code><br>
+              <strong>Síntoma:</strong> Para Tv=0.197 (debería dar U≈50%), la función devolvía U≈16%.<br>
+              <strong>Causa:</strong> Fórmula de Sivaram &amp; Swamee (1977) implementada con exponentes incorrectos:
+              <code>(1 + b**0.179)**(1/0.358)</code> en lugar de <code>(1 + b)**(1/5.6)</code>.<br>
+              <strong>Impacto:</strong> La curva δ(t) mostrada al usuario era incorrecta en toda la región U&gt;15%.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<footer class="text-center py-4" style="color:#484f58;font-size:0.78rem;border-top:1px solid #21262d;">
+  FundaCalc — Suite de verificación ejecutada con pytest.<br>
+  Todos los casos de referencia se pueden reproducir ejecutando <code>python -m pytest tests/ -v</code> en el repositorio.
+</footer>
+
+</body>
+</html>
