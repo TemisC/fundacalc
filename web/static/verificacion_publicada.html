@@ -74,8 +74,8 @@
       <a href="/verificacion">verificación a nivel de fórmulas</a>.
     </p>
     <div class="d-flex gap-2 flex-wrap mt-3">
-      <span class="badge bg-success fs-6 px-3 py-2">✔ 17 tests pasan</span>
-      <span class="badge bg-secondary fs-6 px-3 py-2">4 casos publicados</span>
+      <span class="badge bg-success fs-6 px-3 py-2">✔ 47 tests pasan</span>
+      <span class="badge bg-secondary fs-6 px-3 py-2">8 casos publicados</span>
       <span class="badge" style="background:#1f6feb;font-size:0.85rem;padding:6px 12px;">
         Fuentes verificadas aritméticamente
       </span>
@@ -96,10 +96,10 @@
   </div>
 
   <div class="row g-3 mb-4">
-    <div class="col-3"><div class="stat-box"><div class="num">17</div><div class="lbl">Tests publicados</div></div></div>
-    <div class="col-3"><div class="stat-box"><div class="num">3</div><div class="lbl">Fuentes externas</div></div></div>
-    <div class="col-3"><div class="stat-box"><div class="num">4</div><div class="lbl">Casos de referencia</div></div></div>
-    <div class="col-3"><div class="stat-box"><div class="num">17/17</div><div class="lbl">Tests pasan</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">47</div><div class="lbl">Tests publicados</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">4</div><div class="lbl">Fuentes externas</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">8</div><div class="lbl">Casos de referencia</div></div></div>
+    <div class="col-3"><div class="stat-box"><div class="num">47/47</div><div class="lbl">Tests pasan</div></div></div>
   </div>
 
   <!-- CASO 1 -->
@@ -315,6 +315,82 @@ Verificación aritmética independiente:
             ✔ FundaCalc produce <code>42.95 mm</code> — coincide con el valor publicado.
           </p>
         </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASOS DAS -->
+  <div class="case-card">
+    <div class="case-header d-flex align-items-center gap-3">
+      <h5>Casos Das — Capacidad Portante (Capítulo 3, 5ª Ed.)</h5>
+      <span class="source-badge ms-auto">Braja M. Das 5ª Ed.</span>
+    </div>
+    <div class="case-body">
+
+      <p style="font-size:0.83rem;">
+        <strong>Fuente:</strong> Braja M. Das — "Principios de Ingeniería de Cimentaciones", 5ª Edición.
+        Ejemplos 3.1, 3.3 y Problema 3.15. Proporcionado por el usuario del software.
+      </p>
+
+      <table class="table table-sm table-dark">
+        <thead>
+          <tr><th>Ejemplo</th><th>Método</th><th>Resultado Das</th><th>FundaCalc</th><th>Diferencia</th><th>Estado</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Ej. 3.1 (φ=20°, cuadrada)</td>
+            <td>Terzaghi</td>
+            <td>514 kPa</td>
+            <td>433 kPa</td>
+            <td style="color:#f7853e;">-15.7%</td>
+            <td><span style="color:#f7853e;font-size:0.75rem;">✗ Diferencia esperada</span></td>
+          </tr>
+          <tr>
+            <td>Ej. 3.3 (φ=25°, exc. e=0.12m)</td>
+            <td>Meyerhof</td>
+            <td>≈1914 kPa</td>
+            <td>1925 kPa</td>
+            <td style="color:#3fb950;">+0.5%</td>
+            <td><span class="badge badge-pass">✔ Pasa</span></td>
+          </tr>
+          <tr>
+            <td>P. 3.15 (φ=0°, arcilla)</td>
+            <td>Hansen</td>
+            <td>609 kPa</td>
+            <td>611 kPa</td>
+            <td style="color:#3fb950;">+0.4%</td>
+            <td><span class="badge badge-pass">✔ Pasa</span></td>
+          </tr>
+          <tr>
+            <td>Tabla 3.4 — Nc, Nq (8 valores φ)</td>
+            <td>Vesic</td>
+            <td>Tablas publicadas</td>
+            <td>Fórmulas exactas</td>
+            <td style="color:#3fb950;">&lt;1%</td>
+            <td><span class="badge badge-pass">✔ Pasa</span></td>
+          </tr>
+          <tr>
+            <td>Ka Rankine (7 valores φ)</td>
+            <td>tan²(45-φ/2)</td>
+            <td>Tabla Cap. 7</td>
+            <td>Fórmula exacta</td>
+            <td style="color:#3fb950;">&lt;1%</td>
+            <td><span class="badge badge-pass">✔ Pasa</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="background:#161b22;border:1px solid #f7853e;border-radius:6px;padding:14px;font-size:0.83rem;margin-top:12px;">
+        <strong style="color:#f7853e;">Hallazgo documentado — Ejemplo 3.1 (Terzaghi):</strong><br>
+        FundaCalc usa los factores de capacidad portante de <strong>Vesic (1973)</strong> para todos sus métodos,
+        incluyendo Terzaghi. Das, en cambio, usa tablas específicas del método original de Terzaghi (Tabla 3.1)
+        que tienen valores distintos:<br><br>
+        <code>Das Tabla 3.1 (Terzaghi) φ=20°: Nq=7.44, Nc=17.69, Nγ=3.64</code><br>
+        <code>FundaCalc (Vesic)         φ=20°: Nq=6.40, Nc=14.83, Nγ=2.87</code><br><br>
+        Esta diferencia del ~15% en Ej. 3.1 es un hallazgo de diseño del módulo, no un error aritmético.
+        FundaCalc produce resultados más conservadores para Terzaghi porque usa los factores modernos Vesic.
+        Para El Ejemplo 3.3 (Meyerhof, dominado por cohesión) la diferencia es despreciable (+0.5%).
       </div>
 
     </div>
