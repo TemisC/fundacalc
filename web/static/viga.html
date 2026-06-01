@@ -90,6 +90,21 @@
     <!-- ═══ ENTRADAS ═══════════════════════════════════════════════════════════ -->
     <div class="col-lg-5">
 
+      <!-- Unidades -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2">
+          <label class="form-label mb-1 fw-bold" style="font-size:11px;">Unidades</label>
+          <select class="form-select form-select-sm" id="selectorUnidades" onchange="updateUnitLabels()">
+            <option value="kN_kN/m2">kN, kN/m²</option>
+            <option value="kip_kip/ft2">kip, kip/ft²</option>
+            <option value="tf_tf/m2">tf, tf/m²</option>
+            <option value="lbf_psf">lbf, psf</option>
+            <option value="ton_ton/m2">ton, ton/m²</option>
+            <option value="kg_kg/m2">kg, kg/m²</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Card 1: Columnas (tabla dinámica) -->
       <div class="card shadow-sm mb-3">
         <div class="card-body py-2 px-3">
@@ -100,8 +115,8 @@
                 <tr>
                   <th>#</th>
                   <th>x [m]</th>
-                  <th>P<sub>D</sub> [kN]</th>
-                  <th>P<sub>L</sub> [kN]</th>
+                  <th>P<sub>D</sub> [<span class="unit-force">kN</span>]</th>
+                  <th>P<sub>L</sub> [<span class="unit-force">kN</span>]</th>
                   <th>Etiqueta</th>
                   <th></th>
                 </tr>
@@ -157,7 +172,7 @@
               <input type="number" id="ks" class="form-control form-control-sm" value="20000" min="100">
             </div>
             <div class="col-6">
-              <label class="form-label mb-1 small">q<sub>a</sub> [kN/m²]</label>
+              <label class="form-label mb-1 small">q<sub>a</sub> [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="qa" class="form-control form-control-sm" value="150" min="10">
             </div>
           </div>
@@ -446,6 +461,7 @@ function getPayload() {
     fy:           +v('fy'),
     norma:         v('norma'),
     varilla_pref:  v('varillaPref'),
+    unidades:      document.getElementById('selectorUnidades').value,
   };
 }
 
@@ -783,6 +799,21 @@ async function exportarDXF() {
   } finally {
     btn.disabled = false; btn.textContent = 'Exportar DXF';
   }
+}
+
+// ── Unidades ──────────────────────────────────────────────────────────────────
+const UNIDADES_MAP_VIGA = {
+  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²' },
+  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²' },
+  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²' },
+  'lbf_psf':     { force: 'lbf', pressure: 'psf' },
+  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²' },
+  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²' },
+};
+function updateUnitLabels() {
+  const u = UNIDADES_MAP_VIGA[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_VIGA['kN_kN/m2'];
+  document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
+  document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
 }
 
 </script>

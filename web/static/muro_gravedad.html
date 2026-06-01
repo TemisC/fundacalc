@@ -107,6 +107,21 @@
     <!-- ══ PANEL IZQUIERDO ══ -->
     <div class="col-lg-5">
 
+      <!-- Unidades -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2">
+          <label class="form-label mb-1 fw-bold" style="font-size:11px;">Unidades</label>
+          <select class="form-select form-select-sm" id="selectorUnidades" onchange="updateUnitLabels()">
+            <option value="kN_kN/m2">kN, kN/m²</option>
+            <option value="kip_kip/ft2">kip, kip/ft²</option>
+            <option value="tf_tf/m2">tf, tf/m²</option>
+            <option value="lbf_psf">lbf, psf</option>
+            <option value="ton_ton/m2">ton, ton/m²</option>
+            <option value="kg_kg/m2">kg, kg/m²</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Card 1: Geometría -->
       <div class="card shadow-sm mb-3">
         <div class="card-header py-2 fw-bold" style="font-size:13px;">
@@ -184,7 +199,7 @@
               <input type="number" id="gamma_r" class="form-control form-control-sm" value="18" step="0.5" min="10">
             </div>
             <div class="col-6">
-              <label class="form-label mb-0" style="font-size:11px;">Sobrecarga q_s <span class="label-unit">[kPa]</span></label>
+              <label class="form-label mb-0" style="font-size:11px;">Sobrecarga q_s [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="q_s" class="form-control form-control-sm" value="0" step="1" min="0">
             </div>
             <div class="col-6 d-flex align-items-end">
@@ -216,7 +231,7 @@
               <input type="number" id="gamma_f" class="form-control form-control-sm" value="18" step="0.5" min="10">
             </div>
             <div class="col-6">
-              <label class="form-label mb-0" style="font-size:11px;">q_adm <span class="label-unit">[kPa]</span></label>
+              <label class="form-label mb-0" style="font-size:11px;">q_adm [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="qa" class="form-control form-control-sm" value="150" step="10" min="10">
             </div>
             <div class="col-6">
@@ -532,6 +547,7 @@ async function calcular() {
     gamma_f:      parseFloat(v('gamma_f')),
     qa:           parseFloat(v('qa')),
     delta_factor: parseFloat(v('delta_factor')),
+    unidades:     document.getElementById('selectorUnidades').value,
   };
   _lastPayload = payload;
 
@@ -715,6 +731,20 @@ async function exportarPDF() {
   } catch(err) {
     alert('Error: ' + err.message);
   }
+}
+
+// ── Unidades ──────────────────────────────────────────────────────────────────
+const UNIDADES_MAP_MURO = {
+  'kN_kN/m2':    { pressure: 'kN/m²' },
+  'kip_kip/ft2': { pressure: 'kip/ft²' },
+  'tf_tf/m2':    { pressure: 'tf/m²' },
+  'lbf_psf':     { pressure: 'psf' },
+  'ton_ton/m2':  { pressure: 'ton/m²' },
+  'kg_kg/m2':    { pressure: 'kg/m²' },
+};
+function updateUnitLabels() {
+  const u = UNIDADES_MAP_MURO[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_MURO['kN_kN/m2'];
+  document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────

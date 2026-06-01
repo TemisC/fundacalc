@@ -3026,14 +3026,16 @@ class DatosViga(BaseModel):
     fy: float = 420.0
     norma: str = "ACI318"
     varilla_pref: Optional[str] = ""
+    unidades: str = "kN_kN/m2"
 
 
 def _build_motor_viga(datos: DatosViga) -> VigaFundacion:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     cols = [
         CargaColumnaViga(
             x=float(c["x"]),
-            Pd=float(c["Pd"]),
-            Pl=float(c["Pl"]),
+            Pd=UnitConverter.to_base(float(c["Pd"]), fu, 'force'),
+            Pl=UnitConverter.to_base(float(c["Pl"]), fu, 'force'),
             etiqueta=str(c.get("etiqueta", "")),
         )
         for c in datos.columnas
@@ -3054,7 +3056,7 @@ def _build_motor_viga(datos: DatosViga) -> VigaFundacion:
         vuelo_izq=datos.vuelo_izq,
         vuelo_der=datos.vuelo_der,
     )
-    suelo = SueloViga(ks=datos.ks, qa=datos.qa)
+    suelo = SueloViga(ks=datos.ks, qa=UnitConverter.to_base(datos.qa, pu, 'pressure'))
     hormigon = MaterialHormigon(fck=datos.fck)
     acero = MaterialAcero(fy=datos.fy)
     norma = NORMAS_MAP.get(datos.norma, ACI318)()
@@ -3414,17 +3416,21 @@ class DatosMuro(BaseModel):
     fy:           float = 420.0
     recub:        float = 0.07
     delta_factor: float = 0.667
+    unidades:     str   = "kN_kN/m2"
 
 
 def _build_motor_muro(datos: DatosMuro) -> MuroVoladizo:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     return MuroVoladizo().calcular(
         H=datos.H, h_zapata=datos.h_zapata,
         b_base=datos.b_base, b_corona=datos.b_corona,
         B_punta=datos.B_punta, B_talon=datos.B_talon,
         gamma_r=datos.gamma_r, phi_r=datos.phi_r,
-        c_r=datos.c_r, q_s=datos.q_s,
+        c_r=UnitConverter.to_base(datos.c_r, pu, 'pressure'),
+        q_s=UnitConverter.to_base(datos.q_s, pu, 'pressure'),
         gamma_f=datos.gamma_f, phi_f=datos.phi_f,
-        c_f=datos.c_f, qa=datos.qa,
+        c_f=UnitConverter.to_base(datos.c_f, pu, 'pressure'),
+        qa=UnitConverter.to_base(datos.qa, pu, 'pressure'),
         gamma_c=datos.gamma_c, fc=datos.fc, fy=datos.fy,
         recub=datos.recub, delta_factor=datos.delta_factor,
     )
@@ -3565,16 +3571,20 @@ class DatosMuroGravedad(BaseModel):
     gamma_f:      float = 18.0
     qa:           float = 150.0
     delta_factor: float = 0.667
+    unidades:     str   = "kN_kN/m2"
 
 
 def _build_motor_gravedad(datos: DatosMuroGravedad) -> MuroGravedad:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     return MuroGravedad().calcular(
         H=datos.H, b_base=datos.b_base, b_corona=datos.b_corona,
         h_emb=datos.h_emb, gamma_muro=datos.gamma_muro,
         gamma_r=datos.gamma_r, phi_r=datos.phi_r,
-        c_r=datos.c_r, q_s=datos.q_s,
+        c_r=UnitConverter.to_base(datos.c_r, pu, 'pressure'),
+        q_s=UnitConverter.to_base(datos.q_s, pu, 'pressure'),
         gamma_f=datos.gamma_f, phi_f=datos.phi_f,
-        c_f=datos.c_f, qa=datos.qa,
+        c_f=UnitConverter.to_base(datos.c_f, pu, 'pressure'),
+        qa=UnitConverter.to_base(datos.qa, pu, 'pressure'),
         delta_factor=datos.delta_factor,
     )
 
@@ -3675,16 +3685,24 @@ class DatosMuroGaviones(BaseModel):
     qa:           float = 150.0
     phi_gavion:   float = 35.0
     delta_factor: float = 0.667
+    unidades:     str   = "kN_kN/m2"
 
 
 def _build_motor_gaviones(datos: DatosMuroGaviones) -> MuroGaviones:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     return MuroGaviones().calcular(
         N=datos.N, h_capa=datos.h_capa,
         b_base=datos.b_base, b_corona=datos.b_corona,
         h_emb=datos.h_emb, gamma_g=datos.gamma_g,
-        phi_r=datos.phi_r, c_r=datos.c_r, gamma_r=datos.gamma_r, q_s=datos.q_s,
-        phi_f=datos.phi_f, c_f=datos.c_f, gamma_f=datos.gamma_f,
-        qa=datos.qa, phi_gavion=datos.phi_gavion,
+        phi_r=datos.phi_r,
+        c_r=UnitConverter.to_base(datos.c_r, pu, 'pressure'),
+        gamma_r=datos.gamma_r,
+        q_s=UnitConverter.to_base(datos.q_s, pu, 'pressure'),
+        phi_f=datos.phi_f,
+        c_f=UnitConverter.to_base(datos.c_f, pu, 'pressure'),
+        gamma_f=datos.gamma_f,
+        qa=UnitConverter.to_base(datos.qa, pu, 'pressure'),
+        phi_gavion=datos.phi_gavion,
         delta_factor=datos.delta_factor,
     )
 
@@ -3804,15 +3822,21 @@ class DatosMuroContrafuertes(BaseModel):
     fy:             float = 420.0
     recub:          float = 0.07
     delta_factor:   float = 0.667
+    unidades:       str   = "kN_kN/m2"
 
 
 def _build_motor_contrafuertes(datos: DatosMuroContrafuertes) -> MuroContrafuertes:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     return MuroContrafuertes().calcular(
         H=datos.H, h_zapata=datos.h_zapata,
         e_pantalla=datos.e_pantalla, e_contrafuerte=datos.e_contrafuerte,
         B_punta=datos.B_punta, B_talon=datos.B_talon, s=datos.s,
-        gamma_r=datos.gamma_r, phi_r=datos.phi_r, c_r=datos.c_r, q_s=datos.q_s,
-        gamma_f=datos.gamma_f, phi_f=datos.phi_f, c_f=datos.c_f, qa=datos.qa,
+        gamma_r=datos.gamma_r, phi_r=datos.phi_r,
+        c_r=UnitConverter.to_base(datos.c_r, pu, 'pressure'),
+        q_s=UnitConverter.to_base(datos.q_s, pu, 'pressure'),
+        gamma_f=datos.gamma_f, phi_f=datos.phi_f,
+        c_f=UnitConverter.to_base(datos.c_f, pu, 'pressure'),
+        qa=UnitConverter.to_base(datos.qa, pu, 'pressure'),
         gamma_c=datos.gamma_c, fc=datos.fc, fy=datos.fy,
         recub=datos.recub, delta_factor=datos.delta_factor,
     )
@@ -3933,14 +3957,18 @@ class DatosMuroSotano(BaseModel):
     fy:        float = 420.0
     recub:     float = 0.04
     gamma_c:   float = 24.0
+    unidades:  str   = "kN_kN/m2"
 
 
 def _build_motor_sotano(datos: DatosMuroSotano) -> MuroSotano:
+    fu, pu = UnitConverter.parse_units(datos.unidades)
     return MuroSotano().calcular(
         H=datos.H, e_muro=datos.e_muro, h_NF=datos.h_NF,
         condicion=datos.condicion,
-        phi_r=datos.phi_r, c_r=datos.c_r,
-        gamma_r=datos.gamma_r, q_s=datos.q_s,
+        phi_r=datos.phi_r,
+        c_r=UnitConverter.to_base(datos.c_r, pu, 'pressure'),
+        gamma_r=datos.gamma_r,
+        q_s=UnitConverter.to_base(datos.q_s, pu, 'pressure'),
         gamma_w=datos.gamma_w,
         fc=datos.fc, fy=datos.fy, recub=datos.recub,
         gamma_c=datos.gamma_c,
@@ -4048,19 +4076,28 @@ class DatosPilote(BaseModel):
     fc:        float = 25.0
     fy:        float = 420.0
     recub:     float = 0.075
+    unidades:  str   = "kN_kN/m2"
 
 
 def _build_motor_pilote(datos: DatosPilote) -> PiloteIndividual:
-    capas_inp = datos.capas or [
+    fu, pu = UnitConverter.parse_units(datos.unidades)
+    capas_raw = datos.capas or [
         {"tipo": "arcilla", "espesor": 5.0, "gamma": 18.0, "cu": 50, "phi": 0},
         {"tipo": "arena",   "espesor": 8.0, "gamma": 19.0, "cu": 0,  "phi": 32},
+    ]
+    capas_inp = [
+        {**c, "cu": UnitConverter.to_base(float(c.get("cu", 0)), pu, 'pressure')}
+        for c in capas_raw
     ]
     return PiloteIndividual().calcular(
         D=datos.D, L=datos.L, tipo=datos.tipo,
         capas_inp=capas_inp,
-        Qa_dis=datos.Qa_dis, FS_min=datos.FS_min,
-        H_lat=datos.H_lat, e_lat=datos.e_lat,
-        tipo_lat=datos.tipo_lat, cu_lat=datos.cu_lat,
+        Qa_dis=UnitConverter.to_base(datos.Qa_dis, fu, 'force'),
+        FS_min=datos.FS_min,
+        H_lat=UnitConverter.to_base(datos.H_lat, fu, 'force'),
+        e_lat=datos.e_lat,
+        tipo_lat=datos.tipo_lat,
+        cu_lat=UnitConverter.to_base(datos.cu_lat, pu, 'pressure'),
         phi_lat=datos.phi_lat, gamma_lat=datos.gamma_lat,
         fc=datos.fc, fy=datos.fy, recub=datos.recub,
     )

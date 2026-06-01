@@ -109,6 +109,21 @@
     <!-- ═══ COLUMNA IZQUIERDA — ENTRADA ═══════════════════════════════════════ -->
     <div class="col-lg-5">
 
+      <!-- Unidades -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2">
+          <label class="form-label mb-1 fw-bold" style="font-size:11px;">Unidades</label>
+          <select class="form-select form-select-sm" id="selectorUnidades" onchange="updateUnitLabels()">
+            <option value="kN_kN/m2">kN, kN/m²</option>
+            <option value="kip_kip/ft2">kip, kip/ft²</option>
+            <option value="tf_tf/m2">tf, tf/m²</option>
+            <option value="lbf_psf">lbf, psf</option>
+            <option value="ton_ton/m2">ton, ton/m²</option>
+            <option value="kg_kg/m2">kg, kg/m²</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Modo -->
       <div class="card shadow-sm mb-3">
         <div class="card-body py-2 px-3">
@@ -283,7 +298,7 @@
           <div class="sec-heading">Suelo</div>
           <div class="row g-2 mb-2">
             <div class="col-4">
-              <label class="form-label mb-1 small">q<sub>adm</sub> [kN/m²]</label>
+              <label class="form-label mb-1 small">q<sub>adm</sub> [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="qa" class="form-control form-control-sm" value="100">
             </div>
             <div class="col-4">
@@ -553,7 +568,7 @@ function getPayload() {
     fy:   +document.getElementById('fy').value,
     norma: document.getElementById('norma').value,
     varilla_pref: document.getElementById('varillaPref').value,
-    unidades: 'kN_kN/m2',
+    unidades: document.getElementById('selectorUnidades').value,
   };
 
   if (modo === 'grilla') {
@@ -805,6 +820,21 @@ async function exportarPDF() {
   } finally {
     btn.disabled = false; btn.textContent = 'Exportar PDF';
   }
+}
+
+// ── Unidades ──────────────────────────────────────────────────────────────────
+const UNIDADES_MAP_LOSA = {
+  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²' },
+  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²' },
+  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²' },
+  'lbf_psf':     { force: 'lbf', pressure: 'psf' },
+  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²' },
+  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²' },
+};
+function updateUnitLabels() {
+  const u = UNIDADES_MAP_LOSA[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_LOSA['kN_kN/m2'];
+  document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
+  document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
 }
 </script>
 </body>

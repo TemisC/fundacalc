@@ -93,17 +93,32 @@
     <!-- ═══ ENTRADAS ═══════════════════════════════════════════════════════════ -->
     <div class="col-lg-4">
 
+      <!-- Unidades -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2">
+          <label class="form-label mb-1 fw-bold" style="font-size:11px;">Unidades</label>
+          <select class="form-select form-select-sm" id="selectorUnidades" onchange="updateUnitLabels()">
+            <option value="kN_kN/m2">kN, kN/m²</option>
+            <option value="kip_kip/ft2">kip, kip/ft²</option>
+            <option value="tf_tf/m2">tf, tf/m²</option>
+            <option value="lbf_psf">lbf, psf</option>
+            <option value="ton_ton/m2">ton, ton/m²</option>
+            <option value="kg_kg/m2">kg, kg/m²</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Cargas -->
       <div class="card shadow-sm mb-3">
         <div class="card-body py-2 px-3">
           <div class="sec-heading">Cargas en columna</div>
           <div class="row g-2 mb-2">
             <div class="col-6">
-              <label class="form-label mb-1 small">P<sub>D</sub> [kN]</label>
+              <label class="form-label mb-1 small">P<sub>D</sub> [<span class="unit-force">kN</span>]</label>
               <input type="number" id="Pd" class="form-control form-control-sm" value="800">
             </div>
             <div class="col-6">
-              <label class="form-label mb-1 small">P<sub>L</sub> [kN]</label>
+              <label class="form-label mb-1 small">P<sub>L</sub> [<span class="unit-force">kN</span>]</label>
               <input type="number" id="Pl" class="form-control form-control-sm" value="400">
             </div>
             <div class="col-6">
@@ -147,7 +162,7 @@
               <input type="number" id="D_pil" class="form-control form-control-sm" value="0.40" step="0.05">
             </div>
             <div class="col-6">
-              <label class="form-label mb-1 small">Q<sub>adm</sub> por pilote [kN]</label>
+              <label class="form-label mb-1 small">Q<sub>adm</sub> por pilote [<span class="unit-force">kN</span>]</label>
               <input type="number" id="Qa_pil" class="form-control form-control-sm" value="400">
             </div>
           </div>
@@ -440,7 +455,7 @@ function getPayload() {
     h: +v('h'), recubrimiento: +v('recub'),
     fck: +v('fck'), fy: +v('fy'),
     norma: v('norma'), varilla_pref: v('varillaPref'),
-    unidades: 'kN_kN/m2',
+    unidades: document.getElementById('selectorUnidades').value,
   };
   if (modo === 'auto') {
     pay.spacing_x = +v('aSx'); pay.spacing_y = +v('aSx');
@@ -664,6 +679,21 @@ async function exportarDXF() {
   } finally {
     btn.disabled = false; btn.textContent = 'Exportar DXF';
   }
+}
+
+// ── Unidades ──────────────────────────────────────────────────────────────────
+const UNIDADES_MAP_ENC = {
+  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²' },
+  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²' },
+  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²' },
+  'lbf_psf':     { force: 'lbf', pressure: 'psf' },
+  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²' },
+  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²' },
+};
+function updateUnitLabels() {
+  const u = UNIDADES_MAP_ENC[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_ENC['kN_kN/m2'];
+  document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
+  document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
 }
 </script>
 </body>
