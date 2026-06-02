@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC — Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #050810;
+      color: #c9d1d9;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .db-header {
+      background: rgba(13,17,23,0.92);
+      border-bottom: 1px solid #21262d;
+      padding: 0 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .db-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .db-brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #1f6feb, #388bfd);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .db-brand-name { color: #e6edf3; font-size: 1.1rem; font-weight: 700; }
+    .db-brand-sub  { color: #8b949e; font-size: 0.72rem; }
+    .db-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #8b949e;
+      font-size: 0.80rem;
+    }
+    .db-avatar {
+      width: 30px; height: 30px;
+      background: #21262d;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      color: #8b949e;
+      border: 1px solid #30363d;
+    }
+
+    /* ── Hero ── */
+    .db-hero {
+      position: relative;
+      height: 320px;
+      background: url('/static/img/escalc-1.jpeg') center 30% / cover no-repeat;
+      display: flex;
+      align-items: center;
+      padding: 0 60px;
+      overflow: hidden;
+    }
+    .db-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg,
+        rgba(5,8,20,0.90) 0%,
+        rgba(5,8,20,0.60) 50%,
+        rgba(5,8,20,0.20) 100%);
+    }
+    .db-hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 560px;
+    }
+    .db-hero-label {
+      font-size: 0.72rem;
+      color: #388bfd;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .db-hero-title {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .db-hero-desc {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    /* ── Módulos ── */
+    .db-section {
+      flex: 1;
+      padding: 48px 60px 60px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .db-section-label {
+      font-size: 0.72rem;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    /* ── Tarjeta activa ── */
+    .module-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .module-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .module-card.active {
+      border-color: #1f6feb;
+    }
+    .module-card.active:hover {
+      border-color: #388bfd;
+      box-shadow: 0 12px 40px rgba(31,111,235,0.25);
+    }
+    .module-card.soon {
+      cursor: default;
+      opacity: 0.6;
+    }
+    .module-card.soon:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .card-img {
+      height: 180px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .card-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(13,17,23,0.95) 100%);
+    }
+    .card-badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 2;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.70rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .badge-active {
+      background: rgba(35,134,54,0.9);
+      color: #3fb950;
+      border: 1px solid #238636;
+    }
+    .badge-soon {
+      background: rgba(33,38,45,0.9);
+      color: #8b949e;
+      border: 1px solid #30363d;
+    }
+
+    .card-body-content {
+      padding: 20px 22px 22px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-discipline {
+      font-size: 0.70rem;
+      color: #388bfd;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #e6edf3;
+      line-height: 1.3;
+      margin-bottom: 10px;
+    }
+    .card-desc {
+      font-size: 0.80rem;
+      color: #8b949e;
+      line-height: 1.55;
+      flex: 1;
+      margin-bottom: 16px;
+    }
+    .card-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #388bfd;
+    }
+    .card-cta-soon {
+      color: #484f58;
+    }
+    .card-cta svg { transition: transform 0.2s; }
+    .module-card.active:hover .card-cta svg { transform: translateX(4px); }
+
+    /* ── Footer ── */
+    .db-footer {
+      border-top: 1px solid #21262d;
+      padding: 16px 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #484f58;
+      font-size: 0.73rem;
+    }
+    .db-footer a { color: #484f58; text-decoration: none; transition: color 0.15s; }
+    .db-footer a:hover { color: #8b949e; }
+
+    @media (max-width: 900px) {
+      .modules-grid { grid-template-columns: 1fr; }
+      .db-hero { height: 240px; padding: 0 28px; }
+      .db-section { padding: 32px 28px 48px; }
+      .db-footer { padding: 16px 28px; flex-direction: column; gap: 6px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="db-header">
+    <div class="db-brand">
+      <div class="db-brand-icon">🏗️</div>
+      <div>
+        <div class="db-brand-name">ESCALC</div>
+        <div class="db-brand-sub">Engineering Software CALCulation</div>
+      </div>
+    </div>
+    <div class="db-user">
+      <span>Plataforma de Cálculo Estructural</span>
+      <div class="db-avatar">⚙️</div>
+    </div>
+  </header>
+
+  <!-- ── Hero ── -->
+  <div class="db-hero">
+    <div class="db-hero-content">
+      <div class="db-hero-label">Plataforma Integrada</div>
+      <h1 class="db-hero-title">Cálculo Estructural<br>de Precisión</h1>
+      <p class="db-hero-desc">
+        Herramientas de ingeniería estructural para el diseño y verificación
+        de cimentaciones, conexiones y elementos estructurales.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Módulos ── -->
+  <div class="db-section">
+    <div class="db-section-label">Módulos disponibles</div>
+    <div class="modules-grid">
+
+      <!-- Módulo 1: Activo -->
+      <a href="/" class="module-card active">
+        <div class="card-img" style="background-image:url('/static/img/escalc-3.jpeg');">
+          <div class="card-badge badge-active">● Activo</div>
+        </div>
+        <div class="card-body-content">
+          <div class="card-discipline">Geotecnia · Fundaciones</div>
+          <div class="card-title">Diseño de Cimentaciones</div>
+          <div class="card-desc">
+            Zapatas aisladas, corridas, combinadas, pilotes, muros de contención,
+            losas de fundación, asentamientos y capacidad portante.
+          </div>
+          <div class="card-cta">
+            Abrir módulo
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+            </svg>
+          </div>
+        </div>
+      </a>
+
+      <!-- Módulo 2: Próximamente -->
+      <div class="module-card soon">
+        <div class="card-img" style="background-image:url('/static/img/escalc-2.jpeg');">
+          <div class="card-badge badge-soon">Próximamente</div>
+        </div>
+        <div class="card-body-content">
+          <div class="card-discipline">Acero Estructural</div>
+          <div class="card-title">Diseño de Conexiones en Acero</div>
+          <div class="card-desc">
+            Conexiones soldadas y atornilladas, placas base, uniones viga-columna
+            según AISC 360 y normas locales.
+          </div>
+          <div class="card-cta card-cta-soon">
+            En desarrollo
+          </div>
+        </div>
+      </div>
+
+      <!-- Módulo 3: Próximamente -->
+      <div class="module-card soon">
+        <div class="card-img" style="background-image:url('/static/img/escalc-5.jpeg');">
+          <div class="card-badge badge-soon">Próximamente</div>
+        </div>
+        <div class="card-body-content">
+          <div class="card-discipline">Acero · Concreto</div>
+          <div class="card-title">Elementos Estructurales</div>
+          <div class="card-desc">
+            Vigas, columnas, losas y marcos en acero y concreto armado.
+            Diseño y verificación según ACI 318, AISC y normas locales.
+          </div>
+          <div class="card-cta card-cta-soon">
+            En desarrollo
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <footer class="db-footer">
+    <div>
+      Desarrollado por <strong style="color:#6e7681;">Ing. Civil Temis Castillo</strong>
+      &nbsp;·&nbsp;
+      <strong style="color:#388bfd;">ESCALC</strong> — Engineering Software CALCulation
+    </div>
+    <div>
+      <a href="/verificacion">Verificación técnica</a>
+      &nbsp;·&nbsp;
+      <a href="/verificacion-publicada">Benchmark Das</a>
+    </div>
+  </footer>
+
+</body>
+</html>

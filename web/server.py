@@ -303,6 +303,11 @@ async def login_page():
     return (ROOT / "web" / "static" / "login.html").read_text(encoding="utf-8")
 
 
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    return (ROOT / "web" / "static" / "dashboard.html").read_text(encoding="utf-8")
+
+
 @app.post("/api/login")
 async def api_login(
     response: Response,
@@ -314,7 +319,7 @@ async def api_login(
 
     if username == _ADMIN_USER and _check_password(password):
         token = _make_session_token()
-        resp = JSONResponse({"ok": True, "redirect": "/"})
+        resp = JSONResponse({"ok": True, "redirect": "/dashboard"})
         resp.set_cookie(
             key="fc_session",
             value=token,
