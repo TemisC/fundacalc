@@ -53,7 +53,7 @@
     .msg-item  { font-size:12px;padding:2px 0;border-bottom:1px solid #f0f0f0; }
 
     /* SVG Sketch */
-    #svgConexion { width:100%;height:280px;background:#1a1a2e;border-radius:8px;
+    #svgConexion { width:100%;height:340px;background:#0d1117;border-radius:8px;
                    border:1px solid #30363d; }
 
     @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
@@ -273,7 +273,7 @@
           <div class="loading-overlay" id="overlaySVG">
             <div class="spinner-border spinner-border-sm text-warning"></div>
           </div>
-          <svg id="svgConexion" viewBox="0 0 500 280">
+          <svg id="svgConexion" viewBox="0 0 600 340">
             <!-- Dibujo generado dinámicamente por JS -->
             <text x="250" y="140" text-anchor="middle" fill="#484f58" font-size="13">
               Presiona Calcular para ver el esquema
@@ -433,106 +433,249 @@ function renderMensajes(msgs) {
 }
 
 function dibujarSVG(payload, data) {
-  const svg  = document.getElementById('svgConexion');
-  const n    = payload.pernos.n;
-  const p    = payload.pernos.p;
-  const e1   = payload.pernos.e1;
-  const Lp   = data.Lp;
-  const tp   = payload.plancha.tp;
-  const bp   = payload.plancha.bp;
-  const db   = payload.pernos.db;
+  const svg = document.getElementById('svgConexion');
+  const n   = payload.pernos.n;
+  const p   = payload.pernos.p;
+  const e1  = payload.pernos.e1;
+  const Lp  = data.Lp;
+  const tp  = payload.plancha.tp;
+  const bp  = payload.plancha.bp;
+  const db  = payload.pernos.db;
+  const tw  = payload.viga.tw;
+  const w   = payload.soldadura.w;
 
-  // Escala: 1mm ≈ 0.8px, centrado en 250,140
-  const sc   = 0.7;
-  const cx   = 140;   // centro X de la conexión
-  const cy   = 140;   // centro Y
+  // Escala adaptativa para que la plancha quepa bien
+  const maxLpPx = 200;
+  const sc = Math.min(maxLpPx / Math.max(Lp, 1), 1.0);
+  const Lp_px = Lp * sc;
+  const bp_px = Math.max(bp * sc * 0.6, 22);
+  const tp_px = Math.max(tp * sc * 0.5, 5);
+  const db_px = Math.max(db * sc * 0.6, 5);
+  const tw_px = Math.max(tw * sc * 0.5, 5);
 
-  // Columna (HEB300 simplificada)
-  const col_d  = 80;  // altura total px
-  const col_bf = 50;  // ancho ala px
-  const col_tf = 8;   // espesor ala px
-  const col_tw = 5;   // espesor alma px
+  // ── Dimensiones fijas de perfiles (esquemáticas, no a escala) ─────────────
+  const col_bf = 48, col_tf = 8, col_tw = 6;
+  const beam_bf = 70, beam_tf = 9, beam_d = Math.max(Lp_px + 40, 100);
 
-  // Plancha
-  const p_h  = Lp * sc;
-  const p_w  = bp * sc;
-  const p_x  = cx - p_w;
-  const p_y  = cy - p_h / 2;
+  // ── CENTROS DE CADA VISTA ─────────────────────────────────────────────────
+  // Vista Frontal: centrada en x=150, y=170
+  // Vista Sección: centrada en x=450, y=170
+  const cy = 170;
 
-  let svgContent = `
-    <!-- Columna (vista frontal simplificada) -->
-    <rect x="${cx - col_bf/2}" y="${cy - col_d}" width="${col_bf}" height="${col_d*2}"
-          fill="#2d3748" stroke="#718096" stroke-width="1.5"/>
-    <!-- Ala columna -->
-    <rect x="${cx - col_bf/2}" y="${cy - col_d}" width="${col_bf}" height="${col_tf}"
-          fill="#4a5568" stroke="#718096" stroke-width="1"/>
-    <rect x="${cx - col_bf/2}" y="${cy + col_d - col_tf}" width="${col_bf}" height="${col_tf}"
-          fill="#4a5568" stroke="#718096" stroke-width="1"/>
+  // ────────────────────────────────────────────────────────────────────────────
+  //  VISTA 1 — ALZADO FRONTAL
+  //  Mirando la cara frontal de la columna.
+  //  Se ve: columna (sección I), plancha soldada, pernos, alma de viga.
+  // ────────────────────────────────────────────────────────────────────────────
+  const cx1 = 150;   // x centro columna (vista frontal)
+  const colH = 280;  // altura visible de columna [px]
+  const col_x = cx1 - col_bf/2;  // borde izq columna
 
-    <!-- Soldadura (línea amarilla) -->
-    <line x1="${cx}" y1="${p_y}" x2="${cx}" y2="${p_y + p_h}"
-          stroke="#d97706" stroke-width="3" stroke-dasharray="0"/>
-    <text x="${cx - 8}" y="${cy - p_h/2 - 6}" fill="#d97706" font-size="10" text-anchor="middle">w=${payload.soldadura.w}</text>
+  // Plancha posicionada contra el alma de la columna (lado izquierdo del alma)
+  const alma_x = cx1 - col_tw/2;
+  const pl_x   = alma_x - bp_px;  // borde izq plancha
+  const pl_y   = cy - Lp_px/2;    // borde sup plancha
 
-    <!-- Plancha de alma -->
-    <rect x="${p_x}" y="${p_y}" width="${p_w}" height="${p_h}"
-          fill="#1e40af" stroke="#3b82f6" stroke-width="1.5" opacity="0.85"/>
-    <text x="${p_x + p_w/2}" y="${cy + p_h/2 + 14}" fill="#93c5fd" font-size="10" text-anchor="middle">
-      tp=${tp}mm × bp=${bp}mm
-    </text>`;
+  // Alma de viga: horizontal, llega hasta la plancha desde la izquierda
+  const viga_beam_w = 90;
+  const viga_x0 = pl_x - viga_beam_w;
+  const viga_xf = pl_x;
 
-  // Pernos
+  let s = `
+  <defs>
+    <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
+    </marker>
+    <marker id="arrW" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+      <path d="M0,0 L5,2.5 L0,5 Z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <!-- === VISTA FRONTAL === -->
+  <text x="${cx1}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">ALZADO FRONTAL</text>
+
+  <!-- Columna — alma -->
+  <rect x="${cx1-col_tw/2}" y="${cy-colH/2}" width="${col_tw}" height="${colH}"
+        fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.2"/>
+  <!-- Columna — ala izquierda -->
+  <rect x="${col_x}" y="${cy-colH/2}" width="${col_bf}" height="${col_tf}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+  <!-- Columna — ala derecha (inferior) -->
+  <rect x="${col_x}" y="${cy+colH/2-col_tf}" width="${col_bf}" height="${col_tf}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+  <!-- Columna — alas intermedias para dar sensación de I -->
+  <rect x="${col_x}" y="${cy-col_tf/2}" width="${col_bf}" height="${col_tf}"
+        fill="#1c2e4a" stroke="none" opacity="0.4"/>
+
+  <!-- Columna label -->
+  <text x="${cx1+col_bf/2+6}" y="${cy-colH/2+10}" fill="#4a90d9" font-size="9">Columna</text>
+
+  <!-- Alma de viga (horizontal) — superior e inferior del ala + alma -->
+  <!-- Ala sup viga -->
+  <rect x="${viga_x0}" y="${cy - beam_d/2}" width="${viga_beam_w + bp_px}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+  <!-- Alma viga -->
+  <rect x="${viga_x0}" y="${cy - beam_d/2 + beam_tf}" width="${tw_px}" height="${beam_d - 2*beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="0.8"/>
+  <!-- Ala inf viga -->
+  <rect x="${viga_x0}" y="${cy + beam_d/2 - beam_tf}" width="${viga_beam_w + bp_px}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+  <!-- Viga label -->
+  <text x="${viga_x0 + 5}" y="${cy - beam_d/2 - 5}" fill="#60a5fa" font-size="9">Viga</text>
+  <text x="${viga_x0 + 5}" y="${cy - beam_d/2 + beam_tf + 12}" fill="#60a5fa" font-size="9">tw=${tw}mm</text>
+
+  <!-- PLANCHA DE ALMA (shear tab) -->
+  <rect x="${pl_x}" y="${pl_y}" width="${bp_px}" height="${Lp_px}"
+        fill="#1e4080" stroke="#3b82f6" stroke-width="1.8" rx="1"/>
+
+  <!-- Cotas plancha -->
+  <line x1="${pl_x - 2}" y1="${pl_y}" x2="${pl_x - 12}" y2="${pl_y}" stroke="#4b5563" stroke-width="0.8"/>
+  <line x1="${pl_x - 2}" y1="${pl_y + Lp_px}" x2="${pl_x - 12}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
+  <line x1="${pl_x - 8}" y1="${pl_y}" x2="${pl_x - 8}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
+  <text x="${pl_x - 10}" y="${cy}" fill="#9ca3af" font-size="9" text-anchor="end" transform="rotate(-90,${pl_x-10},${cy})">Lp=${Lp}mm</text>
+
+  <!-- Cota bp -->
+  <line x1="${pl_x}" y1="${pl_y + Lp_px + 8}" x2="${pl_x + bp_px}" y2="${pl_y + Lp_px + 8}" stroke="#4b5563" stroke-width="0.8"/>
+  <text x="${pl_x + bp_px/2}" y="${pl_y + Lp_px + 20}" fill="#9ca3af" font-size="9" text-anchor="middle">bp=${bp}mm</text>
+
+  <!-- SOLDADURA (triángulos en ambos lados del alma de columna) -->
+  <polygon points="${alma_x},${pl_y} ${alma_x},${pl_y+12} ${alma_x-8},${pl_y+6}"
+           fill="#d97706" opacity="0.85"/>
+  <polygon points="${alma_x},${pl_y+Lp_px} ${alma_x},${pl_y+Lp_px-12} ${alma_x-8},${pl_y+Lp_px-6}"
+           fill="#d97706" opacity="0.85"/>
+  <text x="${alma_x - 12}" y="${pl_y - 4}" fill="#d97706" font-size="9" text-anchor="middle">w=${w}</text>`;
+
+  // Pernos (vista frontal — círculos con cruceta)
   for (let i = 0; i < n; i++) {
-    const by = p_y + e1 * sc + i * p * sc;
-    const bx = p_x - db * sc / 2 - 4;
-    svgContent += `<circle cx="${bx}" cy="${by}" r="${Math.max(db*sc/2, 4)}"
-                   fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.5"/>
-                   <line x1="${bx - db*sc/2 - 2}" y1="${by}" x2="${bx + db*sc/2 + 2}" y2="${by}"
-                         stroke="#60a5fa" stroke-width="0.7"/>
-                   <line x1="${bx}" y1="${by - db*sc/2 - 2}" x2="${bx}" y2="${by + db*sc/2 + 2}"
-                         stroke="#60a5fa" stroke-width="0.7"/>`;
+    const by  = pl_y + e1 * sc + i * p * sc;
+    const bx  = pl_x + bp_px * 0.45;  // centrados en la plancha
+    const r   = Math.max(db_px, 5);
+    s += `<circle cx="${bx}" cy="${by}" r="${r}" fill="#0f2744" stroke="#60a5fa" stroke-width="1.5"/>
+          <line x1="${bx-r+1}" y1="${by}" x2="${bx+r-1}" y2="${by}" stroke="#60a5fa" stroke-width="0.8"/>
+          <line x1="${bx}" y1="${by-r+1}" x2="${bx}" y2="${by+r-1}" stroke="#60a5fa" stroke-width="0.8"/>`;
   }
 
-  // Alma de viga (a la izquierda)
-  svgContent += `
-    <rect x="${p_x - 80}" y="${cy - 6}" width="80" height="12"
-          fill="#374151" stroke="#6b7280" stroke-width="1.2"/>
-    <text x="${p_x - 40}" y="${cy + 22}" fill="#9ca3af" font-size="10" text-anchor="middle">
-      Viga (tw=${payload.viga.tw}mm)
-    </text>`;
+  // Cota e1 y p
+  const bx0 = pl_x + bp_px + 8;
+  const by0 = pl_y + e1 * sc;
+  s += `<line x1="${pl_x + bp_px + 2}" y1="${pl_y}" x2="${bx0 + 8}" y2="${pl_y}" stroke="#374151" stroke-width="0.7"/>
+        <line x1="${pl_x + bp_px + 2}" y1="${by0}" x2="${bx0 + 8}" y2="${by0}" stroke="#374151" stroke-width="0.7"/>
+        <line x1="${bx0 + 4}" y1="${pl_y}" x2="${bx0 + 4}" y2="${by0}" stroke="#374151" stroke-width="0.7"/>
+        <text x="${bx0 + 14}" y="${pl_y + e1*sc/2 + 4}" fill="#6b7280" font-size="8">e₁=${e1}</text>`;
+  if (n > 1) {
+    const by1 = pl_y + e1 * sc + p * sc;
+    s += `<line x1="${pl_x + bp_px + 2}" y1="${by1}" x2="${bx0 + 8}" y2="${by1}" stroke="#374151" stroke-width="0.7"/>
+          <line x1="${bx0 + 4}" y1="${by0}" x2="${bx0 + 4}" y2="${by1}" stroke="#374151" stroke-width="0.7"/>
+          <text x="${bx0 + 14}" y="${by0 + p*sc/2 + 4}" fill="#6b7280" font-size="8">p=${p}</text>`;
+  }
 
-  // Cota Lp
-  svgContent += `
-    <line x1="${p_x - 8}" y1="${p_y}" x2="${p_x - 8}" y2="${p_y + p_h}"
-          stroke="#6b7280" stroke-width="1"/>
-    <text x="${p_x - 18}" y="${cy}" fill="#9ca3af" font-size="10" text-anchor="middle"
-          transform="rotate(-90,${p_x-18},${cy})">Lp=${data.Lp}mm</text>`;
+  // Flecha Vu
+  s += `<line x1="${viga_x0 - 30}" y1="${cy}" x2="${viga_x0 - 5}" y2="${cy}"
+             stroke="#ef4444" stroke-width="2" marker-end="url(#arr)"/>
+        <text x="${viga_x0 - 35}" y="${cy - 6}" fill="#ef4444" font-size="10" text-anchor="end">Vu=${payload.Vu}kN</text>`;
 
-  // Leyenda ratio
-  const ratioColor = data.ok ? '#22c55e' : '#ef4444';
-  svgContent += `
-    <rect x="310" y="10" width="180" height="70" rx="6"
-          fill="#1a1a2e" stroke="#30363d"/>
-    <text x="400" y="30" fill="#e2e8f0" font-size="12" text-anchor="middle" font-weight="bold">
-      ${data.ok ? '✔ CONFORME' : '✘ NO CONFORME'}
-    </text>
-    <text x="400" y="48" fill="${ratioColor}" font-size="11" text-anchor="middle">
-      D/C máx = ${data.relacion_max}
-    </text>
-    <text x="400" y="64" fill="#9ca3af" font-size="10" text-anchor="middle">
-      ${data.verificacion_critica.substring(0,28)}
-    </text>`;
+  // ────────────────────────────────────────────────────────────────────────────
+  //  VISTA 2 — SECCIÓN A-A (corte horizontal a través de los pernos)
+  //  Mirando desde arriba: se ve el ancho de la viga, la plancha y la columna.
+  // ────────────────────────────────────────────────────────────────────────────
+  const cx2  = 450;  // x centro vista sección
+  const sec_beam_bf = 70;  // ancho visible ala viga [px]
+  const sec_col_bf  = 50;  // ancho visible ala columna [px]
 
-  // Vu flecha
-  svgContent += `
-    <line x1="${p_x - 100}" y1="${cy}" x2="${p_x - 85}" y2="${cy}"
-          stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
-    <defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-      <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
-    </marker></defs>
-    <text x="${p_x - 110}" y="${cy - 6}" fill="#ef4444" font-size="10">Vu=${payload.Vu}kN</text>`;
+  // Profundidades a escala (horizontal = dirección longitudinal viga)
+  const sec_tw_px  = Math.max(tw * 0.6, 5);
+  const sec_tp_px  = Math.max(tp * 0.6, 5);
+  const sec_tf_col = 12;
 
-  svg.innerHTML = svgContent;
+  // Posiciones:
+  // x aumenta hacia la derecha = dirección HACIA la columna
+  // Alma viga termina donde empieza la plancha
+  // beam left flange top edge: cx2 - sec_beam_bf/2
+  const beam_left  = cx2 - 50;
+  const beam_right = cx2 + 30;   // donde termina la viga (cara del alma)
+  const plate_x0   = beam_right;  // plancha empieza aquí
+  const plate_x1   = plate_x0 + sec_tp_px;
+  const col_face   = plate_x1;
+  const col_right  = col_face + sec_tf_col;
+
+  const sec_h = 200;  // altura visible de la sección [px]
+  const sec_y0 = cy - sec_h/2;
+
+  s += `
+  <!-- Divisor vertical entre vistas -->
+  <line x1="300" y1="20" x2="300" y2="320" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- === SECCIÓN A-A === -->
+  <text x="${cx2}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">SECCIÓN A-A</text>
+  <text x="${cx2}" y="26" fill="#4b5563" font-size="8" text-anchor="middle">(corte horizontal a través de pernos)</text>
+
+  <!-- Ala superior viga (vista en planta = rectángulo horizontal) -->
+  <rect x="${beam_left}" y="${cy - sec_h/2}" width="${beam_right - beam_left}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
+  <!-- Alma viga (sección vista plana) -->
+  <rect x="${beam_left}" y="${cy - sec_h/2 + beam_tf}" width="${sec_tw_px}" height="${sec_h - 2*beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="0.8"/>
+  <!-- Ala inferior viga -->
+  <rect x="${beam_left}" y="${cy + sec_h/2 - beam_tf}" width="${beam_right - beam_left}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
+  <!-- Label viga -->
+  <text x="${beam_left + 5}" y="${cy - sec_h/2 - 4}" fill="#60a5fa" font-size="9">Viga (bf)</text>
+  <!-- Cota bf viga -->
+  <line x1="${beam_left}" y1="${cy + sec_h/2 + 8}" x2="${beam_right}" y2="${cy + sec_h/2 + 8}" stroke="#374151" stroke-width="0.8"/>
+  <text x="${(beam_left + beam_right)/2}" y="${cy + sec_h/2 + 20}" fill="#6b7280" font-size="8" text-anchor="middle">tw=${tw}mm</text>
+
+  <!-- Plancha de alma (sección) -->
+  <rect x="${plate_x0}" y="${cy - Lp_px/2}" width="${sec_tp_px}" height="${Lp_px}"
+        fill="#1e4080" stroke="#3b82f6" stroke-width="2"/>
+  <!-- Label plancha -->
+  <text x="${plate_x0 + sec_tp_px/2}" y="${cy - Lp_px/2 - 4}" fill="#3b82f6" font-size="9" text-anchor="middle">Plancha tp=${tp}mm</text>
+
+  <!-- Soldadura filete (triángulo en sección) -->
+  <polygon points="${col_face-1},${cy-10} ${col_face+6},${cy} ${col_face-1},${cy+10}"
+           fill="#d97706" opacity="0.9"/>
+  <text x="${col_face + 10}" y="${cy - 12}" fill="#d97706" font-size="8">w=${w}mm</text>
+
+  <!-- Columna — ala (sección transversal) -->
+  <rect x="${col_face}" y="${cy - sec_h/2}" width="${sec_tf_col}" height="${sec_h}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>
+  <!-- Label columna -->
+  <text x="${col_right + 4}" y="${cy - sec_h/2 + 12}" fill="#4a90d9" font-size="9">Col.</text>
+  <text x="${col_right + 4}" y="${cy - sec_h/2 + 23}" fill="#4a90d9" font-size="9">ala</text>
+
+  <!-- Cota tp plancha -->
+  <line x1="${plate_x0}" y1="${cy + Lp_px/2 + 8}" x2="${plate_x1}" y2="${cy + Lp_px/2 + 8}" stroke="#374151" stroke-width="0.8"/>
+
+  <!-- Pernos en sección — círculos representando los n pernos (proyectados) -->`;
+
+  // En la sección, los pernos aparecen como círculos (vistos desde el frente en el ancho de la viga)
+  // Los mostramos centrados en el alma de la viga, apilados verticalmente
+  const bolt_x_sec = beam_left + sec_tw_px / 2;
+  for (let i = 0; i < n; i++) {
+    const by = cy - Lp_px/2 + e1*sc + i*p*sc;
+    const r  = Math.max(db_px - 1, 4);
+    s += `<circle cx="${bolt_x_sec}" cy="${by}" r="${r}" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+          <line x1="${bolt_x_sec - r + 1}" y1="${by}" x2="${bolt_x_sec + r - 1}" y2="${by}" stroke="#facc15" stroke-width="0.7"/>
+          <line x1="${bolt_x_sec}" y1="${by - r + 1}" x2="${bolt_x_sec}" y2="${by + r - 1}" stroke="#facc15" stroke-width="0.7"/>`;
+    // Línea del perno atravesando plancha y hacia columna
+    s += `<line x1="${bolt_x_sec + r}" y1="${by}" x2="${plate_x1 - 2}" y2="${by}" stroke="#facc15" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>`;
+  }
+
+  // Leyenda resultados
+  const rcol = data.ok ? '#22c55e' : '#ef4444';
+  s += `
+  <!-- Leyenda resultado -->
+  <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#30363d"/>
+  <text x="450" y="296" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">
+    ${data.ok ? '✔ CONEXIÓN CONFORME' : '✘ CONEXIÓN NO CONFORME'}
+  </text>
+  <text x="450" y="312" fill="${rcol}" font-size="10" text-anchor="middle">
+    D/C máx = ${data.relacion_max}  |  Crítica: ${data.verificacion_critica.substring(0,30)}
+  </text>
+  <text x="450" y="326" fill="#484f58" font-size="9" text-anchor="middle">
+    ${n} pernos Ø${db}mm ${payload.pernos.tipo} — Plancha ${tp}×${bp}mm ${payload.plancha.acero} — Sold. w=${w}mm ${payload.soldadura.electrodo}
+  </text>`;
+
+  svg.innerHTML = s;
 }
 </script>
 </body>
