@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC — C1 Shear Tab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#f5f7fa; font-family:'Segoe UI',sans-serif; font-size:13px; }
+    #fc-topbar { background:#0D1B2A;
+                 background-image:linear-gradient(rgba(217,119,6,0.07) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(217,119,6,0.07) 1px,transparent 1px);
+                 background-size:40px 40px; padding:12px 20px;
+                 margin:-1rem -1rem 1rem -1rem;
+                 display:flex;align-items:center;gap:14px;border-radius:0; }
+    .fc-tb-icon { width:36px;height:36px;border-radius:8px;
+                  background:linear-gradient(135deg,#b45309,#d97706);
+                  display:flex;align-items:center;justify-content:center;font-size:1.1rem; }
+    .fc-tb-title { color:#fff;font-size:14px;font-weight:700; }
+    .fc-tb-sub   { color:#d97706;font-size:11px; }
+    .fc-tb-back  { color:#85B7EB;font-size:12px;text-decoration:none;
+                   border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+                   border-radius:5px;white-space:nowrap; }
+    .fc-tb-back:hover { background:rgba(133,183,235,0.12);color:#fff; }
+
+    .sec-heading { font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;
+                   color:#b45309;border-bottom:1.5px solid #b45309;
+                   padding-bottom:3px;margin-bottom:8px; }
+
+    /* Semáforo */
+    .sc-tabla th { font-size:11px;background:#f0f0f0;color:#555; }
+    .sc-tabla td { font-size:12px;vertical-align:middle; }
+    .sc-verde    { background:#f0fff4; }
+    .sc-amarillo { background:#fffbeb; }
+    .sc-rojo     { background:#fff5f5; }
+    .ratio-verde    { color:#16a34a;font-weight:700; }
+    .ratio-amarillo { color:#d97706;font-weight:700; }
+    .ratio-rojo     { color:#dc2626;font-weight:700; }
+    .det-row { display:none;background:#f8f8f8; }
+    .det-row.open { display:table-row; }
+    .det-row code { font-size:11px;color:#1d4ed8; }
+
+    /* Resumen global */
+    .resumen-ok   { background:#dcfce7;border:1px solid #86efac;border-radius:8px;
+                    padding:12px 16px;color:#166534;font-weight:600;font-size:14px; }
+    .resumen-falla { background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;
+                     padding:12px 16px;color:#991b1b;font-weight:600;font-size:14px; }
+
+    .label-unit { font-size:10px;color:#888; }
+    .msg-ok    { color:#16a34a; }
+    .msg-error { color:#dc2626;font-weight:600; }
+    .msg-warn  { color:#d97706; }
+    .msg-item  { font-size:12px;padding:2px 0;border-bottom:1px solid #f0f0f0; }
+
+    /* SVG Sketch */
+    #svgConexion { width:100%;height:280px;background:#1a1a2e;border-radius:8px;
+                   border:1px solid #30363d; }
+
+    @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+    .loading-overlay { display:none;position:absolute;inset:0;background:rgba(255,255,255,0.85);
+                        align-items:center;justify-content:center;z-index:20;border-radius:4px; }
+    .loading-overlay.active { display:flex; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">🔩</div>
+    <div>
+      <div class="fc-tb-title">ESCALC</div>
+      <div class="fc-tb-sub">C1 — Unión Apernada a Corte (Shear Tab)</div>
+    </div>
+    <a class="fc-tb-back" href="/conexiones" style="margin-left:auto;">← Conexiones</a>
+    <div class="btn-group ms-2">
+      <button id="btnCalc" class="btn btn-warning btn-sm fw-bold" onclick="calcular()">▶ Calcular</button>
+      <button id="btnPDF" class="btn btn-outline-secondary btn-sm" disabled>↓ Exportar PDF</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ ENTRADAS ══ -->
+    <div class="col-lg-5">
+
+      <!-- Norma -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="row g-2">
+            <div class="col-7">
+              <label class="form-label mb-1 small fw-bold">Norma de diseño</label>
+              <select class="form-select form-select-sm" id="norma">
+                <option value="AISC360">AISC 360-22 (USA / Internacional)</option>
+                <option value="CIRSOC301">CIRSOC 301-2005 (Argentina)</option>
+                <option value="EC3">Eurocódigo 3 (España)</option>
+                <option value="NSR10">NSR-10 Título F (Colombia)</option>
+                <option value="NCH427">NCh 427 (Chile)</option>
+              </select>
+            </div>
+            <div class="col-5">
+              <label class="form-label mb-1 small fw-bold">Sistema</label>
+              <select class="form-select form-select-sm" id="sistema">
+                <option value="LRFD">LRFD (cargas últimas)</option>
+                <option value="ASD" disabled>ASD (próximamente)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fuerza de diseño -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Fuerza de diseño</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Vu — Cortante último [kN]</label>
+              <input type="number" id="Vu" class="form-control form-control-sm" value="180" min="1" step="5">
+              <div class="form-text" style="font-size:10px;">Carga factorizada LRFD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pernos -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Pernos</div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Tipo</label>
+              <select class="form-select form-select-sm" id="tipo_perno">
+                <option value="A325-X">A325-X (sin hilos)</option>
+                <option value="A325-N">A325-N (con hilos)</option>
+                <option value="A490-X">A490-X (sin hilos)</option>
+                <option value="A490-N">A490-N (con hilos)</option>
+                <option value="A307">A307 (ordinario)</option>
+                <option value="ISO-8.8">ISO 8.8</option>
+                <option value="ISO-10.9">ISO 10.9</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Diámetro db [mm]</label>
+              <select class="form-select form-select-sm" id="db_perno">
+                <option>16</option>
+                <option>19</option>
+                <option value="22" selected>22</option>
+                <option>24</option>
+                <option>27</option>
+                <option>30</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">n pernos</label>
+              <input type="number" id="n_pernos" class="form-control form-control-sm" value="3" min="1" max="12">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Planos corte</label>
+              <select class="form-select form-select-sm" id="n_corte">
+                <option value="1" selected>1 — simple</option>
+                <option value="2">2 — doble</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">e₁ borde sup [mm]</label>
+              <input type="number" id="e1" class="form-control form-control-sm" value="38" min="20">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">e₂ borde lat [mm]</label>
+              <input type="number" id="e2" class="form-control form-control-sm" value="38" min="20">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">p separación [mm]</label>
+              <input type="number" id="p_sep" class="form-control form-control-sm" value="76" min="40">
+            </div>
+            <div class="col-8">
+              <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="hilos_en_plano">
+                <label class="form-check-label" style="font-size:11px;">Hilos en el plano de corte</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plancha -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Plancha de alma</div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">tp espesor [mm]</label>
+              <input type="number" id="tp" class="form-control form-control-sm" value="10" min="6">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">bp ancho [mm]</label>
+              <input type="number" id="bp" class="form-control form-control-sm" value="100" min="50">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Acero plancha</label>
+              <select class="form-select form-select-sm" id="acero_plancha">
+                <option value="A36" selected>A36 (250/400 MPa)</option>
+                <option value="A572-50">A572 Gr.50</option>
+                <option value="F-24">F-24 CIRSOC</option>
+                <option value="S235">S235 EC3</option>
+                <option value="S275">S275 EC3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Viga secundaria -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Viga secundaria (alma)</div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">tw espesor [mm]</label>
+              <input type="number" id="tw_viga" class="form-control form-control-sm" value="10.9" step="0.1" min="4">
+            </div>
+            <div class="col-8">
+              <label class="form-label mb-0" style="font-size:11px;">Acero viga</label>
+              <select class="form-select form-select-sm" id="acero_viga">
+                <option value="A992" selected>A992 (345/450 MPa) — perfiles W</option>
+                <option value="A36">A36 (250/400 MPa)</option>
+                <option value="A572-50">A572 Gr.50</option>
+                <option value="F-24">F-24 CIRSOC</option>
+                <option value="S235">S235 EC3</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Soldadura -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Soldadura plancha-columna (filete)</div>
+          <div class="row g-2">
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">w tamaño [mm]</label>
+              <input type="number" id="w_sold" class="form-control form-control-sm" value="8" min="3" max="25">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Electrodo</label>
+              <select class="form-select form-select-sm" id="electrodo">
+                <option value="E70" selected>E70 — E7018 (482 MPa)</option>
+                <option value="E60">E60 — E6013 (414 MPa)</option>
+                <option value="E80">E80 — alta resist. (552 MPa)</option>
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Lados</label>
+              <select class="form-select form-select-sm" id="lados_sold">
+                <option value="2" selected>2 — ambos lados</option>
+                <option value="1">1 — un lado</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col-lg-5 -->
+
+    <!-- ══ RESULTADOS ══ -->
+    <div class="col-lg-7">
+
+      <!-- SVG sketch -->
+      <div class="card shadow-sm mb-3" style="background:#1a1a2e;border-color:#30363d;">
+        <div class="card-body p-2" style="position:relative;">
+          <div class="loading-overlay" id="overlaySVG">
+            <div class="spinner-border spinner-border-sm text-warning"></div>
+          </div>
+          <svg id="svgConexion" viewBox="0 0 500 280">
+            <!-- Dibujo generado dinámicamente por JS -->
+            <text x="250" y="140" text-anchor="middle" fill="#484f58" font-size="13">
+              Presiona Calcular para ver el esquema
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Tabla semáforo -->
+      <div class="card shadow-sm mb-3" style="position:relative;">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Verificaciones AISC 360-22</div>
+          <div class="loading-overlay" id="overlayTabla">
+            <div class="spinner-border spinner-border-sm text-warning"></div>
+          </div>
+          <div id="tablaVerificaciones">
+            <p class="text-muted" style="font-size:12px;">— Ingresa datos y presiona Calcular —</p>
+          </div>
+          <div id="resumenGlobal" class="mt-2"></div>
+        </div>
+      </div>
+
+      <!-- Mensajes -->
+      <div class="card shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Mensajes y advertencias</div>
+          <div id="mensajes"><p class="text-muted" style="font-size:12px;">—</p></div>
+        </div>
+      </div>
+
+    </div><!-- /col-lg-7 -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script>
+let _lastPayload = null;
+
+function getPayload() {
+  return {
+    Vu:         parseFloat(document.getElementById('Vu').value),
+    norma:      document.getElementById('norma').value,
+    pernos: {
+      n:         parseInt(document.getElementById('n_pernos').value),
+      db:        parseFloat(document.getElementById('db_perno').value),
+      tipo:      document.getElementById('tipo_perno').value,
+      n_corte:   parseInt(document.getElementById('n_corte').value),
+      e1:        parseFloat(document.getElementById('e1').value),
+      e2:        parseFloat(document.getElementById('e2').value),
+      p:         parseFloat(document.getElementById('p_sep').value),
+      hilos_en_plano: document.getElementById('hilos_en_plano').checked,
+    },
+    plancha: {
+      tp:    parseFloat(document.getElementById('tp').value),
+      bp:    parseFloat(document.getElementById('bp').value),
+      acero: document.getElementById('acero_plancha').value,
+    },
+    viga: {
+      tw:    parseFloat(document.getElementById('tw_viga').value),
+      acero: document.getElementById('acero_viga').value,
+    },
+    soldadura: {
+      w:         parseFloat(document.getElementById('w_sold').value),
+      electrodo: document.getElementById('electrodo').value,
+      lados:     parseInt(document.getElementById('lados_sold').value),
+    },
+  };
+}
+
+async function calcular() {
+  const btn = document.getElementById('btnCalc');
+  btn.disabled = true;
+  btn.textContent = '⏳ Calculando...';
+  document.getElementById('overlayTabla').classList.add('active');
+
+  const payload = getPayload();
+  _lastPayload = payload;
+
+  try {
+    const resp = await fetch('/api/conexiones/shear-tab/calcular', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'Error del servidor');
+    }
+    const data = await resp.json();
+    renderTabla(data);
+    renderMensajes(data.mensajes);
+    dibujarSVG(payload, data);
+    document.getElementById('btnPDF').disabled = false;
+  } catch(e) {
+    document.getElementById('tablaVerificaciones').innerHTML =
+      `<div class="alert alert-danger py-2">${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Calcular';
+    document.getElementById('overlayTabla').classList.remove('active');
+  }
+}
+
+function renderTabla(data) {
+  const divs = document.getElementById('tablaVerificaciones');
+  let html = `<table class="table table-sm table-bordered sc-tabla mb-0">
+    <thead><tr>
+      <th>Verificación</th><th>Referencia</th>
+      <th class="text-end">Demanda [kN]</th>
+      <th class="text-end">Capacidad [kN]</th>
+      <th class="text-center">D/C</th>
+      <th class="text-center">Estado</th>
+    </tr></thead><tbody>`;
+
+  data.verificaciones.forEach((v, i) => {
+    const cls   = v.relacion <= 0.80 ? 'verde' : v.relacion <= 1.00 ? 'amarillo' : 'rojo';
+    const rcls  = 'ratio-' + cls;
+    const icono = v.ok ? '✔' : '✘';
+    html += `<tr class="sc-${cls}" style="cursor:pointer;" onclick="toggleDet(${i})">
+      <td>${v.nombre}</td>
+      <td class="text-muted" style="font-size:11px;">${v.referencia}</td>
+      <td class="text-end">${v.demanda.toFixed(1)}</td>
+      <td class="text-end">${v.capacidad.toFixed(1)}</td>
+      <td class="text-center ${rcls}">${v.relacion.toFixed(3)}</td>
+      <td class="text-center ${rcls}" style="font-size:14px;">${icono}</td>
+    </tr>
+    <tr id="det-${i}" class="det-row">
+      <td colspan="6">
+        <code>${v.formula}</code>
+        ${v.nota ? `<p class="mb-0 mt-1 text-muted" style="font-size:11px;">${v.nota}</p>` : ''}
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  divs.innerHTML = html;
+
+  const resCls = data.ok ? 'resumen-ok' : 'resumen-falla';
+  document.getElementById('resumenGlobal').innerHTML =
+    `<div class="${resCls}">
+      ${data.ok ? '✔ Conexión CONFORME' : '✘ Conexión NO CONFORME'}
+      &nbsp;—&nbsp; Ratio máximo: <strong>${data.relacion_max}</strong>
+      &nbsp;|&nbsp; Verificación crítica: ${data.verificacion_critica}
+    </div>`;
+}
+
+function toggleDet(i) {
+  const row = document.getElementById('det-' + i);
+  if (row) row.classList.toggle('open');
+}
+
+function renderMensajes(msgs) {
+  if (!msgs || !msgs.length) { document.getElementById('mensajes').innerHTML = '—'; return; }
+  const html = msgs.map(m => {
+    const cls = m.tipo === 'ok' ? 'msg-ok' : m.tipo === 'error' ? 'msg-error' : 'msg-warn';
+    return `<div class="msg-item ${cls}">${m.texto}</div>`;
+  }).join('');
+  document.getElementById('mensajes').innerHTML = html;
+}
+
+function dibujarSVG(payload, data) {
+  const svg  = document.getElementById('svgConexion');
+  const n    = payload.pernos.n;
+  const p    = payload.pernos.p;
+  const e1   = payload.pernos.e1;
+  const Lp   = data.Lp;
+  const tp   = payload.plancha.tp;
+  const bp   = payload.plancha.bp;
+  const db   = payload.pernos.db;
+
+  // Escala: 1mm ≈ 0.8px, centrado en 250,140
+  const sc   = 0.7;
+  const cx   = 140;   // centro X de la conexión
+  const cy   = 140;   // centro Y
+
+  // Columna (HEB300 simplificada)
+  const col_d  = 80;  // altura total px
+  const col_bf = 50;  // ancho ala px
+  const col_tf = 8;   // espesor ala px
+  const col_tw = 5;   // espesor alma px
+
+  // Plancha
+  const p_h  = Lp * sc;
+  const p_w  = bp * sc;
+  const p_x  = cx - p_w;
+  const p_y  = cy - p_h / 2;
+
+  let svgContent = `
+    <!-- Columna (vista frontal simplificada) -->
+    <rect x="${cx - col_bf/2}" y="${cy - col_d}" width="${col_bf}" height="${col_d*2}"
+          fill="#2d3748" stroke="#718096" stroke-width="1.5"/>
+    <!-- Ala columna -->
+    <rect x="${cx - col_bf/2}" y="${cy - col_d}" width="${col_bf}" height="${col_tf}"
+          fill="#4a5568" stroke="#718096" stroke-width="1"/>
+    <rect x="${cx - col_bf/2}" y="${cy + col_d - col_tf}" width="${col_bf}" height="${col_tf}"
+          fill="#4a5568" stroke="#718096" stroke-width="1"/>
+
+    <!-- Soldadura (línea amarilla) -->
+    <line x1="${cx}" y1="${p_y}" x2="${cx}" y2="${p_y + p_h}"
+          stroke="#d97706" stroke-width="3" stroke-dasharray="0"/>
+    <text x="${cx - 8}" y="${cy - p_h/2 - 6}" fill="#d97706" font-size="10" text-anchor="middle">w=${payload.soldadura.w}</text>
+
+    <!-- Plancha de alma -->
+    <rect x="${p_x}" y="${p_y}" width="${p_w}" height="${p_h}"
+          fill="#1e40af" stroke="#3b82f6" stroke-width="1.5" opacity="0.85"/>
+    <text x="${p_x + p_w/2}" y="${cy + p_h/2 + 14}" fill="#93c5fd" font-size="10" text-anchor="middle">
+      tp=${tp}mm × bp=${bp}mm
+    </text>`;
+
+  // Pernos
+  for (let i = 0; i < n; i++) {
+    const by = p_y + e1 * sc + i * p * sc;
+    const bx = p_x - db * sc / 2 - 4;
+    svgContent += `<circle cx="${bx}" cy="${by}" r="${Math.max(db*sc/2, 4)}"
+                   fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.5"/>
+                   <line x1="${bx - db*sc/2 - 2}" y1="${by}" x2="${bx + db*sc/2 + 2}" y2="${by}"
+                         stroke="#60a5fa" stroke-width="0.7"/>
+                   <line x1="${bx}" y1="${by - db*sc/2 - 2}" x2="${bx}" y2="${by + db*sc/2 + 2}"
+                         stroke="#60a5fa" stroke-width="0.7"/>`;
+  }
+
+  // Alma de viga (a la izquierda)
+  svgContent += `
+    <rect x="${p_x - 80}" y="${cy - 6}" width="80" height="12"
+          fill="#374151" stroke="#6b7280" stroke-width="1.2"/>
+    <text x="${p_x - 40}" y="${cy + 22}" fill="#9ca3af" font-size="10" text-anchor="middle">
+      Viga (tw=${payload.viga.tw}mm)
+    </text>`;
+
+  // Cota Lp
+  svgContent += `
+    <line x1="${p_x - 8}" y1="${p_y}" x2="${p_x - 8}" y2="${p_y + p_h}"
+          stroke="#6b7280" stroke-width="1"/>
+    <text x="${p_x - 18}" y="${cy}" fill="#9ca3af" font-size="10" text-anchor="middle"
+          transform="rotate(-90,${p_x-18},${cy})">Lp=${data.Lp}mm</text>`;
+
+  // Leyenda ratio
+  const ratioColor = data.ok ? '#22c55e' : '#ef4444';
+  svgContent += `
+    <rect x="310" y="10" width="180" height="70" rx="6"
+          fill="#1a1a2e" stroke="#30363d"/>
+    <text x="400" y="30" fill="#e2e8f0" font-size="12" text-anchor="middle" font-weight="bold">
+      ${data.ok ? '✔ CONFORME' : '✘ NO CONFORME'}
+    </text>
+    <text x="400" y="48" fill="${ratioColor}" font-size="11" text-anchor="middle">
+      D/C máx = ${data.relacion_max}
+    </text>
+    <text x="400" y="64" fill="#9ca3af" font-size="10" text-anchor="middle">
+      ${data.verificacion_critica.substring(0,28)}
+    </text>`;
+
+  // Vu flecha
+  svgContent += `
+    <line x1="${p_x - 100}" y1="${cy}" x2="${p_x - 85}" y2="${cy}"
+          stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
+    <defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
+    </marker></defs>
+    <text x="${p_x - 110}" y="${cy - 6}" fill="#ef4444" font-size="10">Vu=${payload.Vu}kN</text>`;
+
+  svg.innerHTML = svgContent;
+}
+</script>
+</body>
+</html>

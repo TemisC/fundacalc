@@ -138,6 +138,15 @@ from core.normas.covenin1753 import COVENIN1753
 
 from reportes.generador_pdf import GeneradorPDF
 from reportes.generador_dxf import GeneradorDXF
+
+# ── ESCALC — Módulo de Conexiones en Acero ────────────────────────────────────
+from core.conexiones.shear_tab import (
+    ShearTab, EntradaShearTab,
+    DatosPernos as DatosPernosConn,
+    DatosPlancha as DatosPlanchaConn,
+    DatosViга as DatosVigaConn,
+    DatosSoldadura as DatosSoldaduraConn,
+)
 from reportes.generador_dxf_combinada import GeneradorDXFCombinada
 from reportes.generador_pdf_combinada import GeneradorPDFCombinada
 from core.zapata_corrida import (
@@ -4605,6 +4614,107 @@ async def api_asentamientos_pdf(datos: DatosPDFAsentamientos):
         if tmp:
             try: os.unlink(tmp.name)
             except Exception: pass
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# ESCALC — MÓDULO DE CONEXIONES EN ACERO
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.get("/conexiones", response_class=HTMLResponse)
+async def conexiones_hub():
+    return (ROOT / "web" / "static" / "conexiones" / "hub.html").read_text(encoding="utf-8")
+
+
+@app.get("/shear-tab", response_class=HTMLResponse)
+async def pagina_shear_tab():
+    return (ROOT / "web" / "static" / "conexiones" / "shear_tab.html").read_text(encoding="utf-8")
+
+
+# ── Modelos Pydantic — Shear Tab ──────────────────────────────────────────────
+
+class _DatosPernos(BaseModel):
+    n:              int   = 3
+    db:             float = 22.0
+    tipo:           str   = "A325-X"
+    n_corte:        int   = 1
+    e1:             float = 38.0
+    e2:             float = 38.0
+    p:              float = 76.0
+    hilos_en_plano: bool  = False
+
+
+class _DatosPlancha(BaseModel):
+    tp:    float = 10.0
+    bp:    float = 100.0
+    acero: str   = "A36"
+
+
+class _DatosViga(BaseModel):
+    tw:    float = 10.9
+    acero: str   = "A992"
+
+
+class _DatosSoldadura(BaseModel):
+    w:         float = 8.0
+    electrodo: str   = "E70"
+    lados:     int   = 2
+
+
+class EntradaShearTabAPI(BaseModel):
+    Vu:        float = 180.0
+    norma:     str   = "AISC360"
+    pernos:    _DatosPernos    = _DatosPernos()
+    plancha:   _DatosPlancha   = _DatosPlancha()
+    viga:      _DatosViga      = _DatosViga()
+    soldadura: _DatosSoldadura = _DatosSoldadura()
+
+
+@app.post("/api/conexiones/shear-tab/calcular")
+async def api_shear_tab_calcular(datos: EntradaShearTabAPI):
+    try:
+        entrada = EntradaShearTab(
+            Vu=datos.Vu,
+            norma=datos.norma,
+            pernos=DatosPernosConn(
+                n=datos.pernos.n, db=datos.pernos.db,
+                tipo=datos.pernos.tipo, n_corte=datos.pernos.n_corte,
+                e1=datos.pernos.e1, e2=datos.pernos.e2,
+                p=datos.pernos.p,
+                hilos_en_plano=datos.pernos.hilos_en_plano,
+            ),
+            plancha=DatosPlanchaConn(tp=datos.plancha.tp, bp=datos.plancha.bp,
+                                     acero=datos.plancha.acero),
+            viga=DatosVigaConn(tw=datos.viga.tw, acero=datos.viga.acero),
+            soldadura=DatosSoldaduraConn(w=datos.soldadura.w,
+                                         electrodo=datos.soldadura.electrodo,
+                                         lados=datos.soldadura.lados),
+        )
+        res = ShearTab().calcular(entrada)
+        return JSONResponse({
+            "ok":                   res.ok,
+            "relacion_max":         res.relacion_max,
+            "verificacion_critica": res.verificacion_critica,
+            "Lp":                   res.Lp,
+            "Ab":                   res.Ab,
+            "d_agujero":            res.d_agujero,
+            "Fnv":                  res.Fnv,
+            "verificaciones": [
+                {
+                    "nombre":     v.nombre,
+                    "referencia": v.referencia,
+                    "demanda":    v.demanda,
+                    "capacidad":  v.capacidad,
+                    "relacion":   v.relacion,
+                    "formula":    v.formula,
+                    "ok":         v.ok,
+                    "nota":       v.nota,
+                }
+                for v in res.verificaciones
+            ],
+            "mensajes": res.mensajes,
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 if __name__ == "__main__":
