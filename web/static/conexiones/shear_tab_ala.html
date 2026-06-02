@@ -284,14 +284,33 @@
 
       <!-- SVG sketch -->
       <div class="card shadow-sm mb-3" style="background:#1a1a2e;border-color:#30363d;">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                     padding:6px 10px;border-bottom:1px solid #30363d;">
+          <span style="font-size:10px;color:#6b7280;font-weight:600;letter-spacing:0.5px;">
+            ESQUEMA GEOMÉTRICO
+          </span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="sketchPending" style="font-size:10px;color:#d97706;display:none;">
+              ⟳ Geometría modificada
+            </span>
+            <button onclick="actualizarEsquema()" 
+                    style="background:#d97706;border:none;color:#fff;font-size:10px;
+                             padding:3px 10px;border-radius:4px;cursor:pointer;font-weight:600;">
+              ↻ Actualizar esquema
+            </button>
+          </div>
+        </div>
         <div class="card-body p-2" style="position:relative;">
           <div class="loading-overlay" id="overlaySVG">
             <div class="spinner-border spinner-border-sm text-warning"></div>
           </div>
           <svg id="svgConexion" viewBox="0 0 600 340">
             <!-- Dibujo generado dinámicamente por JS --><!-- Tipo: ALA -->
-            <text x="250" y="140" text-anchor="middle" fill="#484f58" font-size="13">
-              Presiona Calcular para ver el esquema
+            <text x="300" y="155" text-anchor="middle" fill="#484f58" font-size="13">
+              Ajusta la geometría — el esquema se actualiza automáticamente
+            </text>
+            <text x="300" y="175" text-anchor="middle" fill="#374151" font-size="11">
+              (o presiona ↻ Actualizar esquema)
             </text>
           </svg>
         </div>
@@ -678,26 +697,81 @@ function dibujarSVG(payload, data) {
     s += `<line x1="${bolt_x_sec + r}" y1="${by}" x2="${plate_x1 - 2}" y2="${by}" stroke="#facc15" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>`;
   }
 
-  // Leyenda resultados
-  const rcol = data.ok ? '#22c55e' : '#ef4444';
-  s += `
-  <!-- Leyenda resultado -->
-  <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#30363d"/>
-  <text x="450" y="296" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">
-    ${data.ok ? '✔ CONEXIÓN CONFORME' : '✘ CONEXIÓN NO CONFORME'}
-  </text>
-  <text x="450" y="312" fill="${rcol}" font-size="10" text-anchor="middle">
-    D/C máx = ${data.relacion_max}  |  Crítica: ${data.verificacion_critica.substring(0,30)}
-  </text>
-  <text x="450" y="326" fill="#484f58" font-size="9" text-anchor="middle">
-    ${n} pernos Ø${db}mm ${payload.pernos.tipo} — Plancha ${tp}×${bp}mm ${payload.plancha.acero} — Sold. w=${w}mm ${payload.soldadura.electrodo}
-  </text>`;
+  // Leyenda: modo sketch (data.ok===null) o resultado de cálculo
+  if (data.ok === null) {
+    s += `
+    <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#374151"/>
+    <text x="450" y="295" fill="#6b7280" font-size="11" text-anchor="middle" font-style="italic">
+      MODO ESQUEMA — geometría solamente
+    </text>
+    <text x="450" y="311" fill="#484f58" font-size="10" text-anchor="middle">
+      Lp = ${data.Lp.toFixed(0)}mm  ·  n = ${n} pernos Ø${db}mm  ·  tp = ${tp}×${bp}mm
+    </text>
+    <text x="450" y="326" fill="#374151" font-size="9" text-anchor="middle">
+      ▶ Presiona Calcular para verificar la resistencia
+    </text>`;
+  } else {
+    const rcol = data.ok ? '#22c55e' : '#ef4444';
+    s += `
+    <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="450" y="296" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">
+      ${data.ok ? '✔ CONEXIÓN CONFORME' : '✘ CONEXIÓN NO CONFORME'}
+    </text>
+    <text x="450" y="312" fill="${rcol}" font-size="10" text-anchor="middle">
+      D/C máx = ${data.relacion_max}  |  Crítica: ${data.verificacion_critica.substring(0,30)}
+    </text>
+    <text x="450" y="326" fill="#484f58" font-size="9" text-anchor="middle">
+      ${n} pernos Ø${db}mm ${payload.pernos.tipo} — Plancha ${tp}×${bp}mm ${payload.plancha.acero}
+    </text>`;
+  }
 
   svg.innerHTML = s;
 }
 
 <script>
 function noIsoMsg(){return '<div style="color:#484f58;font-size:11px;padding:16px;text-align:center;">Imagen de referencia no disponible</div>';}
+
+// ── Sketch geométrico (sin llamada al servidor) ─────────────────────────────
+
+function actualizarEsquema() {
+  const payload = getPayload();
+  // Calcular Lp localmente: (n-1)*p + 2*e1
+  const Lp = (payload.pernos.n - 1) * payload.pernos.p + 2 * payload.pernos.e1;
+  // Crear objeto data simulado solo con geometría
+  const fakeData = {
+    ok: null,           // null = modo sketch (sin resultado)
+    relacion_max: null,
+    verificacion_critica: '',
+    Lp: Lp,
+    Ab: Math.PI * Math.pow(payload.pernos.db / 2, 2),
+    d_agujero: payload.pernos.db + 1.6,
+    Fnv: 0,
+  };
+  dibujarSVG(payload, fakeData);
+  document.getElementById('sketchPending').style.display = 'none';
+}
+
+// Debounce: redibuja 400ms después de que el usuario para de escribir
+let _sketchTimer = null;
+function onGeomChange() {
+  document.getElementById('sketchPending').style.display = 'inline';
+  clearTimeout(_sketchTimer);
+  _sketchTimer = setTimeout(actualizarEsquema, 400);
+}
+
+// Inicializar sketch al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarEsquema();
+  // Escuchar cambios en todos los inputs de geometría
+  ['n_pernos','db_perno','e1','e2','p_sep','tp','bp','tw_viga','w_sold',
+   'tipo_perno','acero_plancha','acero_viga','electrodo','n_corte','lados_sold'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', onGeomChange);
+    if (el) el.addEventListener('change', onGeomChange);
+  });
+});
+
 </script>
 </script>
 </body>
