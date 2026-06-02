@@ -248,13 +248,32 @@ async def auth_middleware(request: Request, call_next):
 
     response = await call_next(request)
 
-    # Inyectar botón de logout en todas las páginas HTML
+    # Inyectar footer, botón logout y rebrandeo ESCALC en todas las páginas HTML
     content_type = response.headers.get("content-type", "")
     if "text/html" in content_type:
         body = b""
         async for chunk in response.body_iterator:
             body += chunk
-        logout_btn = (
+
+        # ── Rebrandeo: FundaCalc → ESCALC ─────────────────────────────────────
+        body = body.replace(b">FundaCalc<", b">ESCALC<")
+        body = body.replace(b"FundaCalc \xe2\x80\x94", b"ESCALC \xe2\x80\x94")
+        body = body.replace(b"FundaCalc&nbsp;&mdash;", b"ESCALC &mdash;")
+        body = body.replace(b"title>FundaCalc", b"title>ESCALC")
+
+        # ── Footer + botón logout ──────────────────────────────────────────────
+        inject = (
+            # Footer con autoría
+            b'<footer style="text-align:center;padding:14px 0 10px;'
+            b'margin-top:24px;border-top:1px solid #21262d;'
+            b'color:#484f58;font-size:0.74rem;font-family:sans-serif;">'
+            b'Desarrollado por '
+            b'<strong style="color:#8b949e;">Ing. Civil Temis Castillo</strong>'
+            b' &nbsp;&middot;&nbsp; '
+            b'<strong style="color:#58a6ff;">ESCALC</strong>'
+            b' &mdash; Engineering Software CALCulation'
+            b'</footer>'
+            # Botón cerrar sesión
             b'<a href="/logout" style="'
             b'position:fixed;bottom:16px;right:16px;z-index:9999;'
             b'background:#21262d;border:1px solid #30363d;color:#8b949e;'
@@ -264,7 +283,8 @@ async def auth_middleware(request: Request, call_next):
             b'onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">'
             b'Cerrar sesi\xc3\xb3n</a>'
         )
-        body = body.replace(b"</body>", logout_btn + b"</body>")
+        body = body.replace(b"</body>", inject + b"</body>")
+
         return Response(
             content=body,
             status_code=response.status_code,
