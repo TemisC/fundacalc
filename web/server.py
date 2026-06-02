@@ -315,7 +315,7 @@ async def api_login(
     password: str = Form(...),
 ):
     if not _AUTH_ENABLED:
-        return JSONResponse({"ok": True, "redirect": "/"})
+        return JSONResponse({"ok": True, "redirect": "/dashboard"})
 
     if username == _ADMIN_USER and _check_password(password):
         token = _make_session_token()
