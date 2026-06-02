@@ -497,17 +497,17 @@ function dibujarSVG(payload, data) {
   const cy = 170;
 
   // ────────────────────────────────────────────────────────────────────────────
-  //  VISTA 1 — ALZADO FRONTAL
-  //  Mirando la cara frontal de la columna.
-  //  Se ve: columna (sección I), plancha soldada, pernos, alma de viga.
+  //  C1A — VISTA FRONTAL: se ve la CARA DEL ALA de la columna (superficie plana)
+  //  La viga llega perpendicular al eje de la columna.
+  //  La plancha se suelda a la CARA EXTERIOR DEL ALA.
   // ────────────────────────────────────────────────────────────────────────────
-  const cx1 = 150;   // x centro columna (vista frontal)
-  const colH = 280;  // altura visible de columna [px]
-  const col_x = cx1 - col_bf/2;  // borde izq columna
+  const cx1 = 150;   // x centro columna
+  const colH = 280;  // altura visible [px]
+  const col_x = cx1 - col_bf/2;
 
-  // Plancha posicionada contra el alma de la columna (lado izquierdo del alma)
-  const alma_x = cx1 - col_tw/2;
-  const pl_x   = alma_x - bp_px;  // borde izq plancha
+  // C1A: la plancha se suelda a la CARA EXTERIOR del ala → cara izquierda del ala
+  const alma_x = col_x;          // cara del ala (no el alma del perfil)
+  const pl_x   = alma_x - bp_px; // borde izq plancha
   const pl_y   = cy - Lp_px/2;    // borde sup plancha
 
   // Alma de viga: horizontal, llega hasta la plancha desde la izquierda
@@ -528,21 +528,20 @@ function dibujarSVG(payload, data) {
   <!-- === VISTA FRONTAL === -->
   <text x="${cx1}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">ALZADO FRONTAL</text>
 
-  <!-- Columna — alma -->
-  <rect x="${cx1-col_tw/2}" y="${cy-colH/2}" width="${col_tw}" height="${colH}"
-        fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.2"/>
-  <!-- Columna — ala izquierda -->
-  <rect x="${col_x}" y="${cy-colH/2}" width="${col_bf}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
-  <!-- Columna — ala derecha (inferior) -->
-  <rect x="${col_x}" y="${cy+colH/2-col_tf}" width="${col_bf}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
-  <!-- Columna — alas intermedias para dar sensación de I -->
-  <rect x="${col_x}" y="${cy-col_tf/2}" width="${col_bf}" height="${col_tf}"
-        fill="#1c2e4a" stroke="none" opacity="0.4"/>
+  <!-- C1A: COLUMNA — cara plana del ALA (vista frontal) -->
+  <!-- Se ve la cara del ala como una superficie rectangular continua -->
+  <rect x="${col_x}" y="${cy-colH/2}" width="${col_bf}" height="${colH}"
+        fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.8"/>
+  <!-- Web indicado como línea central detrás del ala -->
+  <line x1="${cx1}" y1="${cy-colH/2+4}" x2="${cx1}" y2="${cy+colH/2-4}"
+        stroke="#2d5fa8" stroke-width="${col_tw}" opacity="0.35"/>
+  <!-- Grosor del ala visible en el borde derecho -->
+  <rect x="${col_x+col_bf-col_tf}" y="${cy-colH/2}" width="${col_tf}" height="${colH}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1" opacity="0.7"/>
 
   <!-- Columna label -->
-  <text x="${cx1+col_bf/2+6}" y="${cy-colH/2+10}" fill="#4a90d9" font-size="9">Columna</text>
+  <text x="${cx1+col_bf/2+6}" y="${cy-colH/2+10}" fill="#4a90d9" font-size="9" font-weight="bold">ALA columna</text>
+  <text x="${cx1+col_bf/2+6}" y="${cy-colH/2+21}" fill="#4a90d9" font-size="8">(cara exterior)</text>
 
   <!-- Alma de viga (horizontal) — superior e inferior del ala + alma -->
   <!-- Ala sup viga -->
