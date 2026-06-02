@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC — C1 Shear Tab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#0d1117; color:#c9d1d9; font-family:'Segoe UI',sans-serif; min-height:100vh; }
+
+    #fc-topbar { background:#0D1B2A; border-bottom:1px solid #21262d;
+                 background-image:linear-gradient(rgba(217,119,6,0.07) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(217,119,6,0.07) 1px,transparent 1px);
+                 background-size:40px 40px; padding:12px 24px;
+                 display:flex; align-items:center; gap:14px; }
+    .fc-tb-icon { width:38px;height:38px;border-radius:8px;
+                  background:linear-gradient(135deg,#b45309,#d97706);
+                  display:flex;align-items:center;justify-content:center;font-size:1.2rem; }
+    .fc-tb-title { color:#fff;font-size:14px;font-weight:700; }
+    .fc-tb-sub   { color:#d97706;font-size:11px; }
+    .fc-tb-back  { color:#85B7EB;font-size:12px;text-decoration:none;
+                   border:1px solid rgba(133,183,235,0.35);padding:5px 12px;
+                   border-radius:5px;white-space:nowrap;margin-left:auto; }
+    .fc-tb-back:hover { background:rgba(133,183,235,0.12);color:#fff; }
+
+    .page-header { padding:36px 40px 20px; max-width:900px; margin:0 auto; }
+    .page-title  { color:#e6edf3;font-size:1.4rem;font-weight:700;margin-bottom:6px; }
+    .page-desc   { color:#8b949e;font-size:0.88rem;line-height:1.6;max-width:680px; }
+
+    .cards-grid { display:grid;grid-template-columns:1fr 1fr;gap:28px;
+                  padding:0 40px 48px;max-width:900px;margin:0 auto; }
+
+    .conn-card { background:#161b22;border:1px solid #30363d;border-radius:12px;
+                 overflow:hidden;text-decoration:none;
+                 transition:transform 0.2s,border-color 0.2s,box-shadow 0.2s;
+                 display:flex;flex-direction:column; }
+    .conn-card:hover { transform:translateY(-4px);border-color:#d97706;
+                       box-shadow:0 12px 32px rgba(217,119,6,0.2); }
+
+    /* Imagen o placeholder isometría */
+    .card-iso { height:220px;background:#0d1117;position:relative;
+                display:flex;align-items:center;justify-content:center;
+                border-bottom:1px solid #30363d;overflow:hidden; }
+    .card-iso img { width:100%;height:100%;object-fit:cover;opacity:0.9; }
+    .card-iso .placeholder-svg { width:100%;height:100%; }
+    .card-badge { position:absolute;top:12px;right:12px;
+                  background:rgba(217,119,6,0.9);color:#fff;
+                  font-size:0.70rem;padding:3px 9px;border-radius:12px;font-weight:700; }
+
+    .card-body-c { padding:20px 22px 24px;flex:1;display:flex;flex-direction:column; }
+    .card-code   { font-size:0.70rem;color:#d97706;font-weight:700;
+                   text-transform:uppercase;letter-spacing:0.10em;margin-bottom:5px; }
+    .card-title  { font-size:1.05rem;font-weight:700;color:#e6edf3;
+                   margin-bottom:8px;line-height:1.3; }
+    .card-desc   { font-size:0.80rem;color:#8b949e;line-height:1.55;flex:1;margin-bottom:14px; }
+    .card-checks { display:flex;flex-direction:column;gap:3px;margin-bottom:14px; }
+    .check-item  { font-size:0.75rem;color:#6e7681;display:flex;align-items:center;gap:6px; }
+    .check-item::before { content:'→';color:#d97706;font-size:0.70rem; }
+    .card-cta    { display:inline-flex;align-items:center;gap:6px;
+                   color:#d97706;font-size:0.83rem;font-weight:600; }
+    .card-cta svg { transition:transform 0.2s; }
+    .conn-card:hover .card-cta svg { transform:translateX(4px); }
+
+    /* Nota técnica */
+    .tech-note { background:#161b22;border:1px solid #30363d;border-radius:8px;
+                 padding:16px 20px;margin:0 40px 32px;max-width:820px; }
+    .tech-note p { font-size:0.82rem;color:#8b949e;margin:0;line-height:1.6; }
+    .tech-note strong { color:#c9d1d9; }
+
+    @media (max-width:640px) {
+      .cards-grid { grid-template-columns:1fr; padding:0 20px 40px; }
+      .page-header { padding:24px 20px 16px; }
+      .tech-note { margin:0 20px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="fc-topbar">
+  <div class="fc-tb-icon">🔩</div>
+  <div>
+    <div class="fc-tb-title">ESCALC</div>
+    <div class="fc-tb-sub">C1 — Unión Apernada a Corte · Shear Tab</div>
+  </div>
+  <a href="/conexiones" class="fc-tb-back">← Conexiones</a>
+</div>
+
+<!-- Header de módulo -->
+<div class="page-header">
+  <div class="page-title">C1 — Shear Tab (Plancha de Alma)</div>
+  <p class="page-desc">
+    Conexión simple apernada que transmite solo cortante. Una plancha rectangular
+    se suelda a la columna y se aperna al alma de la viga secundaria.
+    Selecciona la configuración según dónde se suelda la plancha en la columna.
+  </p>
+</div>
+
+<!-- Nota técnica -->
+<div class="tech-note">
+  <p>
+    <strong>¿Cuál elegir?</strong>
+    La <strong>conexión al ala</strong> se usa cuando la viga llega perpendicular al eje de la columna
+    (la cara visible del ala queda frente a la viga).
+    La <strong>conexión al alma</strong> se usa cuando la viga llega paralela al eje de la columna
+    (la viga entra entre las alas). En este caso el ancho de la plancha está limitado
+    por el espacio libre entre alas: <em>bp ≤ d_col − 2·tf_col − 2·k_des</em>.
+  </p>
+</div>
+
+<!-- Tarjetas -->
+<div class="cards-grid">
+
+  <!-- C1A: Al ala -->
+  <a href="/shear-tab-ala" class="conn-card">
+    <div class="card-iso">
+      <!-- Imagen isometría (reemplazar src cuando esté disponible) -->
+      <svg class="placeholder-svg" viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg">
+        <rect width="400" height="220" fill="#0d1117"/>
+        <!-- Columna (perfil I frontal) -->
+        <rect x="190" y="20" width="60" height="180" fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.5"/>
+        <rect x="180" y="20"  width="80" height="12" fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+        <rect x="180" y="188" width="80" height="12" fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+        <!-- Viga (perfil I horizontal, al ALA izquierda) -->
+        <rect x="40"  y="96"  width="150" height="28" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.5"/>
+        <rect x="40"  y="88"  width="150" height="12" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+        <rect x="40"  y="120" width="150" height="12" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+        <!-- Plancha soldada al ALA de la columna -->
+        <rect x="188" y="86"  width="12" height="48" fill="#1e4080" stroke="#3b82f6" stroke-width="2"/>
+        <!-- Pernos -->
+        <circle cx="182" cy="100" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <circle cx="182" cy="112" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <circle cx="182" cy="124" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <!-- Soldaduras -->
+        <polygon points="190,86 190,92 184,89" fill="#d97706"/>
+        <polygon points="190,134 190,128 184,131" fill="#d97706"/>
+        <!-- Labels -->
+        <text x="200" y="210" fill="#d97706" font-size="13" text-anchor="middle" font-weight="bold">AL ALA DE LA COLUMNA</text>
+      </svg>
+      <span class="card-badge">C1A</span>
+    </div>
+    <div class="card-body-c">
+      <div class="card-code">C1A — Shear Tab · Apernada</div>
+      <div class="card-title">Viga al Ala de la Columna</div>
+      <div class="card-desc">
+        La plancha se suelda a la <strong style="color:#e6edf3">cara frontal del ala</strong> de la columna.
+        La viga llega perpendicular al eje longitudinal de la columna.
+      </div>
+      <div class="card-checks">
+        <div class="check-item">Corte en pernos — AISC J3.6</div>
+        <div class="check-item">Aplastamiento plancha y alma viga — J3.10</div>
+        <div class="check-item">Desgarro en bloque — J4.3</div>
+        <div class="check-item">Soldadura filete al ala — J2.4</div>
+      </div>
+      <div class="card-cta">
+        Calcular
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+        </svg>
+      </div>
+    </div>
+  </a>
+
+  <!-- C1B: Al alma -->
+  <a href="/shear-tab-alma" class="conn-card">
+    <div class="card-iso">
+      <svg class="placeholder-svg" viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg">
+        <rect width="400" height="220" fill="#0d1117"/>
+        <!-- Columna (perfil I de lado — vemos el alma) -->
+        <rect x="190" y="20" width="8"  height="180" fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.5"/>
+        <rect x="170" y="20" width="48" height="12"  fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+        <rect x="170" y="188" width="48" height="12" fill="#243752" stroke="#4a90d9" stroke-width="1"/>
+        <rect x="170" y="80"  width="48" height="8"  fill="#243752" stroke="#4a90d9" stroke-width="0.8" opacity="0.6"/>
+        <rect x="170" y="132" width="48" height="8"  fill="#243752" stroke="#4a90d9" stroke-width="0.8" opacity="0.6"/>
+        <!-- Viga llega paralela (perpendicular a la vista) — mostrada de frente -->
+        <rect x="40"  y="96"  width="152" height="28" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.5"/>
+        <rect x="40"  y="88"  width="152" height="12" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+        <rect x="40"  y="120" width="152" height="12" fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+        <!-- Plancha soldada al ALMA de la columna -->
+        <rect x="188" y="86" width="12" height="48" fill="#1e4080" stroke="#3b82f6" stroke-width="2"/>
+        <!-- Pernos -->
+        <circle cx="182" cy="100" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <circle cx="182" cy="112" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <circle cx="182" cy="124" r="5" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
+        <!-- Soldaduras -->
+        <polygon points="190,86 190,92 184,89" fill="#d97706"/>
+        <polygon points="190,134 190,128 184,131" fill="#d97706"/>
+        <!-- Alas de columna en primer plano (indica que viga entra ENTRE alas) -->
+        <rect x="170" y="32" width="6" height="156" fill="#243752" stroke="#4a90d9" stroke-width="1" opacity="0.5"/>
+        <rect x="212" y="32" width="6" height="156" fill="#243752" stroke="#4a90d9" stroke-width="1" opacity="0.5"/>
+        <text x="200" y="210" fill="#d97706" font-size="13" text-anchor="middle" font-weight="bold">AL ALMA DE LA COLUMNA</text>
+      </svg>
+      <span class="card-badge">C1B</span>
+    </div>
+    <div class="card-body-c">
+      <div class="card-code">C1B — Shear Tab · Apernada</div>
+      <div class="card-title">Viga al Alma de la Columna</div>
+      <div class="card-desc">
+        La plancha se suelda al <strong style="color:#e6edf3">alma (entre las alas)</strong> de la columna.
+        La viga entra paralela al eje longitudinal de la columna.
+        El ancho de la plancha está limitado por el espacio libre entre alas.
+      </div>
+      <div class="card-checks">
+        <div class="check-item">Corte en pernos — AISC J3.6</div>
+        <div class="check-item">Aplastamiento plancha y alma viga — J3.10</div>
+        <div class="check-item">Desgarro en bloque — J4.3</div>
+        <div class="check-item">Soldadura filete al alma columna — J2.4</div>
+        <div class="check-item">Limitación bp ≤ espacio libre entre alas</div>
+      </div>
+      <div class="card-cta">
+        Calcular
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+        </svg>
+      </div>
+    </div>
+  </a>
+
+</div>
+
+</body>
+</html>

@@ -4626,8 +4626,18 @@ async def conexiones_hub():
 
 
 @app.get("/shear-tab", response_class=HTMLResponse)
-async def pagina_shear_tab():
-    return (ROOT / "web" / "static" / "conexiones" / "shear_tab.html").read_text(encoding="utf-8")
+async def pagina_shear_tab_hub():
+    return (ROOT / "web" / "static" / "conexiones" / "shear_tab_hub.html").read_text(encoding="utf-8")
+
+
+@app.get("/shear-tab-ala", response_class=HTMLResponse)
+async def pagina_shear_tab_ala():
+    return (ROOT / "web" / "static" / "conexiones" / "shear_tab_ala.html").read_text(encoding="utf-8")
+
+
+@app.get("/shear-tab-alma", response_class=HTMLResponse)
+async def pagina_shear_tab_alma():
+    return (ROOT / "web" / "static" / "conexiones" / "shear_tab_alma.html").read_text(encoding="utf-8")
 
 
 # ── Modelos Pydantic — Shear Tab ──────────────────────────────────────────────
@@ -4670,6 +4680,8 @@ class EntradaShearTabAPI(BaseModel):
 
 
 @app.post("/api/conexiones/shear-tab/calcular")
+@app.post("/api/conexiones/shear-tab-ala/calcular")
+@app.post("/api/conexiones/shear-tab-alma/calcular")
 async def api_shear_tab_calcular(datos: EntradaShearTabAPI):
     try:
         entrada = EntradaShearTab(
