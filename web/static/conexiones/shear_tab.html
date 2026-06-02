@@ -570,9 +570,12 @@ function dibujarSVG(payload, data) {
   }
 
   // Flecha Vu
-  s += `<line x1="${viga_x0 - 30}" y1="${cy}" x2="${viga_x0 - 5}" y2="${cy}"
-             stroke="#ef4444" stroke-width="2" marker-end="url(#arr)"/>
-        <text x="${viga_x0 - 35}" y="${cy - 6}" fill="#ef4444" font-size="10" text-anchor="end">Vu=${payload.Vu}kN</text>`;
+  // Vu es un cortante VERTICAL — flecha apunta hacia abajo en el extremo de la viga
+  const vu_x = viga_x0 + 20;
+  s += `<line x1="${vu_x}" y1="${cy - beam_d/2 - 28}" x2="${vu_x}" y2="${cy - beam_d/2 - 4}"
+             stroke="#ef4444" stroke-width="2.5" marker-end="url(#arr)"/>
+        <text x="${vu_x}" y="${cy - beam_d/2 - 32}" fill="#ef4444" font-size="10" text-anchor="middle" font-weight="bold">Vu=${payload.Vu}kN</text>
+        <text x="${vu_x}" y="${cy - beam_d/2 - 20}" fill="#ef4444" font-size="8" text-anchor="middle">(cortante)</text>`;
 
   // ────────────────────────────────────────────────────────────────────────────
   //  VISTA 2 — SECCIÓN A-A (corte horizontal a través de los pernos)
