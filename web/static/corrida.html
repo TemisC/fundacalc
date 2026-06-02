@@ -423,6 +423,7 @@
     const u = UNIDADES_MAP[sel] || { force: 'kN/m', pressure: 'kN/m²' };
     document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
     document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
+  document.querySelectorAll('.unit-density').forEach(el => el.textContent = u.density);
   }
 
   function getPayload() {

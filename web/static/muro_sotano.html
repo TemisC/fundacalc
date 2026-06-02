@@ -124,7 +124,7 @@
               <div class="form-text" style="font-size:10px;">Profundidad nivel freático (≥H = sin agua)</div>
             </div>
             <div class="col-6">
-              <label class="form-label mb-0" style="font-size:11px;">γ_agua <span class="label-unit">[kN/m³]</span></label>
+              <label class="form-label mb-0" style="font-size:11px;">γ_agua <span class="unit-density">kN/m³</span></label>
               <input type="number" id="gamma_w" class="form-control form-control-sm" value="10.0" step="0.1" min="9.5" max="10.5">
             </div>
             <div class="col-12">
@@ -149,11 +149,11 @@
               <input type="number" id="phi_r" class="form-control form-control-sm" value="30" step="1" min="0" max="45" oninput="actualizarKa()">
             </div>
             <div class="col-4">
-              <label class="form-label mb-0" style="font-size:11px;">c <span class="label-unit">[kPa]</span></label>
+              <label class="form-label mb-0" style="font-size:11px;">c <span class="unit-pressure">kN/m²</span></label>
               <input type="number" id="c_r" class="form-control form-control-sm" value="0" step="1" min="0">
             </div>
             <div class="col-4">
-              <label class="form-label mb-0" style="font-size:11px;">γ <span class="label-unit">[kN/m³]</span></label>
+              <label class="form-label mb-0" style="font-size:11px;">γ <span class="unit-density">kN/m³</span></label>
               <input type="number" id="gamma_r" class="form-control form-control-sm" value="18" step="0.5" min="10">
             </div>
             <div class="col-6">
@@ -691,6 +691,7 @@ const UNIDADES_MAP_MURO = {
 function updateUnitLabels() {
   const u = UNIDADES_MAP_MURO[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_MURO['kN_kN/m2'];
   document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
+  document.querySelectorAll('.unit-density').forEach(el => el.textContent = u.density);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -683,17 +683,18 @@ async function exportarDXF() {
 
 // ── Unidades ──────────────────────────────────────────────────────────────────
 const UNIDADES_MAP_ENC = {
-  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²' },
-  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²' },
-  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²' },
-  'lbf_psf':     { force: 'lbf', pressure: 'psf' },
-  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²' },
-  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²' },
+  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²',  density: 'kN/m³'   },
+  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²', density: 'kip/ft³' },
+  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²',   density: 'tf/m³'   },
+  'lbf_psf':     { force: 'lbf', pressure: 'psf',     density: 'lbf/ft³' },
+  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²',  density: 'ton/m³'  },
+  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²',   density: 'kg/m³'   },
 };
 function updateUnitLabels() {
   const u = UNIDADES_MAP_ENC[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_ENC['kN_kN/m2'];
   document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
   document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
+  document.querySelectorAll('.unit-density').forEach(el => el.textContent = u.density);
 }
 </script>
 </body>

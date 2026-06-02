@@ -256,11 +256,11 @@
           <div class="sec-heading">Cargas — Uniforme</div>
           <div class="row g-2 mb-2">
             <div class="col-6">
-              <label class="form-label mb-1 small">q<sub>D</sub> [kN/m²]</label>
+              <label class="form-label mb-1 small">q<sub>D</sub> [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="uqD" class="form-control form-control-sm" value="30">
             </div>
             <div class="col-6">
-              <label class="form-label mb-1 small">q<sub>L</sub> [kN/m²]</label>
+              <label class="form-label mb-1 small">q<sub>L</sub> [<span class="unit-pressure">kN/m²</span>]</label>
               <input type="number" id="uqL" class="form-control form-control-sm" value="15">
             </div>
           </div>
@@ -306,7 +306,7 @@
               <input type="number" id="Df" class="form-control form-control-sm" value="0.50" step="0.05">
             </div>
             <div class="col-4">
-              <label class="form-label mb-1 small">γ suelo [kN/m³]</label>
+              <label class="form-label mb-1 small">γ suelo [<span class="unit-density">kN/m³</span>]</label>
               <input type="number" id="gamma" class="form-control form-control-sm" value="18">
             </div>
           </div>
@@ -824,17 +824,19 @@ async function exportarPDF() {
 
 // ── Unidades ──────────────────────────────────────────────────────────────────
 const UNIDADES_MAP_LOSA = {
-  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²' },
-  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²' },
-  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²' },
-  'lbf_psf':     { force: 'lbf', pressure: 'psf' },
-  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²' },
-  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²' },
+  'kN_kN/m2':    { force: 'kN',  pressure: 'kN/m²',   density: 'kN/m³'   },
+  'kip_kip/ft2': { force: 'kip', pressure: 'kip/ft²', density: 'kip/ft³' },
+  'tf_tf/m2':    { force: 'tf',  pressure: 'tf/m²',   density: 'tf/m³'   },
+  'lbf_psf':     { force: 'lbf', pressure: 'psf',     density: 'lbf/ft³' },
+  'ton_ton/m2':  { force: 'ton', pressure: 'ton/m²',  density: 'ton/m³'  },
+  'kg_kg/m2':    { force: 'kg',  pressure: 'kg/m²',   density: 'kg/m³'   },
 };
 function updateUnitLabels() {
   const u = UNIDADES_MAP_LOSA[document.getElementById('selectorUnidades').value] || UNIDADES_MAP_LOSA['kN_kN/m2'];
   document.querySelectorAll('.unit-force').forEach(el => el.textContent = u.force);
   document.querySelectorAll('.unit-pressure').forEach(el => el.textContent = u.pressure);
+  document.querySelectorAll('.unit-density').forEach(el => el.textContent = u.density);
+  document.querySelectorAll('.unit-density').forEach(el => el.textContent = u.density);
 }
 </script>
 </body>
