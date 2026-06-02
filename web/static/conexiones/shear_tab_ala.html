@@ -728,7 +728,6 @@ function dibujarSVG(payload, data) {
   svg.innerHTML = s;
 }
 
-<script>
 function noIsoMsg(){return '<div style="color:#484f58;font-size:11px;padding:16px;text-align:center;">Imagen de referencia no disponible</div>';}
 
 // ── Sketch geométrico (sin llamada al servidor) ─────────────────────────────
@@ -759,8 +758,8 @@ function onGeomChange() {
   _sketchTimer = setTimeout(actualizarEsquema, 400);
 }
 
-// Inicializar sketch al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
+// Scripts al final del body — DOM ya cargado, llamar directamente
+(function() {
   actualizarEsquema();
   // Escuchar cambios en todos los inputs de geometría
   ['n_pernos','db_perno','e1','e2','p_sep','tp','bp','tw_viga','w_sold',
@@ -770,9 +769,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.addEventListener('input', onGeomChange);
     if (el) el.addEventListener('change', onGeomChange);
   });
-});
+})();
 
-</script>
 </script>
 </body>
 </html>
