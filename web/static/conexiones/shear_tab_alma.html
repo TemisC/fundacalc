@@ -497,93 +497,165 @@ function dibujarSVG(payload, data) {
   const cy = 170;
 
   // ────────────────────────────────────────────────────────────────────────────
-  //  C1B — VISTA FRONTAL: se ve el PERFIL I de la columna desde el lado
-  //  La viga llega paralela al eje de la columna, entrando entre las alas.
-  //  La plancha se suelda al ALMA de la columna (entre las alas).
+  //  C1B — VISTA FRONTAL estilo dibujo técnico normativo
+  //  Columna vista de frente: alas como barras horizontales (arr/ab), alma vertical
+  //  La plancha queda parcialmente oculta detrás del ala → líneas de trazo (dashed)
+  //  Pernos mostrados con líneas de trazo (ocultos detrás del ala de columna)
+  //  Viga en perfil I a la derecha
   // ────────────────────────────────────────────────────────────────────────────
-  const cx1 = 150;
-  const colH = 280;
-  const col_x = cx1 - col_bf/2;
 
-  // C1B: la plancha se suelda al ALMA → cara izquierda del alma
-  const alma_x = cx1 - col_tw/2;
-  const pl_x   = alma_x - bp_px;
-  const pl_y   = cy - Lp_px/2;    // borde sup plancha
+  // Dimensiones de columna para esta vista (columna "de frente")
+  // d_col = profundidad visible de la columna (dimensión horizontal en plano)
+  // bf_col = ancho de las alas (dimensión fuera del plano — las vemos como barras)
+  const d_col   = 80;    // profundidad columna [px] — espacio entre alas
+  const tf_col  = 14;    // espesor de cada ala [px]
+  const tw_col  = 8;     // espesor alma [px]
 
-  // Alma de viga: horizontal, llega hasta la plancha desde la izquierda
+  // Posición de la columna: centrada en cx1=155, flanges arriba y abajo del zone
+  const cx1 = 155;
+  const colH = 260;    // altura visible total
+
+  // Bordes de la columna en X
+  const col_left  = cx1 - d_col/2 - tf_col;  // borde izq ala izquierda
+  const col_right = cx1 + d_col/2 + tf_col;  // borde der ala derecha
+  // Alma: en cx1 (de col_left+tf_col a col_right-tf_col)
+  // La plancha se suelda al ALMA → cara izquierda del alma = cx1 - d_col/2
+  const web_left  = cx1 - d_col/2;
+  const web_right = cx1 + d_col/2;
+  const alma_x = web_left;          // donde se suelda la plancha
+
+  // Plancha: entre alas, soldada al alma, extensión hacia la izquierda
+  const pl_x   = web_left - bp_px;  // borde izq plancha
+  const pl_y   = cy - Lp_px/2;
+
+  // Viga: a la izquierda, conectada a la plancha
   const viga_beam_w = 90;
-  const viga_x0 = pl_x - viga_beam_w;
-  const viga_xf = pl_x;
+  const viga_x0 = pl_x - viga_beam_w - 6;  // gap pequeño (setback)
+  const setback_px = 6;
+
+  // La plancha visible = la parte que sale fuera del ala de la columna
+  // La parte de la plancha dentro del espacio entre alas = está "tapada" por las alas
+  // (en esta vista frontal, el ala de la columna tapa lo que hay detrás)
+  const flange_outer_left = col_left; // borde izq de las alas
 
   let s = `
   <defs>
     <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
       <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
     </marker>
-    <marker id="arrW" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
-      <path d="M0,0 L5,2.5 L0,5 Z" fill="#d97706"/>
-    </marker>
   </defs>
 
-  <!-- === VISTA FRONTAL === -->
+  <!-- === ALZADO FRONTAL C1B — estilo dibujo técnico === -->
   <text x="${cx1}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">ALZADO FRONTAL</text>
 
-  <!-- C1B: COLUMNA — perfil I visto desde el LADO (alma + alas sobresaliendo) -->
-  <!-- Alma (vertical, estrecha) -->
-  <rect x="${cx1-col_tw/2}" y="${cy-colH/2}" width="${col_tw}" height="${colH}"
-        fill="#1c2e4a" stroke="#4a90d9" stroke-width="1.8"/>
-  <!-- ALA IZQUIERDA (sobresale hacia la izquierda del alma) -->
-  <rect x="${col_x}" y="${cy-colH/2}" width="${col_bf}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1.2"/>
-  <rect x="${col_x}" y="${cy+colH/2-col_tf}" width="${col_bf}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1.2"/>
-  <!-- ALA DERECHA (sobresale hacia la derecha) — igual que izquierda, espejo -->
-  <rect x="${cx1+col_tw/2}" y="${cy-colH/2}" width="${col_bf/2+4}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
-  <rect x="${cx1+col_tw/2}" y="${cy+colH/2-col_tf}" width="${col_bf/2+4}" height="${col_tf}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1"/>
-  <!-- Relleno alma para dar cuerpo al perfil -->
-  <rect x="${cx1-col_tw/2+1}" y="${cy-colH/2+col_tf}" width="${col_tw-2}" height="${colH-2*col_tf}"
-        fill="#243752" opacity="0.3"/>
+  <!-- ─── COLUMNA ─────────────────────────────────────────────────────── -->
+  <!-- Columna vista de frente: alas como barras horizontales, alma vertical al centro -->
+  <!-- ALA IZQUIERDA (barra horizontal izquierda) -->
+  <rect x="${col_left}" y="${cy-colH/2}" width="${tf_col}" height="${colH}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>
+  <!-- ALA DERECHA (barra horizontal derecha) -->
+  <rect x="${web_right}" y="${cy-colH/2}" width="${tf_col}" height="${colH}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>
+  <!-- ALMA (zona entre alas) — relleno para indicar sección llena -->
+  <rect x="${web_left}" y="${cy-colH/2}" width="${d_col}" height="${colH}"
+        fill="#1a2840" stroke="none"/>
+  <!-- Líneas de alma superior e inferior visibles -->
+  <line x1="${web_left}" y1="${cy-colH/2}" x2="${web_right}" y2="${cy-colH/2}"
+        stroke="#4a90d9" stroke-width="1"/>
+  <line x1="${web_left}" y1="${cy+colH/2}" x2="${web_right}" y2="${cy+colH/2}"
+        stroke="#4a90d9" stroke-width="1"/>
+  <!-- Línea de alma central (visible) -->
+  <line x1="${cx1}" y1="${cy-colH/2}" x2="${cx1}" y2="${cy+colH/2}"
+        stroke="#4a90d9" stroke-width="0.8" stroke-dasharray="6,4" opacity="0.6"/>
 
-  <!-- Label ALMA columna -->
-  <text x="${cx1+col_tw/2+col_bf/2+10}" y="${cy-colH/2+10}" fill="#4a90d9" font-size="9" font-weight="bold">ALMA columna</text>
-  <text x="${cx1+col_tw/2+col_bf/2+10}" y="${cy-colH/2+21}" fill="#4a90d9" font-size="8">(alas sobresalen)</text>
+  <!-- Labels columna -->
+  <text x="${col_right + 5}" y="${cy-colH/2+12}" fill="#4a90d9" font-size="8" font-weight="bold">ALA</text>
+  <text x="${cx1}" y="${cy-colH/2-6}" fill="#4a90d9" font-size="8" text-anchor="middle">ALMA columna</text>
 
-  <!-- Alma de viga (horizontal) — superior e inferior del ala + alma -->
-  <!-- Ala sup viga -->
-  <rect x="${viga_x0}" y="${cy - beam_d/2}" width="${viga_beam_w + bp_px}" height="${beam_tf}"
-        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
+  <!-- ─── VIGA (perfil I, viene desde la izquierda) ─────────────────── -->
+  <!-- Ala superior viga -->
+  <rect x="${viga_x0}" y="${cy - beam_d/2}" width="${viga_beam_w}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
   <!-- Alma viga -->
   <rect x="${viga_x0}" y="${cy - beam_d/2 + beam_tf}" width="${tw_px}" height="${beam_d - 2*beam_tf}"
-        fill="#1e3a5f" stroke="#60a5fa" stroke-width="0.8"/>
-  <!-- Ala inf viga -->
-  <rect x="${viga_x0}" y="${cy + beam_d/2 - beam_tf}" width="${viga_beam_w + bp_px}" height="${beam_tf}"
         fill="#1e3a5f" stroke="#60a5fa" stroke-width="1"/>
-  <!-- Viga label -->
-  <text x="${viga_x0 + 5}" y="${cy - beam_d/2 - 5}" fill="#60a5fa" font-size="9">Viga</text>
-  <text x="${viga_x0 + 5}" y="${cy - beam_d/2 + beam_tf + 12}" fill="#60a5fa" font-size="9">tw=${tw}mm</text>
+  <!-- Ala inferior viga -->
+  <rect x="${viga_x0}" y="${cy + beam_d/2 - beam_tf}" width="${viga_beam_w}" height="${beam_tf}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
+  <!-- Label viga -->
+  <text x="${viga_x0 + 5}" y="${cy - beam_d/2 - 5}" fill="#60a5fa" font-size="9">Viga (tw=${tw}mm)</text>
+  <!-- Línea de setback (holgura entre viga y columna) -->
+  <line x1="${viga_x0 + viga_beam_w}" y1="${cy-beam_d/2-4}" x2="${viga_x0 + viga_beam_w}" y2="${cy+beam_d/2+4}"
+        stroke="#374151" stroke-width="1" stroke-dasharray="3,2"/>
 
-  <!-- PLANCHA DE ALMA (shear tab) -->
-  <rect x="${pl_x}" y="${pl_y}" width="${bp_px}" height="${Lp_px}"
-        fill="#1e4080" stroke="#3b82f6" stroke-width="1.8" rx="1"/>
+  <!-- ─── PLANCHA DE ALMA ───────────────────────────────────────────── -->
+  <!-- Parte de la plancha VISIBLE (fuera del ala de columna) — línea sólida -->
+  <rect x="${pl_x}" y="${pl_y}" width="${Math.max(flange_outer_left - pl_x, 1)}" height="${Lp_px}"
+        fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.5"/>
+  <!-- Parte de la plancha OCULTA (detrás del ala izquierda de columna) — trazos -->
+  <rect x="${flange_outer_left}" y="${pl_y}" width="${tf_col + d_col/2}" height="${Lp_px}"
+        fill="none" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="5,3"/>
+  <!-- Label plancha -->
+  <text x="${pl_x + (flange_outer_left - pl_x)/2}" y="${pl_y - 5}" fill="#60a5fa" font-size="9" text-anchor="middle">Plancha (tp=${tp}mm)</text>
 
-  <!-- Cotas plancha -->
-  <line x1="${pl_x - 2}" y1="${pl_y}" x2="${pl_x - 12}" y2="${pl_y}" stroke="#4b5563" stroke-width="0.8"/>
-  <line x1="${pl_x - 2}" y1="${pl_y + Lp_px}" x2="${pl_x - 12}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
-  <line x1="${pl_x - 8}" y1="${pl_y}" x2="${pl_x - 8}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
-  <text x="${pl_x - 10}" y="${cy}" fill="#9ca3af" font-size="9" text-anchor="end" transform="rotate(-90,${pl_x-10},${cy})">Lp=${Lp}mm</text>
+  <!-- Cota Lp lateral -->
+  <line x1="${pl_x - 2}" y1="${pl_y}" x2="${pl_x - 10}" y2="${pl_y}" stroke="#4b5563" stroke-width="0.8"/>
+  <line x1="${pl_x - 2}" y1="${pl_y + Lp_px}" x2="${pl_x - 10}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
+  <line x1="${pl_x - 7}" y1="${pl_y}" x2="${pl_x - 7}" y2="${pl_y + Lp_px}" stroke="#4b5563" stroke-width="0.8"/>
+  <text x="${pl_x - 9}" y="${cy}" fill="#9ca3af" font-size="9" text-anchor="end"
+        transform="rotate(-90,${pl_x-9},${cy})">Lp=${Lp}mm</text>
 
-  <!-- Cota bp -->
-  <line x1="${pl_x}" y1="${pl_y + Lp_px + 8}" x2="${pl_x + bp_px}" y2="${pl_y + Lp_px + 8}" stroke="#4b5563" stroke-width="0.8"/>
-  <text x="${pl_x + bp_px/2}" y="${pl_y + Lp_px + 20}" fill="#9ca3af" font-size="9" text-anchor="middle">bp=${bp}mm</text>
+  <!-- Cota 'a' (excentricidad: de cara del ala columna a línea de pernos) -->
+  <line x1="${flange_outer_left}" y1="${cy + Lp_px/2 + 16}" x2="${pl_x + bp_px * 0.45}" y2="${cy + Lp_px/2 + 16}"
+        stroke="#6b7280" stroke-width="0.8"/>
+  <text x="${(flange_outer_left + pl_x + bp_px*0.45)/2}" y="${cy + Lp_px/2 + 28}"
+        fill="#6b7280" font-size="8" text-anchor="middle">a (excentricidad)</text>
 
-  <!-- SOLDADURA (triángulos en ambos lados del alma de columna) -->
-  <polygon points="${alma_x},${pl_y} ${alma_x},${pl_y+12} ${alma_x-8},${pl_y+6}"
-           fill="#d97706" opacity="0.85"/>
-  <polygon points="${alma_x},${pl_y+Lp_px} ${alma_x},${pl_y+Lp_px-12} ${alma_x-8},${pl_y+Lp_px-6}"
-           fill="#d97706" opacity="0.85"/>
-  <text x="${alma_x - 12}" y="${pl_y - 4}" fill="#d97706" font-size="9" text-anchor="middle">w=${w}</text>`;
+  <!-- SOLDADURA al alma de la columna (triángulos naranja) — líneas sólidas -->
+  <polygon points="${alma_x},${pl_y} ${alma_x-8},${pl_y+7} ${alma_x},${pl_y+14}"
+           fill="#d97706" opacity="0.9"/>
+  <polygon points="${alma_x},${pl_y+Lp_px} ${alma_x-8},${pl_y+Lp_px-7} ${alma_x},${pl_y+Lp_px-14}"
+           fill="#d97706" opacity="0.9"/>
+  <text x="${alma_x - 14}" y="${pl_y - 4}" fill="#d97706" font-size="8" text-anchor="middle">w=${w}</text>`
+
+  // ─── PERNOS — mostrados con trazo (ocultos detrás del ala de la columna) ───
+  // En esta vista frontal, los pernos están detrás del ala de columna → trazo
+  for (let i = 0; i < n; i++) {
+    const by  = pl_y + e1 * sc + i * p * sc;
+    const bx  = pl_x + bp_px * 0.45;  // centrados en la plancha
+    const r   = Math.max(db_px, 5);
+    // Perno: círculo punteado (oculto detrás del ala)
+    s += `<circle cx="${bx}" cy="${by}" r="${r}" fill="none" stroke="#60a5fa"
+                  stroke-width="1.2" stroke-dasharray="4,2"/>
+          <line x1="${bx-r+1}" y1="${by}" x2="${bx+r-1}" y2="${by}"
+                stroke="#60a5fa" stroke-width="0.7" stroke-dasharray="4,2"/>
+          <line x1="${bx}" y1="${by-r+1}" x2="${bx}" y2="${by+r-1}"
+                stroke="#60a5fa" stroke-width="0.7" stroke-dasharray="4,2"/>`;
+  }
+
+  // Cotas e1 y p
+  const bx_bolt = pl_x + bp_px * 0.45;
+  const bx0 = col_right + 8;
+  const by0 = pl_y + e1 * sc;
+  s += `<line x1="${bx_bolt}" y1="${pl_y}" x2="${bx0 + 6}" y2="${pl_y}" stroke="#374151" stroke-width="0.7"/>
+        <line x1="${bx_bolt}" y1="${by0}" x2="${bx0 + 6}" y2="${by0}" stroke="#374151" stroke-width="0.7"/>
+        <line x1="${bx0 + 3}" y1="${pl_y}" x2="${bx0 + 3}" y2="${by0}" stroke="#374151" stroke-width="0.7"/>
+        <text x="${bx0 + 12}" y="${pl_y + e1*sc/2 + 4}" fill="#6b7280" font-size="8">e₁=${e1}</text>`;
+  if (n > 1) {
+    const by1 = pl_y + e1*sc + p*sc;
+    s += `<line x1="${bx_bolt}" y1="${by1}" x2="${bx0 + 6}" y2="${by1}" stroke="#374151" stroke-width="0.7"/>
+          <line x1="${bx0 + 3}" y1="${by0}" x2="${bx0 + 3}" y2="${by1}" stroke="#374151" stroke-width="0.7"/>
+          <text x="${bx0 + 12}" y="${by0 + p*sc/2 + 4}" fill="#6b7280" font-size="8">p=${p}</text>`;
+  }
+
+  // Flecha Vu vertical (cortante en el extremo de la viga)
+  const vu_x = viga_x0 + 18;
+  s += `<line x1="${vu_x}" y1="${cy - beam_d/2 - 30}" x2="${vu_x}" y2="${cy - beam_d/2 - 4}"
+             stroke="#ef4444" stroke-width="2.5" marker-end="url(#arr)"/>
+        <text x="${vu_x}" y="${cy - beam_d/2 - 34}" fill="#ef4444" font-size="10"
+              text-anchor="middle" font-weight="bold">Vu=${payload.Vu}kN</text>
+        <text x="${vu_x}" y="${cy - beam_d/2 - 22}" fill="#ef4444" font-size="8"
+              text-anchor="middle">(cortante)</text>`;
 
   // Pernos (vista frontal — círculos con cruceta)
   for (let i = 0; i < n; i++) {
