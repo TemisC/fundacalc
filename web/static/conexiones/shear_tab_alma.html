@@ -578,13 +578,15 @@ function dibujarSVG(payload, data) {
   // 4. BORDE DERECHO DE LA PLANCHA EN TRAZO (al final, sobre todo lo demás)
   //    Regla DT: elemento oculto se proyecta en trazo hasta su punto de fin real.
   //    Borde sup y borde inf (horizontales, cortos) + borde der vertical (Lp alto).
-  s += SteelSVG.hiddenOutline(v1, x_ala_izq_ext, 0, y_bot, y_top,
+  // Trazo hasta el ALMA (col_d/2 = centro de la columna)
+  // Corrección: el alma no está en el borde del ala (x=0) sino al centro (col_d/2)
+  s += SteelSVG.hiddenOutline(v1, x_ala_izq_ext, x_web_c, y_bot, y_top,
        {stroke:'#bfdbfe', sw:2.5, dash:'7,3'})
 
   // 5. SOLDADURAS, PERNOS, COTAS
-  s += SteelSVG.weldTriangle(v1, 0, y_top-ws/2, ws, 'right')
-  s += SteelSVG.weldTriangle(v1, 0, y_bot+ws/2, ws, 'right')
-  s += SteelSVG.textLabel(v1, -ws-2, y_top+4, `w=${w}mm`, {fill:'#d97706', anchor:'end', fs:8})
+  s += SteelSVG.weldTriangle(v1, x_web_c, y_top-ws/2, ws, 'right')
+  s += SteelSVG.weldTriangle(v1, x_web_c, y_bot+ws/2, ws, 'right')
+  s += SteelSVG.textLabel(v1, x_web_c-ws-2, y_top+4, `w=${w}mm`, {fill:'#d97706', anchor:'end', fs:8})
   const x_bolt_line = x_pl_izq + bp/2
   for (let i = 0; i < n; i++) s += SteelSVG.bolt(v1, x_bolt_line, y_bot+e1+i*p, db, {hidden:true})
   s += SteelSVG.dimH(v1, x_ala_izq_ext, x_bolt_line, y_bot, 'a (excentr.)', 'bottom', 18)
