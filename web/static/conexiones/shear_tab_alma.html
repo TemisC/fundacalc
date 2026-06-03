@@ -539,19 +539,23 @@ function dibujarSVG(payload, data) {
   // ══════════════════════════════════════════════════════════════════════════
   s += SteelSVG.viewTitle(148, 14, 'ALZADO FRONTAL')
 
-  // 1. VIGA
-  s += SteelSVG.iProfileH(v1, x_beam, x_pl_izq, 0, beam_d, SC.beam_bf, SC.beam_tf, tw)
+  // 1. VIGA — las alas llegan casi al borde del ala de la columna (gap = 6mm)
+  const x_beam_end = x_ala_izq_ext - 6  // cara derecha de la viga, a 6mm del ala col.
+  s += SteelSVG.iProfileH(v1, x_beam, x_beam_end, 0, beam_d, SC.beam_bf, SC.beam_tf, tw)
   s += SteelSVG.textLabel(v1, x_beam+8, beam_d/2+11, `Viga (tw=${tw}mm)`, {fill:'#60a5fa', anchor:'start'})
   s += SteelSVG.dimV(v1, x_beam, -beam_d/2, beam_d/2, 'Altura viga', 'left', 14)
-  s += `<line x1="${v1.x(x_pl_izq)}" y1="${v1.y(-beam_d/2-4)}" x2="${v1.x(x_pl_izq)}" y2="${v1.y(beam_d/2+4)}"
+  // Línea de setback (gap entre viga y columna)
+  s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
+              x2="${v1.x(x_beam_end)}" y2="${v1.y(beam_d/2+4)}"
               stroke="#374151" stroke-width="1" stroke-dasharray="3,2"/>`
 
-  // 2. PLANCHA COMPLETA de x=-bp a x=0 (soldadura en alma)
-  //    Se dibuja ANTES de la columna — el ala izquierda la tapará en su zona.
-  s += SteelSVG.plateRect(v1, x_pl_izq, y_bot, bp, Lp)
-  s += SteelSVG.textLabel(v1, x_pl_izq+(bp-SC.col_tf)/2, y_top+13,
+  // 2. PLANCHA — visible entre la viga y el ala de columna, luego oculta hasta el alma
+  //    La plancha corre de x_beam_end (cara de la viga) hasta x=0 (cara ala col.)
+  //    siendo esto lo visible; luego hiddenOutline marca el tramo oculto hasta el alma.
+  s += SteelSVG.plateRect(v1, x_beam_end, y_bot, x_ala_izq_ext - x_beam_end, Lp)
+  s += SteelSVG.textLabel(v1, x_beam_end + (x_ala_izq_ext-x_beam_end)/2, y_top+13,
        `Plancha ${tp}×${bp}mm`, {fill:'#60a5fa'})
-  s += SteelSVG.dimV(v1, x_pl_izq, y_bot, y_top, `Lp=${Lp}mm`, 'left', 12)
+  s += SteelSVG.dimV(v1, x_beam_end, y_bot, y_top, `Lp=${Lp}mm`, 'left', 12)
 
   // 3. COLUMNA — dibujada encima, su ala izquierda tapa la plancha en x=[-col_tf, 0]
   const x_web_c = col_d/2
@@ -578,10 +582,11 @@ function dibujarSVG(payload, data) {
   // 4. BORDE DERECHO DE LA PLANCHA EN TRAZO (al final, sobre todo lo demás)
   //    Regla DT: elemento oculto se proyecta en trazo hasta su punto de fin real.
   //    Borde sup y borde inf (horizontales, cortos) + borde der vertical (Lp alto).
-  // Trazo hasta el ALMA (col_d/2 = centro de la columna)
-  // Corrección: el alma no está en el borde del ala (x=0) sino al centro (col_d/2)
+  // Solo el borde derecho en trazo (línea vertical en el alma = fin real de la plancha).
+  // NO se dibujan los bordes horizontales (techo/piso) porque cruzan la columna
+  // y generan líneas que no corresponden al dibujo técnico.
   s += SteelSVG.hiddenOutline(v1, x_ala_izq_ext, x_web_c, y_bot, y_top,
-       {stroke:'#bfdbfe', sw:2.5, dash:'7,3'})
+       {stroke:'#bfdbfe', sw:2.5, dash:'7,3', edges:['right']})
 
   // 5. SOLDADURAS, PERNOS, COTAS
   s += SteelSVG.weldTriangle(v1, x_web_c, y_top-ws/2, ws, 'right')

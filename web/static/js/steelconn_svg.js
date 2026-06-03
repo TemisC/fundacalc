@@ -279,13 +279,22 @@ const SteelSVG = (() => {
    * y_bot, y_top = extremos Y world del elemento.
    * Se dibujan: borde superior, borde inferior y borde derecho (x_fin).
    */
+  /**
+   * Contorno de elemento OCULTO.
+   * opts.edges: array de bordes a dibujar: 'top','bot','right' (default: todos).
+   * Usar edges:['right'] para mostrar solo la línea vertical de fin (sin horizontales).
+   */
   function hiddenOutline(v, x_ini, x_fin, y_bot, y_top, opts = {}) {
-    const { stroke = '#60a5fa', sw = 1.2, dash = '5,3' } = opts
+    const { stroke = '#60a5fa', sw = 1.2, dash = '5,3', edges = ['top','bot','right'] } = opts
     const da = `stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${dash}"`
-    return `
-    <line x1="${v.x(x_ini)}" y1="${v.y(y_top)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>
-    <line x1="${v.x(x_ini)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_bot)}" ${da}/>
-    <line x1="${v.x(x_fin)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>`
+    let r = ''
+    if (edges.includes('top'))
+      r += `<line x1="${v.x(x_ini)}" y1="${v.y(y_top)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>`
+    if (edges.includes('bot'))
+      r += `<line x1="${v.x(x_ini)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_bot)}" ${da}/>`
+    if (edges.includes('right'))
+      r += `<line x1="${v.x(x_fin)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>`
+    return r
   }
 
   return {
