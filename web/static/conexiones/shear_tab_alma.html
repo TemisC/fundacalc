@@ -124,6 +124,35 @@
         </div>
       </div>
 
+      <!-- Perfiles estructurales -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Perfiles estructurales</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Perfil viga</label>
+              <select class="form-select form-select-sm" id="perfil_viga"
+                      onchange="onPerfilVigaChange()">
+                <option value="">— Manual (ingresar tw) —</option>
+              </select>
+              <div id="info_perfil_viga" class="form-text" style="font-size:9px;color:#6b7280;">
+                Selecciona para auto-completar tw y escalar el dibujo
+              </div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Perfil columna</label>
+              <select class="form-select form-select-sm" id="perfil_columna"
+                      onchange="onPerfilColumnaChange()">
+                <option value="">— Esquemático —</option>
+              </select>
+              <div id="info_perfil_columna" class="form-text" style="font-size:9px;color:#6b7280;">
+                Selecciona para dibujar con dimensiones reales
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Fuerza de diseño -->
       <div class="card shadow-sm mb-2">
         <div class="card-body py-2 px-3">
@@ -344,6 +373,7 @@
 </div><!-- /container -->
 
 <script src="/static/js/steelconn_svg.js"></script>
+<script src="/static/js/perfiles_acero_catalog.js"></script>
 <script>
 let _lastPayload = null;
 
@@ -495,27 +525,31 @@ function dibujarSVG(payload, data) {
   const { w }                  = payload.soldadura
   const Lp  = data.Lp
 
-  const SC     = SteelSVG.SCHEMATIC
-  const beam_d = Lp + 80
+  const SC = SteelSVG.SCHEMATIC
+
+  // Dimensiones del perfil: usa valores reales si se seleccionó un perfil del catálogo
+  const BEAM = {
+    d:  payload.viga?.d  ?? (Lp + 80),
+    bf: payload.viga?.bf ?? SC.beam_bf,
+    tf: payload.viga?.tf ?? SC.beam_tf,
+    tw: tw,
+  }
+  const COL = payload.columna ?? {
+    d: SC.col_d, bf: SC.col_bf, tf: SC.col_tf, tw: SC.col_tw,
+  }
+  const beam_d = BEAM.d
   const col_H  = beam_d + 60
+  const col_d  = COL.d
 
-  // C1B: columna vista de frente — alas como barras verticales, alma en el medio
-  // x=0: cara izq del alma (punto de soldadura de la plancha)
-  // x=-col_tf: cara exterior de la ala izquierda
-  // x=col_d_claro: cara der del alma
-  // x=col_d_claro+col_tf: cara exterior de la ala derecha
-  const col_d = SC.col_d   // distancia entre caras interiores de alas (mm)
-
-  // Escala adaptativa — alzado en ≈265×295 px
-  // Ancho world alzado: viga + plancha (parte visible fuera del ala) + col total + margen
-  const col_total = 2*SC.col_tf + col_d
+  // Escala adaptativa — ajusta para las dimensiones reales del perfil
+  const col_total = 2*COL.tf + col_d
   const sc = SteelSVG.autoScale(SC.beam_extent + bp + col_total + 32, beam_d + 60, 265, 295)
 
   // Vista alzado: origen = cara izq del alma columna (x=0, y=0 centro plancha)
   const v1 = new SteelSVG.View(148, 200, sc)
 
   // Vista sección: centrada en cx2=455
-  const x_sec_lo = -SC.sec_extent, x_sec_hi = tp + SC.col_tw + SC.col_bf/2 + 20
+  const x_sec_lo = -SC.sec_extent, x_sec_hi = tp + COL.tw + COL.bf/2 + 20
   const v2 = new SteelSVG.View(455 - ((x_sec_lo + x_sec_hi) / 2) * sc, 200, sc)
 
   const x_pl_izq = -bp     // borde izq plancha (visible)
@@ -525,9 +559,9 @@ function dibujarSVG(payload, data) {
   const ws       = Math.max(w*1.5, 10)
 
   // Límites de la columna en world
-  const x_ala_izq_ext  = -SC.col_tf          // cara exterior ala izquierda
+  const x_ala_izq_ext  = -COL.tf          // cara exterior ala izquierda
   const x_ala_der_int  = col_d               // cara interior ala derecha
-  const x_ala_der_ext  = col_d + SC.col_tf   // cara exterior ala derecha
+  const x_ala_der_ext  = col_d + COL.tf   // cara exterior ala derecha
 
   let s = ''
 
@@ -554,7 +588,7 @@ function dibujarSVG(payload, data) {
   const x_beam_start  = x_beam_end - SC.beam_extent
 
   // 1. VIGA — las alas llegan hasta 6mm del borde del ala de la columna
-  s += SteelSVG.iProfileH(v1, x_beam_start, x_beam_end, 0, beam_d, SC.beam_bf, SC.beam_tf, tw)
+  s += SteelSVG.iProfileH(v1, x_beam_start, x_beam_end, 0, beam_d, BEAM.bf, BEAM.tf, tw)
   s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2+11, `Viga (tw=${tw}mm)`, {fill:'#60a5fa', anchor:'start'})
   s += SteelSVG.dimV(v1, x_beam_start, -beam_d/2, beam_d/2, 'Altura viga', 'left', 14)
   s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
@@ -572,7 +606,7 @@ function dibujarSVG(payload, data) {
   //    la plancha siga siendo visible a través de él.
   // Ala izquierda
   s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
+              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
               fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
   // Zona entre alas (relleno translúcido — la plancha se ve a través)
   s += `<rect x="${v1.x(0)}" y="${v1.y(col_H/2)}"
@@ -582,19 +616,19 @@ function dibujarSVG(payload, data) {
   s += `<line x1="${v1.x(0)}" y1="${v1.y(col_H/2)}"  x2="${v1.x(col_d)}" y2="${v1.y(col_H/2)}"  stroke="#4a90d9" stroke-width="1"/>`
   s += `<line x1="${v1.x(0)}" y1="${v1.y(-col_H/2)}" x2="${v1.x(col_d)}" y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="1"/>`
   // Franja alma (visible, al centro)
-  s += `<rect x="${v1.x(x_web_c - SC.col_tw/2)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tw)}" height="${v1.s(col_H)}"
+  s += `<rect x="${v1.x(x_web_c - COL.tw/2)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(COL.tw)}" height="${v1.s(col_H)}"
               fill="#1c3860" stroke="#4a90d9" stroke-width="1.5" opacity="0.95"/>`
   // Eje central de la columna
   s += `<line x1="${v1.x(x_web_c)}" y1="${v1.y(col_H/2-5)}" x2="${v1.x(x_web_c)}" y2="${v1.y(-col_H/2+5)}"
               stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="6,4" opacity="0.4"/>`
   // Ala derecha
   s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
+              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
               fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
   // Cotas columna
   s += SteelSVG.dimH(v1, x_ala_izq_ext, x_ala_der_ext, col_H/2, 'Ala de columna', 'top', 16)
-  s += SteelSVG.dimH(v1, x_web_c-SC.col_tw/2, x_web_c+SC.col_tw/2, -col_H/2, `esp.alma=${SC.col_tw}mm`, 'bottom', 14)
+  s += SteelSVG.dimH(v1, x_web_c-COL.tw/2, x_web_c+COL.tw/2, -col_H/2, `esp.alma=${COL.tw}mm`, 'bottom', 14)
   s += SteelSVG.textLabel(v1, x_ala_der_ext+4, col_H/2-10, 'ALA', {fill:'#4a90d9', anchor:'start', bold:true, fs:8})
 
   // 4. PERNOS (visibles, conectan la viga a la plancha dentro de la columna)
@@ -630,18 +664,18 @@ function dibujarSVG(payload, data) {
   const x_p0 = gap           // inicio plancha
   const x_p1 = gap + tp      // fin plancha
   const x_w0 = x_p1          // inicio alma columna
-  const x_w1 = x_w0 + SC.col_tw  // fin alma columna
+  const x_w1 = x_w0 + COL.tw  // fin alma columna
 
   // Flanges viga
-  s += SteelSVG.plateRect(v2, x0s, beam_d/2-SC.beam_tf, SC.sec_extent, SC.beam_tf,
+  s += SteelSVG.plateRect(v2, x0s, beam_d/2-BEAM.tf, SC.sec_extent, BEAM.tf,
        {fill:'#1e3a5f', stroke:'#60a5fa', sw:1.0})
-  s += SteelSVG.plateRect(v2, x0s, -beam_d/2, SC.sec_extent, SC.beam_tf,
+  s += SteelSVG.plateRect(v2, x0s, -beam_d/2, SC.sec_extent, BEAM.tf,
        {fill:'#1e3a5f', stroke:'#60a5fa', sw:1.0})
   // Web viga
-  s += SteelSVG.plateRect(v2, x0s, -(beam_d/2-SC.beam_tf), tw, beam_d-2*SC.beam_tf,
+  s += SteelSVG.plateRect(v2, x0s, -(beam_d/2-BEAM.tf), tw, beam_d-2*BEAM.tf,
        {fill:'#1e3a5f', stroke:'#60a5fa', sw:0.8})
   s += SteelSVG.textLabel(v2, x0s+SC.sec_extent/2, beam_d/2+11, 'Viga', {fill:'#60a5fa'})
-  s += SteelSVG.textLabel(v2, x0s+tw/2, beam_d/2-SC.beam_tf-5, `tw=${tw}mm`,
+  s += SteelSVG.textLabel(v2, x0s+tw/2, beam_d/2-BEAM.tf-5, `tw=${tw}mm`,
        {fill:'#60a5fa', anchor:'start', fs:8})
 
   // Gap (línea punteada)
@@ -659,23 +693,23 @@ function dibujarSVG(payload, data) {
   s += SteelSVG.textLabel(v2, x_w0+ws+2, 4, `w=${w}mm`, {fill:'#d97706', anchor:'start', fs:8})
 
   // Alma columna (thin strip)
-  s += SteelSVG.plateRect(v2, x_w0, -beam_d/2, SC.col_tw, beam_d,
+  s += SteelSVG.plateRect(v2, x_w0, -beam_d/2, COL.tw, beam_d,
        {fill:'#1c2e4a', stroke:'#4a90d9', sw:2.0})
-  s += SteelSVG.textLabel(v2, x_w0+SC.col_tw/2, beam_d/2+11, 'ALMA', {fill:'#4a90d9', fs:8})
+  s += SteelSVG.textLabel(v2, x_w0+COL.tw/2, beam_d/2+11, 'ALMA', {fill:'#4a90d9', fs:8})
 
   // Alas columna (perpendiculares al corte → barras arriba/abajo)
-  const ala_half = SC.col_bf / 2
-  s += SteelSVG.plateRect(v2, x_w0-SC.col_bf/2, beam_d/2-SC.col_tf, SC.col_bf+SC.col_tw, SC.col_tf,
+  const ala_half = COL.bf / 2
+  s += SteelSVG.plateRect(v2, x_w0-COL.bf/2, beam_d/2-COL.tf, COL.bf+COL.tw, COL.tf,
        {fill:'#243752', stroke:'#4a90d9', sw:1.2})
-  s += SteelSVG.plateRect(v2, x_w0-SC.col_bf/2, -beam_d/2, SC.col_bf+SC.col_tw, SC.col_tf,
+  s += SteelSVG.plateRect(v2, x_w0-COL.bf/2, -beam_d/2, COL.bf+COL.tw, COL.tf,
        {fill:'#243752', stroke:'#4a90d9', sw:1.2})
-  s += SteelSVG.textLabel(v2, x_w0+SC.col_tw+SC.col_bf/2+4, beam_d/2-SC.col_tf/2, '↑ ALA col.',
+  s += SteelSVG.textLabel(v2, x_w0+COL.tw+COL.bf/2+4, beam_d/2-COL.tf/2, '↑ ALA col.',
        {fill:'#4a90d9', anchor:'start', fs:8})
-  s += SteelSVG.textLabel(v2, x_w0+SC.col_tw+SC.col_bf/2+4, -beam_d/2+SC.col_tf/2, '↓ ALA col.',
+  s += SteelSVG.textLabel(v2, x_w0+COL.tw+COL.bf/2+4, -beam_d/2+COL.tf/2, '↓ ALA col.',
        {fill:'#4a90d9', anchor:'start', fs:8})
   // Cota "Ala de columna" en sección (dimensión transversal = col_bf)
-  s += SteelSVG.dimV(v2, x_w0+SC.col_tw+SC.col_bf/2+28, -beam_d/2, beam_d/2,
-       `Ala col.=${SC.col_bf}mm`, 'right', 8)
+  s += SteelSVG.dimV(v2, x_w0+COL.tw+COL.bf/2+28, -beam_d/2, beam_d/2,
+       `Ala col.=${COL.bf}mm`, 'right', 8)
 
   // Pernos en sección
   for (let i = 0; i < n; i++) {
