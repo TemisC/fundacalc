@@ -666,31 +666,37 @@ function dibujarSVG(payload, data) {
        `Plancha ${tp}×${bp}mm`, {fill:'#60a5fa'})
   s += SteelSVG.dimV(v1, x_plate_left, y_bot, y_top, `Lp=${Lp}mm`, 'left', 12)
 
-  // 3. COLUMNA — dibujada después de la plancha para que las alas la encuadren
-  //    El relleno del espacio entre alas se dibuja con baja opacidad para que
-  //    la plancha siga siendo visible a través de él.
-  // Ala izquierda
+  // 3. COLUMNA — representación limpia con UN SOLO CONTORNO exterior
+  //    Los rellenos internos (alas y zona alma) NO tienen stroke propio.
+  //    Solo el rect exterior tiene stroke, eliminando las "dobles líneas".
+  const col_total_w = col_d + 2*COL.tf
+
+  // Relleno zona ala izquierda (sin stroke)
   s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
               width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
-  // Zona entre alas (relleno translúcido — la plancha se ve a través)
+              fill="#243752" stroke="none"/>`
+  // Relleno zona entre alas (translúcido — la plancha se ve a través)
   s += `<rect x="${v1.x(0)}" y="${v1.y(col_H/2)}"
               width="${v1.s(col_d)}" height="${v1.s(col_H)}"
               fill="#0d1520" opacity="0.55" stroke="none"/>`
-  // Bordes top/bottom del espacio entre alas
-  s += `<line x1="${v1.x(0)}" y1="${v1.y(col_H/2)}"  x2="${v1.x(col_d)}" y2="${v1.y(col_H/2)}"  stroke="#4a90d9" stroke-width="1"/>`
-  s += `<line x1="${v1.x(0)}" y1="${v1.y(-col_H/2)}" x2="${v1.x(col_d)}" y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="1"/>`
+  // Relleno zona ala derecha (sin stroke)
+  s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
+              fill="#243752" stroke="none"/>`
+  // ÚNICO CONTORNO de la columna (solo stroke, no fill)
+  s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(col_total_w)}" height="${v1.s(col_H)}"
+              fill="none" stroke="#4a90d9" stroke-width="1.5"/>`
+  // Líneas divisorias ala/alma (internas, finas)
+  s += `<line x1="${v1.x(0)}"     y1="${v1.y(col_H/2)}" x2="${v1.x(0)}"     y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="0.5" opacity="0.7"/>`
+  s += `<line x1="${v1.x(col_d)}" y1="${v1.y(col_H/2)}" x2="${v1.x(col_d)}" y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="0.5" opacity="0.7"/>`
   // Franja alma (visible, al centro)
   s += `<rect x="${v1.x(x_web_c - COL.tw/2)}" y="${v1.y(col_H/2)}"
               width="${v1.s(COL.tw)}" height="${v1.s(col_H)}"
-              fill="#1c3860" stroke="#4a90d9" stroke-width="1.5" opacity="0.95"/>`
-  // Eje central de la columna
+              fill="#1c3860" stroke="none"/>`
+  // Eje central punteado
   s += `<line x1="${v1.x(x_web_c)}" y1="${v1.y(col_H/2-5)}" x2="${v1.x(x_web_c)}" y2="${v1.y(-col_H/2+5)}"
               stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="6,4" opacity="0.4"/>`
-  // Ala derecha
-  s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
   // Cotas columna
   s += SteelSVG.dimH(v1, x_ala_izq_ext, x_ala_der_ext, col_H/2, 'Ala de columna', 'top', 16)
   s += SteelSVG.dimH(v1, x_web_c-COL.tw/2, x_web_c+COL.tw/2, -col_H/2, `esp.alma=${COL.tw}mm`, 'bottom', 14)
