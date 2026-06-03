@@ -495,34 +495,51 @@ async function calcular() {
   }
 }
 
+
+// ── Sugerencias de diseño por tipo de falla ──────────────────────────────────
+const SUGERENCIAS_CONEXION = {
+  'Corte en pernos':
+    'Aumentar numero de pernos (n) o el diametro (db). Con mas pernos el cortante se reparte.',
+  'Aplastamiento en plancha':
+    'Aumentar el espesor de plancha (tp). El aplastamiento es directamente proporcional a tp.',
+  'Aplastamiento en alma de viga':
+    'Seleccionar viga con mayor espesor de alma (tw) o reducir diametro de perno.',
+  'Desgarro en bloque — plancha':
+    'Aumentar tp o el ancho bp. Tambien revisar distancias de borde e1 y e2.',
+  'Corte en plancha':
+    'Aumentar tp o agregar pernos (mayor Lp = mas area neta de corte).',
+  'Soldadura plancha-columna':
+    'Aumentar tamano del filete w o soldar en ambos lados (duplica capacidad).',
+}
+
 function renderTabla(data) {
   const divs = document.getElementById('tablaVerificaciones');
   let html = `<table class="table table-sm table-bordered sc-tabla mb-0">
     <thead><tr>
-      <th>Verificación</th><th>Referencia</th>
+      <th>Verificación y Fórmula</th><th>Referencia</th>
       <th class="text-end">Demanda [kN]</th>
       <th class="text-end">Capacidad [kN]</th>
       <th class="text-center">D/C</th>
       <th class="text-center">Estado</th>
     </tr></thead><tbody>`;
 
-  data.verificaciones.forEach((v, i) => {
-    const cls   = v.relacion <= 0.80 ? 'verde' : v.relacion <= 1.00 ? 'amarillo' : 'rojo';
-    const rcls  = 'ratio-' + cls;
+  data.verificaciones.forEach((v) => {
+    const cls  = v.relacion <= 0.80 ? 'verde' : v.relacion <= 1.00 ? 'amarillo' : 'rojo';
+    const rcls = 'ratio-' + cls;
     const icono = v.ok ? '✔' : '✘';
-    html += `<tr class="sc-${cls}" style="cursor:pointer;" onclick="toggleDet(${i})">
-      <td>${v.nombre}</td>
-      <td class="text-muted" style="font-size:11px;">${v.referencia}</td>
+    const sug  = !v.ok ? (SUGERENCIAS_CONEXION[v.nombre] || '') : ''
+    html += `<tr class="sc-${cls}">
+      <td>
+        <div style="font-weight:600;">${v.nombre}</div>
+        <div style="font-size:10px;color:#555;font-family:monospace;margin-top:2px;">${v.formula}</div>
+        ${v.nota ? `<div style="font-size:10px;color:#888;margin-top:1px;">${v.nota}</div>` : ''}
+        ${sug ? `<div style="font-size:11px;color:#b45309;background:#fff7ed;border-left:3px solid #d97706;padding:3px 8px;margin-top:5px;border-radius:0 4px 4px 0;">➡ ${sug}</div>` : ''}
+      </td>
+      <td class="text-muted" style="font-size:11px;white-space:nowrap;">${v.referencia}</td>
       <td class="text-end">${v.demanda.toFixed(1)}</td>
       <td class="text-end">${v.capacidad.toFixed(1)}</td>
-      <td class="text-center ${rcls}">${v.relacion.toFixed(3)}</td>
+      <td class="text-center ${rcls} fw-bold">${v.relacion.toFixed(3)}</td>
       <td class="text-center ${rcls}" style="font-size:14px;">${icono}</td>
-    </tr>
-    <tr id="det-${i}" class="det-row">
-      <td colspan="6">
-        <code>${v.formula}</code>
-        ${v.nota ? `<p class="mb-0 mt-1 text-muted" style="font-size:11px;">${v.nota}</p>` : ''}
-      </td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -537,10 +554,6 @@ function renderTabla(data) {
     </div>`;
 }
 
-function toggleDet(i) {
-  const row = document.getElementById('det-' + i);
-  if (row) row.classList.toggle('open');
-}
 
 function renderMensajes(msgs) {
   if (!msgs || !msgs.length) { document.getElementById('mensajes').innerHTML = '—'; return; }
@@ -594,15 +607,14 @@ function dibujarSVG(payload, data) {
   const col_H  = beam_d + 60
 
   // Escala adaptativa — ajusta para dimensiones reales del perfil
-  const sc = SteelSVG.autoScale(SC.beam_extent + bp + COL.tf + 32, beam_d + 60, 265, 295)
+  const sc = SteelSVG.autoScale(SC.beam_extent + bp + COL.tf + 32, beam_d + 60, 520, 295)
 
   // Vista alzado: origen world en cara ala / cara plancha (x=0, y=0)
-  const v1 = new SteelSVG.View(148, 175, sc)
+  const _wCx = (-(SC.beam_extent + bp) + (COL.d + 2*COL.tf)) / 2
+  const v1 = new SteelSVG.View(300 - _wCx * sc, 175, sc)
 
   // Vista sección: centrada en cx2=455
   const col_d_sec = 70  // profundidad columna esquemática en sección (mm)
-  const x_sec_lo = -SC.sec_extent, x_sec_hi = tp + 2*COL.tf + col_d_sec + 25
-  const v2 = new SteelSVG.View(455 - ((x_sec_lo + x_sec_hi) / 2) * sc, 175, sc)
 
   // Geometría world (mm)
   const x_pl   = -bp
@@ -657,72 +669,6 @@ function dibujarSVG(payload, data) {
 
   // Flecha Vu
   s += SteelSVG.vuArrow(v1, x_beam+18, beam_d/2+5, beam_d/2+35, `Vu=${payload.Vu}kN`)
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  SECCIÓN A-A — C1A
-  //  Viga vista desde el extremo (y=vertical). Luego plancha + ala columna.
-  // ══════════════════════════════════════════════════════════════════════════
-  s += SteelSVG.viewTitle(455, 14, 'SECCIÓN A-A', '(vista desde el extremo)')
-  s += SteelSVG.divider(302, 20, 320)
-
-  const x0s = -SC.sec_extent
-  // Flanges viga
-  s += SteelSVG.plateRect(v2, x0s, beam_d/2-BEAM.tf, SC.sec_extent, BEAM.tf,
-       {fill:'#1e3a5f', stroke:'#60a5fa', sw:1.0})
-  s += SteelSVG.plateRect(v2, x0s, -beam_d/2, SC.sec_extent, BEAM.tf,
-       {fill:'#1e3a5f', stroke:'#60a5fa', sw:1.0})
-  // Web viga
-  s += SteelSVG.plateRect(v2, x0s, -(beam_d/2-BEAM.tf), tw, beam_d-2*BEAM.tf,
-       {fill:'#1e3a5f', stroke:'#60a5fa', sw:0.8})
-  s += SteelSVG.textLabel(v2, x0s+SC.sec_extent/2, beam_d/2+11, 'Viga',      {fill:'#60a5fa'})
-  s += SteelSVG.textLabel(v2, x0s+tw/2,            beam_d/2-BEAM.tf-5, `tw=${tw}`, {fill:'#60a5fa', anchor:'start', fs:8})
-
-  // Plancha
-  s += SteelSVG.plateRect(v2, 0, -Lp/2, tp, Lp)
-  s += SteelSVG.textLabel(v2, tp/2,  Lp/2+6,  'Plancha', {fill:'#3b82f6', fs:8})
-  s += SteelSVG.textLabel(v2, tp/2, -Lp/2-7, `tp=${tp}mm`, {fill:'#3b82f6', fs:8})
-  s += SteelSVG.dimH(v2, 0, tp, -Lp/2, `tp=${tp}`, 'bottom', 10)
-
-  // Soldadura en sección
-  s += SteelSVG.weldTriangle(v2, tp, 0, ws, 'right')
-  s += SteelSVG.textLabel(v2, tp+ws+3, 4, `w=${w}mm`, {fill:'#d97706', anchor:'start', fs:8})
-
-  // Columna C1A en sección: perfil I completo
-  // Ala cercana (sólida) — cara que toca la plancha
-  const x_ala0 = tp, x_ala1 = tp + COL.tf
-  const x_far0 = x_ala1 + col_d_sec, x_far1 = x_far0 + COL.tf
-  s += SteelSVG.plateRect(v2, x_ala0, -beam_d/2, COL.tf, beam_d,
-       {fill:'#243752', stroke:'#4a90d9', sw:1.5})
-  // Fondo de la caja (alma) — relleno entre alas
-  s += `<rect x="${v2.x(x_ala1)}" y="${v2.y(beam_d/2)}"
-              width="${v2.s(col_d_sec)}" height="${v2.s(beam_d)}"
-              fill="#0d1724" stroke="none"/>`
-  // Bordes top/bottom de la caja (aristas del perfil)
-  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(beam_d/2)}"
-              x2="${v2.x(x_far0)}"  y2="${v2.y(beam_d/2)}"
-              stroke="#4a90d9" stroke-width="1.5"/>`
-  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(-beam_d/2)}"
-              x2="${v2.x(x_far0)}"  y2="${v2.y(-beam_d/2)}"
-              stroke="#4a90d9" stroke-width="1.5"/>`
-  // Alma (línea central de referencia)
-  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(0)}"
-              x2="${v2.x(x_far0)}"  y2="${v2.y(0)}"
-              stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="4,3" opacity="0.5"/>`
-  // Ala lejana (trazos — elemento oculto)
-  s += SteelSVG.plateRect(v2, x_far0, -beam_d/2, COL.tf, beam_d,
-       {fill:'none', stroke:'#4a90d9', sw:1.2, dash:'5,3'})
-  // Cotas columna
-  s += SteelSVG.dimH(v2, x_ala0, x_far1, -beam_d/2, `tf+d+tf`, 'bottom', 12)
-  s += SteelSVG.textLabel(v2, (x_ala0+x_far1)/2, beam_d/2+12, 'Columna (perfil I)', {fill:'#4a90d9', fs:8})
-
-  // Pernos en sección
-  for (let i = 0; i < n; i++) {
-    const by = y_bot + e1 + i*p
-    s += SteelSVG.bolt(v2, x0s+tw/2, by, db, {section:true})
-    s += `<line x1="${v2.x(x0s+tw)}" y1="${v2.y(by)}"
-                x2="${v2.x(0)-1}"    y2="${v2.y(by)}"
-                stroke="#facc15" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>`
-  }
 
   // Leyenda
   _actualizarResultado({
