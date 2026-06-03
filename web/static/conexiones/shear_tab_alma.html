@@ -53,7 +53,7 @@
     .msg-item  { font-size:12px;padding:2px 0;border-bottom:1px solid #f0f0f0; }
 
     /* SVG Sketch */
-    #svgConexion { width:100%;height:340px;background:#0d1117;border-radius:8px;
+    #svgConexion { width:100%;height:420px;background:#0d1117;border-radius:8px;
                    border:1px solid #30363d; }
 
     @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
@@ -304,7 +304,7 @@
           <div class="loading-overlay" id="overlaySVG">
             <div class="spinner-border spinner-border-sm text-warning"></div>
           </div>
-          <svg id="svgConexion" viewBox="0 0 600 340">
+          <svg id="svgConexion" viewBox="0 0 600 420">
             <!-- Dibujo generado dinámicamente por JS --><!-- Tipo: ALMA -->
             <text x="300" y="155" text-anchor="middle" fill="#484f58" font-size="13">
               Ajusta la geometría — el esquema se actualiza automáticamente
@@ -691,7 +691,7 @@ function dibujarSVG(payload, data) {
 
   s += `
   <!-- Divisor vertical entre vistas -->
-  <line x1="300" y1="20" x2="300" y2="320" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="300" y1="20" x2="300" y2="400" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
 
   <!-- === SECCIÓN A-A — C1B === -->
   <text x="${cx2}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">SECCIÓN A-A</text>
@@ -747,11 +747,11 @@ function dibujarSVG(payload, data) {
         fill="#4a90d9" font-size="9" text-anchor="start">↓ ALA col.</text>
 
   <!-- ── LEYENDA de la sección ──────────────────────────────────────── -->
-  <rect x="305" y="248" width="285" height="30" rx="4" fill="#0d1117" stroke="#21262d"/>
-  <text x="448" y="260" fill="#6b7280" font-size="8" text-anchor="middle">
+  <rect x="305" y="308" width="285" height="30" rx="4" fill="#0d1117" stroke="#21262d"/>
+  <text x="448" y="320" fill="#6b7280" font-size="8" text-anchor="middle">
     Viga → Plancha → ALMA col. → Alas col. (⊥ al corte)
   </text>
-  <text x="448" y="272" fill="#484f58" font-size="7" text-anchor="middle">
+  <text x="448" y="332" fill="#484f58" font-size="7" text-anchor="middle">
     Las alas de la columna son perpendiculares al plano de corte (↑↓)
   </text>
 
@@ -774,27 +774,27 @@ function dibujarSVG(payload, data) {
   // Leyenda: modo sketch (data.ok===null) o resultado de cálculo
   if (data.ok === null) {
     s += `
-    <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#374151"/>
-    <text x="450" y="295" fill="#6b7280" font-size="11" text-anchor="middle" font-style="italic">
+    <rect x="305" y="348" width="290" height="54" rx="6" fill="#161b22" stroke="#374151"/>
+    <text x="450" y="365" fill="#6b7280" font-size="11" text-anchor="middle" font-style="italic">
       MODO ESQUEMA — geometría solamente
     </text>
-    <text x="450" y="311" fill="#484f58" font-size="10" text-anchor="middle">
+    <text x="450" y="381" fill="#484f58" font-size="10" text-anchor="middle">
       Lp = ${data.Lp.toFixed(0)}mm  ·  n = ${n} pernos Ø${db}mm  ·  tp = ${tp}×${bp}mm
     </text>
-    <text x="450" y="326" fill="#374151" font-size="9" text-anchor="middle">
+    <text x="450" y="396" fill="#374151" font-size="9" text-anchor="middle">
       ▶ Presiona Calcular para verificar la resistencia
     </text>`;
   } else {
     const rcol = data.ok ? '#22c55e' : '#ef4444';
     s += `
-    <rect x="305" y="278" width="290" height="54" rx="6" fill="#161b22" stroke="#30363d"/>
-    <text x="450" y="296" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">
+    <rect x="305" y="348" width="290" height="54" rx="6" fill="#161b22" stroke="#30363d"/>
+    <text x="450" y="366" fill="#e6edf3" font-size="11" text-anchor="middle" font-weight="bold">
       ${data.ok ? '✔ CONEXIÓN CONFORME' : '✘ CONEXIÓN NO CONFORME'}
     </text>
-    <text x="450" y="312" fill="${rcol}" font-size="10" text-anchor="middle">
+    <text x="450" y="382" fill="${rcol}" font-size="10" text-anchor="middle">
       D/C máx = ${data.relacion_max}  |  Crítica: ${data.verificacion_critica.substring(0,30)}
     </text>
-    <text x="450" y="326" fill="#484f58" font-size="9" text-anchor="middle">
+    <text x="450" y="396" fill="#484f58" font-size="9" text-anchor="middle">
       ${n} pernos Ø${db}mm ${payload.pernos.tipo} — Plancha ${tp}×${bp}mm ${payload.plancha.acero}
     </text>`;
   }
