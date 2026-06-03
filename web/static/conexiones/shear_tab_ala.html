@@ -377,6 +377,47 @@
 <script>
 let _lastPayload = null;
 
+// ── Catálogo de perfiles ─────────────────────────────────────────────────────
+
+function _poblarDropdowns() {
+  if (typeof PERFILES_W === 'undefined') return
+  const selV = document.getElementById('perfil_viga')
+  const selC = document.getElementById('perfil_columna')
+  if (!selV || !selC) return
+  selV.innerHTML = '<option value="">— Manual (ingresar tw) —</option>' +
+    PERFILES_W.getVigas().map(p =>
+      `<option value="${p.id}">${p.label}  (tw=${p.tw}mm, d=${p.d}mm)</option>`
+    ).join('')
+  selC.innerHTML = '<option value="">— Esquemático —</option>' +
+    PERFILES_W.getColumnas().map(p =>
+      `<option value="${p.id}">${p.label}  (d=${p.d}mm, bf=${p.bf}mm)</option>`
+    ).join('')
+}
+document.addEventListener('DOMContentLoaded', _poblarDropdowns)
+
+function onPerfilVigaChange() {
+  const id = document.getElementById('perfil_viga').value
+  const p  = (id && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(id) : null
+  if (p) {
+    document.getElementById('tw_viga').value = p.tw
+    document.getElementById('info_perfil_viga').textContent =
+      `d=${p.d}mm  bf=${p.bf}mm  tf=${p.tf}mm  tw=${p.tw}mm`
+  } else {
+    document.getElementById('info_perfil_viga').textContent =
+      'Selecciona para auto-completar tw y escalar el dibujo'
+  }
+  actualizarEsquema()
+}
+
+function onPerfilColumnaChange() {
+  const id = document.getElementById('perfil_columna').value
+  const p  = (id && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(id) : null
+  document.getElementById('info_perfil_columna').textContent =
+    p ? `d=${p.d}mm  bf=${p.bf}mm  tf=${p.tf}mm  tw=${p.tw}mm`
+      : 'Selecciona para dibujar con dimensiones reales'
+  actualizarEsquema()
+}
+
 function getPayload() {
   return {
     Vu:         parseFloat(document.getElementById('Vu').value),
@@ -396,10 +437,22 @@ function getPayload() {
       bp:    parseFloat(document.getElementById('bp').value),
       acero: document.getElementById('acero_plancha').value,
     },
-    viga: {
-      tw:    parseFloat(document.getElementById('tw_viga').value),
-      acero: document.getElementById('acero_viga').value,
-    },
+    viga: (() => {
+      const _pvId = document.getElementById('perfil_viga')?.value
+      const _pv = (_pvId && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(_pvId) : null
+      return {
+        tw:    parseFloat(document.getElementById('tw_viga').value),
+        acero: document.getElementById('acero_viga').value,
+        d:  _pv?.d  ?? null,
+        bf: _pv?.bf ?? null,
+        tf: _pv?.tf ?? null,
+      }
+    })(),
+    columna: (() => {
+      const _pcId = document.getElementById('perfil_columna')?.value
+      const _pc = (_pcId && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(_pcId) : null
+      return _pc ? { d: _pc.d, bf: _pc.bf, tf: _pc.tf, tw: _pc.tw } : null
+    })(),
     soldadura: {
       w:         parseFloat(document.getElementById('w_sold').value),
       electrodo: document.getElementById('electrodo').value,
