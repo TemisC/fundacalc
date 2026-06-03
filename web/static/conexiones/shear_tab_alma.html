@@ -671,23 +671,11 @@ function dibujarSVG(payload, data) {
   //    Solo el rect exterior tiene stroke, eliminando las "dobles líneas".
   const col_total_w = col_d + 2*COL.tf
 
-  // Relleno zona ala izquierda (sin stroke)
-  s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="none"/>`
-  // Relleno zona entre alas (translúcido — la plancha se ve a través)
-  s += `<rect x="${v1.x(0)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(col_d)}" height="${v1.s(col_H)}"
-              fill="#0d1520" opacity="0.55" stroke="none"/>`
-  // Relleno zona ala derecha (sin stroke)
-  s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(COL.tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="none"/>`
-  // ÚNICO CONTORNO de la columna (solo stroke, no fill)
+  // Columna: UN solo rectángulo, color uniforme semitransparente
+  // (sin zonas diferenciadas — sin relieves ni bordes internos)
   s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
               width="${v1.s(col_total_w)}" height="${v1.s(col_H)}"
-              fill="none" stroke="#4a90d9" stroke-width="1.5"/>`
-  // (sin líneas divisorias internas — la columna muestra un contorno único limpio)
+              fill="#1c2e4a" opacity="0.82" stroke="#4a90d9" stroke-width="1.5"/>`
   // Franja alma (visible, al centro)
   s += `<rect x="${v1.x(x_web_c - COL.tw/2)}" y="${v1.y(col_H/2)}"
               width="${v1.s(COL.tw)}" height="${v1.s(col_H)}"
