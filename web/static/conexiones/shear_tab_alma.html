@@ -658,80 +658,107 @@ function dibujarSVG(payload, data) {
               text-anchor="middle">(cortante)</text>`;
 
   // ────────────────────────────────────────────────────────────────────────────
-  //  VISTA 2 — SECCIÓN A-A (corte horizontal a través de los pernos)
-  //  Mirando desde arriba: se ve el ancho de la viga, la plancha y la columna.
+  //  C1B — SECCIÓN A-A: corte horizontal a través de los pernos, mirando desde ARRIBA
+  //
+  //  Orden izquierda → derecha (dirección hacia la columna):
+  //    [Viga I] → [gap/setback] → [Plancha tp] → [Alma columna tw_col] → [Alas columna (↑↓)]
+  //
+  //  Clave C1B: la plancha se suelda al ALMA de la columna (línea fina).
+  //  Las alas de la columna son perpendiculares al corte → aparecen como
+  //  rectángulos entrando/saliendo del plano (representadas arriba y abajo del alma).
   // ────────────────────────────────────────────────────────────────────────────
-  const cx2  = 450;  // x centro vista sección
-  const sec_beam_bf = 70;  // ancho visible ala viga [px]
-  const sec_col_bf  = 50;  // ancho visible ala columna [px]
+  const cx2 = 450;
 
-  // Profundidades a escala (horizontal = dirección longitudinal viga)
-  const sec_tw_px  = Math.max(tw * 0.6, 5);
-  const sec_tp_px  = Math.max(tp * 0.6, 5);
-  const sec_tf_col = 12;
+  // Dimensiones a escala visual
+  const sec_tw_px  = Math.max(tw * 0.6, 5);     // alma viga
+  const sec_tp_px  = Math.max(tp * 0.6, 5);     // plancha
+  const sec_tw_col = 8;                           // alma columna (fija, esquemática)
+  const sec_tf_col = 14;                          // ala columna (altura visual)
+  const sec_bf_col = 44;                          // largo ala columna (perpendicular al corte)
 
-  // Posiciones:
-  // x aumenta hacia la derecha = dirección HACIA la columna
-  // Alma viga termina donde empieza la plancha
-  // beam left flange top edge: cx2 - sec_beam_bf/2
-  const beam_left  = cx2 - 50;
-  const beam_right = cx2 + 30;   // donde termina la viga (cara del alma)
-  const plate_x0   = beam_right;  // plancha empieza aquí
+  // Posiciones horizontales (izq → der)
+  const beam_left  = cx2 - 85;
+  const beam_right = cx2 - 10;    // cara del alma de la viga
+  const gap_px     = 5;           // setback (holgura viga-plancha)
+  const plate_x0   = beam_right + gap_px;
   const plate_x1   = plate_x0 + sec_tp_px;
-  const col_face   = plate_x1;
-  const sec_col_right  = col_face + sec_tf_col;
+  const col_web_x0 = plate_x1;                   // cara izq del alma de columna
+  const col_web_x1 = col_web_x0 + sec_tw_col;    // cara der del alma de columna
 
-  const sec_h = 200;  // altura visible de la sección [px]
-  const sec_y0 = cy - sec_h/2;
+  const sec_h  = 190;   // altura total de la sección
+  const ala_h  = sec_tf_col;  // altura de cada ala de columna (arriba y abajo)
+  const sec_cy = cy;
 
   s += `
   <!-- Divisor vertical entre vistas -->
   <line x1="300" y1="20" x2="300" y2="320" stroke="#21262d" stroke-width="1" stroke-dasharray="4,4"/>
 
-  <!-- === SECCIÓN A-A === -->
+  <!-- === SECCIÓN A-A — C1B === -->
   <text x="${cx2}" y="14" fill="#6b7280" font-size="10" text-anchor="middle" letter-spacing="1">SECCIÓN A-A</text>
-  <text x="${cx2}" y="26" fill="#4b5563" font-size="8" text-anchor="middle">(corte horizontal a través de pernos)</text>
+  <text x="${cx2}" y="26" fill="#4b5563" font-size="8" text-anchor="middle">(corte horizontal — vista desde arriba)</text>
 
-  <!-- Ala superior viga (vista en planta = rectángulo horizontal) -->
-  <rect x="${beam_left}" y="${cy - sec_h/2}" width="${beam_right - beam_left}" height="${beam_tf}"
+  <!-- ── VIGA: sección I en planta ───────────────────────────────────── -->
+  <!-- Ala superior viga -->
+  <rect x="${beam_left}" y="${sec_cy - sec_h/2}" width="${beam_right - beam_left}" height="${beam_tf}"
         fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
-  <!-- Alma viga (sección vista plana) -->
-  <rect x="${beam_left}" y="${cy - sec_h/2 + beam_tf}" width="${sec_tw_px}" height="${sec_h - 2*beam_tf}"
+  <!-- Alma viga -->
+  <rect x="${beam_left}" y="${sec_cy - sec_h/2 + beam_tf}" width="${sec_tw_px}" height="${sec_h - 2*beam_tf}"
         fill="#1e3a5f" stroke="#60a5fa" stroke-width="0.8"/>
   <!-- Ala inferior viga -->
-  <rect x="${beam_left}" y="${cy + sec_h/2 - beam_tf}" width="${beam_right - beam_left}" height="${beam_tf}"
+  <rect x="${beam_left}" y="${sec_cy + sec_h/2 - beam_tf}" width="${beam_right - beam_left}" height="${beam_tf}"
         fill="#1e3a5f" stroke="#60a5fa" stroke-width="1.2"/>
-  <!-- Label viga -->
-  <text x="${beam_left + 5}" y="${cy - sec_h/2 - 4}" fill="#60a5fa" font-size="9">Viga (bf)</text>
-  <!-- Cota bf viga -->
-  <line x1="${beam_left}" y1="${cy + sec_h/2 + 8}" x2="${beam_right}" y2="${cy + sec_h/2 + 8}" stroke="#374151" stroke-width="0.8"/>
-  <text x="${(beam_left + beam_right)/2}" y="${cy + sec_h/2 + 20}" fill="#6b7280" font-size="8" text-anchor="middle">tw=${tw}mm</text>
+  <text x="${beam_left + 5}" y="${sec_cy - sec_h/2 - 5}" fill="#60a5fa" font-size="9">Viga</text>
+  <text x="${beam_left + 5}" y="${sec_cy - sec_h/2 + beam_tf + 11}" fill="#60a5fa" font-size="8">tw=${tw}mm</text>
 
-  <!-- Plancha de alma (sección) -->
-  <rect x="${plate_x0}" y="${cy - Lp_px/2}" width="${sec_tp_px}" height="${Lp_px}"
+  <!-- ── GAP / SETBACK (holgura extremo viga - plancha) ───────────────── -->
+  <line x1="${beam_right}" y1="${sec_cy - sec_h/2 - 6}" x2="${beam_right}" y2="${sec_cy + sec_h/2 + 6}"
+        stroke="#374151" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="${beam_right + gap_px/2}" y="${sec_cy - sec_h/2 - 8}" fill="#374151" font-size="7" text-anchor="middle">gap</text>
+
+  <!-- ── PLANCHA DE ALMA (sección transversal) ──────────────────────── -->
+  <rect x="${plate_x0}" y="${sec_cy - sec_h/2}" width="${sec_tp_px}" height="${sec_h}"
         fill="#1e4080" stroke="#3b82f6" stroke-width="2"/>
-  <!-- Label plancha -->
-  <text x="${plate_x0 + sec_tp_px/2}" y="${cy - Lp_px/2 - 4}" fill="#3b82f6" font-size="9" text-anchor="middle">Plancha tp=${tp}mm</text>
+  <text x="${plate_x0 + sec_tp_px/2}" y="${sec_cy - sec_h/2 - 5}" fill="#3b82f6" font-size="8" text-anchor="middle">Plancha</text>
+  <text x="${plate_x0 + sec_tp_px/2}" y="${sec_cy + sec_h/2 + 14}" fill="#3b82f6" font-size="8" text-anchor="middle">tp=${tp}mm</text>
 
-  <!-- Soldadura filete (triángulo en sección) -->
-  <polygon points="${col_face-1},${cy-10} ${col_face+6},${cy} ${col_face-1},${cy+10}"
+  <!-- ── SOLDADURA FILETE (en el contacto plancha-alma columna) ───────── -->
+  <polygon points="${col_web_x0},${sec_cy-8} ${col_web_x0+7},${sec_cy} ${col_web_x0},${sec_cy+8}"
            fill="#d97706" opacity="0.9"/>
-  <text x="${col_face + 10}" y="${cy - 12}" fill="#d97706" font-size="8">w=${w}mm</text>
+  <text x="${col_web_x0 + 9}" y="${sec_cy - 10}" fill="#d97706" font-size="8">w=${w}mm</text>
 
-  <!-- Columna — ala (sección transversal) -->
-  <rect x="${col_face}" y="${cy - sec_h/2}" width="${sec_tf_col}" height="${sec_h}"
-        fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>
-  <!-- Label columna -->
-  <text x="${sec_col_right + 4}" y="${cy - sec_h/2 + 12}" fill="#4a90d9" font-size="9">Col.</text>
-  <text x="${sec_col_right + 4}" y="${cy - sec_h/2 + 23}" fill="#4a90d9" font-size="9">ala</text>
+  <!-- ── ALMA COLUMNA (sección — línea fina vertical) ──────────────── -->
+  <!-- Esta es la cara donde se suelda la plancha -->
+  <rect x="${col_web_x0}" y="${sec_cy - sec_h/2}" width="${sec_tw_col}" height="${sec_h}"
+        fill="#1c2e4a" stroke="#4a90d9" stroke-width="2"/>
+  <text x="${col_web_x0 + sec_tw_col/2}" y="${sec_cy - sec_h/2 - 5}" fill="#4a90d9" font-size="8" text-anchor="middle" font-weight="bold">ALMA</text>
+  <text x="${col_web_x0 + sec_tw_col/2}" y="${sec_cy - sec_h/2 + 14}" fill="#4a90d9" font-size="7" text-anchor="middle">tw_col</text>
 
-  <!-- Cota tp plancha -->
-  <line x1="${plate_x0}" y1="${cy + Lp_px/2 + 8}" x2="${plate_x1}" y2="${cy + Lp_px/2 + 8}" stroke="#374151" stroke-width="0.8"/>
+  <!-- ── ALAS COLUMNA (perpendiculares al corte → aparecen arriba/abajo) -->
+  <!-- Ala superior (entra al plano ↑) -->
+  <rect x="${col_web_x0 - sec_bf_col/2}" y="${sec_cy - sec_h/2}" width="${sec_bf_col + sec_tw_col}" height="${ala_h}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1.2"/>
+  <!-- Ala inferior (sale del plano ↓) -->
+  <rect x="${col_web_x0 - sec_bf_col/2}" y="${sec_cy + sec_h/2 - ala_h}" width="${sec_bf_col + sec_tw_col}" height="${ala_h}"
+        fill="#243752" stroke="#4a90d9" stroke-width="1.2"/>
+  <!-- Flechas indicando que las alas son perpendiculares al plano del corte -->
+  <text x="${col_web_x0 + sec_tw_col + sec_bf_col/2 + 4}" y="${sec_cy - sec_h/2 + ala_h/2 + 4}"
+        fill="#4a90d9" font-size="9" text-anchor="start">↑ ALA col.</text>
+  <text x="${col_web_x0 + sec_tw_col + sec_bf_col/2 + 4}" y="${sec_cy + sec_h/2 - ala_h/2 + 4}"
+        fill="#4a90d9" font-size="9" text-anchor="start">↓ ALA col.</text>
 
-  <!-- Pernos en sección — círculos representando los n pernos (proyectados) -->`;
+  <!-- ── LEYENDA de la sección ──────────────────────────────────────── -->
+  <rect x="305" y="248" width="285" height="30" rx="4" fill="#0d1117" stroke="#21262d"/>
+  <text x="448" y="260" fill="#6b7280" font-size="8" text-anchor="middle">
+    Viga → Plancha → ALMA col. → Alas col. (⊥ al corte)
+  </text>
+  <text x="448" y="272" fill="#484f58" font-size="7" text-anchor="middle">
+    Las alas de la columna son perpendiculares al plano de corte (↑↓)
+  </text>
 
-  // En la sección, los pernos aparecen como círculos (vistos desde el frente en el ancho de la viga)
-  // Los mostramos centrados en el alma de la viga, apilados verticalmente
+  <!-- Pernos en sección — a través del alma de la viga y la plancha -->`;
+
+  // Pernos en la sección: están entre el alma de la viga y la plancha
+  // En este corte superior los vemos como círculos en el alma de la viga
   const bolt_x_sec = beam_left + sec_tw_px / 2;
   for (let i = 0; i < n; i++) {
     const by = cy - Lp_px/2 + e1*sc + i*p*sc;
@@ -739,8 +766,9 @@ function dibujarSVG(payload, data) {
     s += `<circle cx="${bolt_x_sec}" cy="${by}" r="${r}" fill="#0f2744" stroke="#facc15" stroke-width="1.5"/>
           <line x1="${bolt_x_sec - r + 1}" y1="${by}" x2="${bolt_x_sec + r - 1}" y2="${by}" stroke="#facc15" stroke-width="0.7"/>
           <line x1="${bolt_x_sec}" y1="${by - r + 1}" x2="${bolt_x_sec}" y2="${by + r - 1}" stroke="#facc15" stroke-width="0.7"/>`;
-    // Línea del perno atravesando plancha y hacia columna
-    s += `<line x1="${bolt_x_sec + r}" y1="${by}" x2="${plate_x1 - 2}" y2="${by}" stroke="#facc15" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.6"/>`;
+    // Línea perno atravesando plancha hacia el alma de columna
+    s += `<line x1="${bolt_x_sec + r}" y1="${by}" x2="${col_web_x0 - 2}" y2="${by}"
+                stroke="#facc15" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.7"/>`;
   }
 
   // Leyenda: modo sketch (data.ok===null) o resultado de cálculo
