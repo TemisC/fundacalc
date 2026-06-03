@@ -532,78 +532,65 @@ function dibujarSVG(payload, data) {
   let s = ''
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  ALZADO FRONTAL — C1B: columna vista de frente (alma visible)
-  //  Las alas aparecen como barras verticales en los bordes.
-  //  La plancha penetra la ala izquierda y se suelda al alma.
+  //  ALZADO FRONTAL — C1B
+  //  Orden: viga → plancha COMPLETA → columna encima → trazo borde derecho
+  //  La plancha se dibuja antes que la columna para que el ala la tape
+  //  naturalmente. El hiddenOutline al final muestra la plancha llegando al alma.
   // ══════════════════════════════════════════════════════════════════════════
   s += SteelSVG.viewTitle(148, 14, 'ALZADO FRONTAL')
 
-  // Ala izquierda
-  s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
-  // Relleno alma (entre alas)
-  s += `<rect x="${v1.x(0)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(col_d)}" height="${v1.s(col_H)}"
-              fill="#1a2840" stroke="none"/>`
-  // Bordes alma (arriba/abajo)
-  s += `<line x1="${v1.x(0)}" y1="${v1.y(col_H/2)}"  x2="${v1.x(col_d)}" y2="${v1.y(col_H/2)}"  stroke="#4a90d9" stroke-width="1"/>`
-  s += `<line x1="${v1.x(0)}" y1="${v1.y(-col_H/2)}" x2="${v1.x(col_d)}" y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="1"/>`
-  // Alma (franja fina visible centrada entre alas)
-  const x_web_c = col_d/2
-  s += `<rect x="${v1.x(x_web_c - SC.col_tw/2)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tw)}" height="${v1.s(col_H)}"
-              fill="#1c3860" stroke="#4a90d9" stroke-width="0.8" opacity="0.9"/>`
-  // Eje alma (línea de trazo)
-  s += `<line x1="${v1.x(x_web_c)}" y1="${v1.y(col_H/2-5)}" x2="${v1.x(x_web_c)}" y2="${v1.y(-col_H/2+5)}"
-              stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="6,4" opacity="0.5"/>`
-  // Ala derecha
-  s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
-              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
-              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
-
-  // ── Cotas columna ─────────────────────────────────────────────────────────
-  // "Ala de columna" = ancho total (ala izq + alma + ala der)
-  s += SteelSVG.dimH(v1, x_ala_izq_ext, x_ala_der_ext, col_H/2, 'Ala de columna', 'top', 16)
-  // "Espesor Alma" = tw columna
-  s += SteelSVG.dimH(v1, x_web_c-SC.col_tw/2, x_web_c+SC.col_tw/2, -col_H/2, `esp.alma=${SC.col_tw}mm`, 'bottom', 14)
-
-  // Viga (perfil I horizontal)
+  // 1. VIGA
   s += SteelSVG.iProfileH(v1, x_beam, x_pl_izq, 0, beam_d, SC.beam_bf, SC.beam_tf, tw)
   s += SteelSVG.textLabel(v1, x_beam+8, beam_d/2+11, `Viga (tw=${tw}mm)`, {fill:'#60a5fa', anchor:'start'})
   s += SteelSVG.dimV(v1, x_beam, -beam_d/2, beam_d/2, 'Altura viga', 'left', 14)
-  // Setback
   s += `<line x1="${v1.x(x_pl_izq)}" y1="${v1.y(-beam_d/2-4)}" x2="${v1.x(x_pl_izq)}" y2="${v1.y(beam_d/2+4)}"
               stroke="#374151" stroke-width="1" stroke-dasharray="3,2"/>`
 
-  // Plancha: parte VISIBLE (fuera del ala izquierda)
-  s += SteelSVG.plateRect(v1, x_pl_izq, y_bot, bp - SC.col_tf, Lp)
-  // Plancha: parte OCULTA (del borde exterior del ala hasta el alma, x=0)
-  // Regla dibujo técnico: mostrar contorno completo con trazos hasta su
-  // punto real de finalización (soldadura en el alma, x=0).
-  s += SteelSVG.hiddenOutline(v1, x_ala_izq_ext, 0, y_bot, y_top)
+  // 2. PLANCHA COMPLETA de x=-bp a x=0 (soldadura en alma)
+  //    Se dibuja ANTES de la columna — el ala izquierda la tapará en su zona.
+  s += SteelSVG.plateRect(v1, x_pl_izq, y_bot, bp, Lp)
   s += SteelSVG.textLabel(v1, x_pl_izq+(bp-SC.col_tf)/2, y_top+13,
-       `Plancha ${tp}\xd7${bp}mm`, {fill:'#60a5fa'})
+       `Plancha ${tp}×${bp}mm`, {fill:'#60a5fa'})
   s += SteelSVG.dimV(v1, x_pl_izq, y_bot, y_top, `Lp=${Lp}mm`, 'left', 12)
 
-  // Cotas excentricidad 'a' (cara ala → línea pernos)
-  const x_bolt_line = x_pl_izq + bp/2
-  s += SteelSVG.dimH(v1, x_ala_izq_ext, x_bolt_line, y_bot, 'a (excentr.)', 'bottom', 18)
+  // 3. COLUMNA — dibujada encima, su ala izquierda tapa la plancha en x=[-col_tf, 0]
+  const x_web_c = col_d/2
+  s += `<rect x="${v1.x(x_ala_izq_ext)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
+              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
+  s += `<rect x="${v1.x(0)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(col_d)}" height="${v1.s(col_H)}"
+              fill="#1a2840" stroke="none"/>`
+  s += `<line x1="${v1.x(0)}" y1="${v1.y(col_H/2)}"  x2="${v1.x(col_d)}" y2="${v1.y(col_H/2)}"  stroke="#4a90d9" stroke-width="1"/>`
+  s += `<line x1="${v1.x(0)}" y1="${v1.y(-col_H/2)}" x2="${v1.x(col_d)}" y2="${v1.y(-col_H/2)}" stroke="#4a90d9" stroke-width="1"/>`
+  s += `<rect x="${v1.x(x_web_c-SC.col_tw/2)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(SC.col_tw)}" height="${v1.s(col_H)}"
+              fill="#1c3860" stroke="#4a90d9" stroke-width="0.8" opacity="0.9"/>`
+  s += `<line x1="${v1.x(x_web_c)}" y1="${v1.y(col_H/2-5)}" x2="${v1.x(x_web_c)}" y2="${v1.y(-col_H/2+5)}"
+              stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="6,4" opacity="0.5"/>`
+  s += `<rect x="${v1.x(x_ala_der_int)}" y="${v1.y(col_H/2)}"
+              width="${v1.s(SC.col_tf)}" height="${v1.s(col_H)}"
+              fill="#243752" stroke="#4a90d9" stroke-width="1.5"/>`
+  s += SteelSVG.dimH(v1, x_ala_izq_ext, x_ala_der_ext, col_H/2, 'Ala de columna', 'top', 16)
+  s += SteelSVG.dimH(v1, x_web_c-SC.col_tw/2, x_web_c+SC.col_tw/2, -col_H/2, `esp.alma=${SC.col_tw}mm`, 'bottom', 14)
+  s += SteelSVG.textLabel(v1, x_ala_der_ext+4, col_H/2-10, 'ALA', {fill:'#4a90d9', anchor:'start', bold:true, fs:8})
 
-  // Soldaduras (en la cara del alma, x=0)
+  // 4. BORDE DERECHO DE LA PLANCHA EN TRAZO (al final, sobre todo lo demás)
+  //    Regla DT: elemento oculto se proyecta en trazo hasta su punto de fin real.
+  //    Borde sup y borde inf (horizontales, cortos) + borde der vertical (Lp alto).
+  s += SteelSVG.hiddenOutline(v1, x_ala_izq_ext, 0, y_bot, y_top,
+       {stroke:'#bfdbfe', sw:2.5, dash:'7,3'})
+
+  // 5. SOLDADURAS, PERNOS, COTAS
   s += SteelSVG.weldTriangle(v1, 0, y_top-ws/2, ws, 'right')
   s += SteelSVG.weldTriangle(v1, 0, y_bot+ws/2, ws, 'right')
   s += SteelSVG.textLabel(v1, -ws-2, y_top+4, `w=${w}mm`, {fill:'#d97706', anchor:'end', fs:8})
-
-  // Pernos (ocultos detrás del ala izquierda → trazos)
+  const x_bolt_line = x_pl_izq + bp/2
   for (let i = 0; i < n; i++) s += SteelSVG.bolt(v1, x_bolt_line, y_bot+e1+i*p, db, {hidden:true})
-
-  // Cotas e1, p (a la derecha de la ala derecha)
+  s += SteelSVG.dimH(v1, x_ala_izq_ext, x_bolt_line, y_bot, 'a (excentr.)', 'bottom', 18)
   const cxr = x_ala_der_ext+4, by0 = y_bot+e1
   s += SteelSVG.dimV(v1, cxr, y_bot, by0, `e₁=${e1}`, 'right', 8)
   if (n > 1) s += SteelSVG.dimV(v1, cxr, by0, by0+p, `p=${p}`, 'right', 8)
-
-  // Flecha Vu
   s += SteelSVG.vuArrow(v1, x_beam+18, beam_d/2+5, beam_d/2+35, `Vu=${payload.Vu}kN`)
 
   // ══════════════════════════════════════════════════════════════════════════

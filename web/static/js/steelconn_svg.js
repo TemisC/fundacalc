@@ -24,7 +24,7 @@ const SteelSVG = (() => {
 
   // Dimensiones esquemáticas de perfiles (mm) — columna y viga genéricas
   const SCHEMATIC = {
-    col_bf: 200, col_tf: 14, col_tw: 9, col_d: 250,
+    col_bf: 200, col_tf: 28, col_tw: 10, col_d: 230,
     beam_bf: 150, beam_tf: 12,
     beam_extent: 180,   // cuánto de viga se muestra en alzado
     sec_extent: 100,    // cuánto de viga se muestra en sección
