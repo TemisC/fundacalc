@@ -269,11 +269,31 @@ const SteelSVG = (() => {
     return Math.min(availW / worldW, availH / worldH)
   }
 
+  /**
+   * Contorno de elemento OCULTO (detrás de otro elemento).
+   * Dibuja los bordes del rectángulo que quedan tapados con línea de trazo.
+   * Regla de dibujo técnico: todo elemento que se extiende detrás de otro
+   * debe mostrarse con trazos hasta su punto de finalización real.
+   *
+   * x_ini, x_fin = rango X world del tramo oculto.
+   * y_bot, y_top = extremos Y world del elemento.
+   * Se dibujan: borde superior, borde inferior y borde derecho (x_fin).
+   */
+  function hiddenOutline(v, x_ini, x_fin, y_bot, y_top, opts = {}) {
+    const { stroke = '#60a5fa', sw = 1.2, dash = '5,3' } = opts
+    const da = `stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${dash}"`
+    return `
+    <line x1="${v.x(x_ini)}" y1="${v.y(y_top)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>
+    <line x1="${v.x(x_ini)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_bot)}" ${da}/>
+    <line x1="${v.x(x_fin)}" y1="${v.y(y_bot)}" x2="${v.x(x_fin)}" y2="${v.y(y_top)}" ${da}/>`
+  }
+
   return {
     View, C, SCHEMATIC, autoScale,
     iProfileV, iProfileH, iProfileSection,
     plateRect, bolt, weldTriangle,
     dimV, dimH, vuArrow,
     textLabel, viewTitle, divider, resultLegend,
+    hiddenOutline,
   }
 })()
