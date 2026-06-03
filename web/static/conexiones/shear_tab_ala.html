@@ -506,7 +506,8 @@ function dibujarSVG(payload, data) {
   const v1 = new SteelSVG.View(148, 175, sc)
 
   // Vista sección: centrada en cx2=455
-  const x_sec_lo = -SC.sec_extent, x_sec_hi = tp + SC.col_tf + 20
+  const col_d_sec = 70  // profundidad columna esquemática en sección (mm)
+  const x_sec_lo = -SC.sec_extent, x_sec_hi = tp + 2*SC.col_tf + col_d_sec + 25
   const v2 = new SteelSVG.View(455 - ((x_sec_lo + x_sec_hi) / 2) * sc, 175, sc)
 
   // Geometría world (mm)
@@ -592,10 +593,33 @@ function dibujarSVG(payload, data) {
   s += SteelSVG.weldTriangle(v2, tp, 0, ws, 'right')
   s += SteelSVG.textLabel(v2, tp+ws+3, 4, `w=${w}mm`, {fill:'#d97706', anchor:'start', fs:8})
 
-  // Columna C1A: ala en sección
-  s += SteelSVG.plateRect(v2, tp, -beam_d/2, SC.col_tf, beam_d, {fill:'#243752', stroke:'#4a90d9', sw:1.5})
-  s += SteelSVG.textLabel(v2, tp+SC.col_tf+4, beam_d/2-12, 'Col.', {fill:'#4a90d9', anchor:'start', fs:8})
-  s += SteelSVG.textLabel(v2, tp+SC.col_tf+4, beam_d/2-22, 'ala',  {fill:'#4a90d9', anchor:'start', fs:8})
+  // Columna C1A en sección: perfil I completo
+  // Ala cercana (sólida) — cara que toca la plancha
+  const x_ala0 = tp, x_ala1 = tp + SC.col_tf
+  const x_far0 = x_ala1 + col_d_sec, x_far1 = x_far0 + SC.col_tf
+  s += SteelSVG.plateRect(v2, x_ala0, -beam_d/2, SC.col_tf, beam_d,
+       {fill:'#243752', stroke:'#4a90d9', sw:1.5})
+  // Fondo de la caja (alma) — relleno entre alas
+  s += `<rect x="${v2.x(x_ala1)}" y="${v2.y(beam_d/2)}"
+              width="${v2.s(col_d_sec)}" height="${v2.s(beam_d)}"
+              fill="#0d1724" stroke="none"/>`
+  // Bordes top/bottom de la caja (aristas del perfil)
+  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(beam_d/2)}"
+              x2="${v2.x(x_far0)}"  y2="${v2.y(beam_d/2)}"
+              stroke="#4a90d9" stroke-width="1.5"/>`
+  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(-beam_d/2)}"
+              x2="${v2.x(x_far0)}"  y2="${v2.y(-beam_d/2)}"
+              stroke="#4a90d9" stroke-width="1.5"/>`
+  // Alma (línea central de referencia)
+  s += `<line x1="${v2.x(x_ala1)}" y1="${v2.y(0)}"
+              x2="${v2.x(x_far0)}"  y2="${v2.y(0)}"
+              stroke="#4a90d9" stroke-width="0.7" stroke-dasharray="4,3" opacity="0.5"/>`
+  // Ala lejana (trazos — elemento oculto)
+  s += SteelSVG.plateRect(v2, x_far0, -beam_d/2, SC.col_tf, beam_d,
+       {fill:'none', stroke:'#4a90d9', sw:1.2, dash:'5,3'})
+  // Cotas columna
+  s += SteelSVG.dimH(v2, x_ala0, x_far1, -beam_d/2, `tf+d+tf`, 'bottom', 12)
+  s += SteelSVG.textLabel(v2, (x_ala0+x_far1)/2, beam_d/2+12, 'Columna (perfil I)', {fill:'#4a90d9', fs:8})
 
   // Pernos en sección
   for (let i = 0; i < n; i++) {
