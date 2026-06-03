@@ -313,6 +313,7 @@
               (o presiona ↻ Actualizar esquema)
             </text>
           </svg>
+          <div id="resultadoConexion" class="mt-1 px-2 pb-1"></div>
         </div>
       </div>
 
@@ -465,6 +466,26 @@ function renderMensajes(msgs) {
     return `<div class="msg-item ${cls}">${m.texto}</div>`;
   }).join('');
   document.getElementById('mensajes').innerHTML = html;
+}
+
+function _actualizarResultado(info) {
+  const el = document.getElementById('resultadoConexion')
+  if (!el) return
+  if (info.ok === null) {
+    el.innerHTML = `<div style="text-align:center;color:#6b7280;font-size:11px;padding:4px 0;">
+      MODO ESQUEMA — Lp = ${info.Lp.toFixed(0)}mm &nbsp;·&nbsp; n = ${info.n} pernos Ø${info.db}mm &nbsp;·&nbsp; tp = ${info.tp}×${info.bp}mm
+    </div>`
+  } else if (info.ok) {
+    el.innerHTML = `<div class="resumen-ok">
+      ✔ CONEXIÓN CONFORME &nbsp;&nbsp; D/C máx = ${info.relacion_max} &nbsp;|&nbsp; Crítica: ${info.critica}
+      <div style="font-size:12px;font-weight:400;margin-top:2px;">${info.n} pernos Ø${info.db}mm ${info.boltType} — Plancha ${info.tp}×${info.bp}mm ${info.steel}</div>
+    </div>`
+  } else {
+    el.innerHTML = `<div class="resumen-falla">
+      ✘ CONEXIÓN NO CONFORME &nbsp;&nbsp; D/C máx = ${info.relacion_max} &nbsp;|&nbsp; Crítica: ${info.critica}
+      <div style="font-size:12px;font-weight:400;margin-top:2px;">${info.n} pernos Ø${info.db}mm ${info.boltType} — Plancha ${info.tp}×${info.bp}mm ${info.steel}</div>
+    </div>`
+  }
 }
 
 function dibujarSVG(payload, data) {
@@ -640,10 +661,10 @@ function dibujarSVG(payload, data) {
   }
 
   // Leyenda
-  s += SteelSVG.resultLegend(305, 348, 290, 54, {
+  _actualizarResultado({
     ok: data.ok, Lp, n, db, tp, bp,
     relacion_max: data.relacion_max,
-    critica:   (data.verificacion_critica||'').substring(0,30),
+    critica:   (data.verificacion_critica||'').substring(0,40),
     boltType: tipo, steel: acero,
   })
 
