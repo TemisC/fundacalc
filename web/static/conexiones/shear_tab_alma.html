@@ -685,8 +685,8 @@ function dibujarSVG(payload, data) {
   const _colP   = (_colId  && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(_colId)  : null
   // C1B: de la viga se ve el ancho del ala (bf) en esta perspectiva, no la altura
   const vigaLabelC1B = _vigaP
-    ? `${_vigaP.label}  —  bf=${_vigaP.bf}mm  tw=${_vigaP.tw}mm`
-    : `Viga  (tw=${tw}mm)`
+    ? `${_vigaP.label}  bf=${_vigaP.bf}  tw=${_vigaP.tw}mm`
+    : `Viga tw=${tw}mm`
   const colLabelC1B = _colP
     ? `${_colP.label}  —  d=${_colP.d}mm`
     : `Ala de columna (d=${(col_d + 2*COL.tf).toFixed(0)}mm)`
@@ -721,7 +721,7 @@ function dibujarSVG(payload, data) {
   const _bpx = v1.x(x_beam_start - 14), _bpy = v1.y(0)
   s += `<text x="${_bpx}" y="${_bpy}" fill="#60a5fa" font-size="9"
              text-anchor="middle" transform="rotate(-90,${_bpx},${_bpy})">${vigaLabelC1B}</text>`
-  s += SteelSVG.dimV(v1, x_beam_start, -beam_d/2, beam_d/2, `h=${beam_d.toFixed(0)}mm`, 'left', 14)
+  // (cota h removida — el label del perfil ya contiene la info suficiente)
   s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
               x2="${v1.x(x_beam_end)}" y2="${v1.y(beam_d/2+4)}"
               stroke="#374151" stroke-width="1" stroke-dasharray="3,2"/>`
