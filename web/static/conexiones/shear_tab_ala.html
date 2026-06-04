@@ -612,12 +612,13 @@ function dibujarSVG(payload, data) {
   const col_web_cx  = COL.tf + COL.d/2   // centro del alma
 
   // Beam right face: 6mm gap from near ala outer face (x=0)
+  // Extra 40mm a la izquierda para separar Vu del título ALZADO FRONTAL
   const x_beam_end   = -(COL.tf + 6)
-  const x_beam_start = x_beam_end - SC.beam_extent
+  const x_beam_start = x_beam_end - SC.beam_extent - 40
 
-  // Escala: ajusta para beam + plate + columna completa
+  // Escala: ajusta para beam extendido + plate + columna completa
   const sc = SteelSVG.autoScale(
-    SC.beam_extent + COL.tf + 6 + col_total_w + 30,
+    SC.beam_extent + 40 + COL.tf + 6 + col_total_w + 30,
     beam_d + 60, 520, 295
   )
   const _wCx = (x_beam_start + col_total_w) / 2
@@ -628,19 +629,29 @@ function dibujarSVG(payload, data) {
   const y_top = +Lp / 2
   const ws    = Math.max(w * 1.5, 10)
 
+  // Leer etiquetas del catálogo si hay perfil seleccionado
+  const _vigaId = document.getElementById('perfil_viga')?.value
+  const _colId  = document.getElementById('perfil_columna')?.value
+  const _vigaP  = (_vigaId && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(_vigaId) : null
+  const _colP   = (_colId  && typeof PERFILES_W !== 'undefined') ? PERFILES_W.buscar(_colId)  : null
+  // Labels informativos con dimensiones reales cuando hay perfil seleccionado
+  const vigaLabel = _vigaP ? `${_vigaP.label}  —  d=${_vigaP.d}mm  tw=${_vigaP.tw}mm` : `Viga  (tw=${tw}mm)`
+  const colLabel  = _colP  ? `${_colP.label}  —  h=${_colP.d}mm` : `Ala de columna  (h=${col_total_w.toFixed(0)}mm)`
+
   let s = ''
 
   // ══════════════════════════════════════════════════════════════════════════
   //  ALZADO FRONTAL — C1A
-  //  Columna mostrada como PERFIL H COMPLETO (ala prox | alma | ala dist).
-  //  Las alas de la viga llegan hasta escasos mm del ala proximal de la columna.
+  //  Título centrado para evitar solapamiento con flecha Vu (que va a la izq.)
   // ══════════════════════════════════════════════════════════════════════════
-  s += SteelSVG.viewTitle(148, 14, 'ALZADO FRONTAL')
+  // Título bajo la línea de cota de columna (que está en y≈14px) para evitar solapamiento
+  const _titleCx = Math.round((v1.x(x_beam_start) + v1.x(col_total_w)) / 2)
+  s += SteelSVG.viewTitle(_titleCx, 26, 'ALZADO FRONTAL')
 
   // 1. VIGA — alas llegan a 6mm de la cara exterior del ala de la columna
   s += SteelSVG.iProfileH(v1, x_beam_start, x_beam_end, 0, beam_d, BEAM.bf, BEAM.tf, tw)
-  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2+11, 'Viga', {fill:'#60a5fa', anchor:'start'})
-  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2-2, `tw=${tw}mm`, {fill:'#60a5fa', anchor:'start', fs:8})
+  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2+11, vigaLabel, {fill:'#60a5fa', anchor:'start'})
+  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2-2, `h_viga=${beam_d.toFixed(0)}mm`, {fill:'#60a5fa', anchor:'start', fs:8})
   // Línea de setback
   s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
               x2="${v1.x(x_beam_end)}" y2="${v1.y(beam_d/2+4)}"
@@ -673,8 +684,8 @@ function dibujarSVG(payload, data) {
   s += `<line x1="${v1.x(col_web_cx)}" y1="${v1.y(col_H/2-5)}"
               x2="${v1.x(col_web_cx)}" y2="${v1.y(-col_H/2+5)}"
               stroke="#4a90d9" stroke-width="0.8" stroke-dasharray="6,4" opacity="0.5"/>`
-  // Cotas columna
-  s += SteelSVG.dimH(v1, 0, col_total_w, col_H/2, 'Ala de columna', 'top', 16)
+  // Cotas columna — muestra perfil y altura real cuando hay catálogo seleccionado
+  s += SteelSVG.dimH(v1, 0, col_total_w, col_H/2, colLabel, 'top', 16)
   s += SteelSVG.textLabel(v1, col_total_w+4, col_H/2-10, 'ALA', {fill:'#4a90d9', anchor:'start', bold:true, fs:8})
 
   // 4. SOLDADURAS (en la cara del ala proximal, x=0)
