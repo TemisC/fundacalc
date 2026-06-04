@@ -703,6 +703,8 @@ function dibujarSVG(payload, data) {
   const _bpx = v1.x(x_beam_start - 14), _bpy = v1.y(0)
   s += `<text x="${_bpx}" y="${_bpy}" fill="#60a5fa" font-size="9"
              text-anchor="middle" transform="rotate(-90,${_bpx},${_bpy})">${vigaLabel}</text>`
+  // Cota d de la viga (offset 28mm — separada del texto del perfil en offset 14mm)
+  s += SteelSVG.dimV(v1, x_beam_start, -beam_d/2, beam_d/2, `d=${beam_d.toFixed(0)}mm`, 'left', 28)
   // Línea de setback
   s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
               x2="${v1.x(x_beam_end)}" y2="${v1.y(beam_d/2+4)}"
