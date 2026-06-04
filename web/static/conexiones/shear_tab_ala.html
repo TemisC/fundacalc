@@ -53,7 +53,7 @@
     .msg-item  { font-size:12px;padding:2px 0;border-bottom:1px solid #f0f0f0; }
 
     /* SVG Sketch */
-    #svgConexion { width:100%;height:340px;background:#0d1117;border-radius:8px;
+    #svgConexion { width:100%;height:370px;background:#0d1117;border-radius:8px;
                    border:1px solid #30363d; }
 
     @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
@@ -333,7 +333,7 @@
           <div class="loading-overlay" id="overlaySVG">
             <div class="spinner-border spinner-border-sm text-warning"></div>
           </div>
-          <svg id="svgConexion" viewBox="0 0 600 340">
+          <svg id="svgConexion" viewBox="0 0 600 370">
             <!-- Dibujo generado dinámicamente por JS --><!-- Tipo: ALA -->
             <text x="300" y="155" text-anchor="middle" fill="#484f58" font-size="13">
               Ajusta la geometría — el esquema se actualiza automáticamente
@@ -622,7 +622,7 @@ function dibujarSVG(payload, data) {
     beam_d + 60, 520, 295
   )
   const _wCx = (x_beam_start + col_total_w) / 2
-  const v1 = new SteelSVG.View(300 - _wCx * sc, 175, sc)
+  const v1 = new SteelSVG.View(300 - _wCx * sc, 190, sc)
 
   const x_pl  = -bp
   const y_bot = -Lp / 2
@@ -644,14 +644,15 @@ function dibujarSVG(payload, data) {
   //  ALZADO FRONTAL — C1A
   //  Título centrado para evitar solapamiento con flecha Vu (que va a la izq.)
   // ══════════════════════════════════════════════════════════════════════════
-  // Título bajo la línea de cota de columna (que está en y≈14px) para evitar solapamiento
   const _titleCx = Math.round((v1.x(x_beam_start) + v1.x(col_total_w)) / 2)
-  s += SteelSVG.viewTitle(_titleCx, 26, 'ALZADO FRONTAL')
+  s += SteelSVG.viewTitle(_titleCx, 14, 'ALZADO FRONTAL')
 
   // 1. VIGA — alas llegan a 6mm de la cara exterior del ala de la columna
   s += SteelSVG.iProfileH(v1, x_beam_start, x_beam_end, 0, beam_d, BEAM.bf, BEAM.tf, tw)
-  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2+11, vigaLabel, {fill:'#60a5fa', anchor:'start'})
-  s += SteelSVG.textLabel(v1, x_beam_start+8, beam_d/2-2, `h_viga=${beam_d.toFixed(0)}mm`, {fill:'#60a5fa', anchor:'start', fs:8})
+  // Etiqueta de viga: rotada -90° a la izquierda del perfil (no interfiere con Vu)
+  const _bpx = v1.x(x_beam_start - 14), _bpy = v1.y(0)
+  s += `<text x="${_bpx}" y="${_bpy}" fill="#60a5fa" font-size="9"
+             text-anchor="middle" transform="rotate(-90,${_bpx},${_bpy})">${vigaLabel}</text>`
   // Línea de setback
   s += `<line x1="${v1.x(x_beam_end)}" y1="${v1.y(-beam_d/2-4)}"
               x2="${v1.x(x_beam_end)}" y2="${v1.y(beam_d/2+4)}"
