@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC — W1 Roof Rafter · NDS 2024</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background:#f5f7fa; font-family:'Segoe UI',sans-serif; font-size:13px; }
+    #fc-topbar {
+      background:#0D1B2A;
+      background-image:linear-gradient(rgba(21,128,61,0.07) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(21,128,61,0.07) 1px,transparent 1px);
+      background-size:40px 40px; padding:12px 20px;
+      margin:-1rem -1rem 1rem -1rem;
+      display:flex;align-items:center;gap:14px;border-radius:0;
+    }
+    .fc-tb-icon { width:36px;height:36px;border-radius:8px;
+      background:linear-gradient(135deg,#166534,#16a34a);
+      display:flex;align-items:center;justify-content:center;font-size:1.1rem; }
+    .fc-tb-title { color:#fff;font-size:14px;font-weight:700; }
+    .fc-tb-sub   { color:#4ade80;font-size:11px; }
+    .fc-tb-back  { color:#86efac;font-size:12px;text-decoration:none;
+      border:1px solid rgba(134,239,172,0.35);padding:5px 12px;
+      border-radius:5px;white-space:nowrap; }
+    .fc-tb-back:hover { background:rgba(134,239,172,0.12);color:#fff; }
+    .sec-heading { font-size:11px;font-weight:700;letter-spacing:0.8px;
+      text-transform:uppercase;color:#166534;border-bottom:1.5px solid #16a34a;
+      padding-bottom:3px;margin-bottom:8px; }
+    /* Semáforo */
+    .sc-tabla th { font-size:11px;background:#f0f0f0;color:#555; }
+    .sc-tabla td { font-size:12px;vertical-align:middle; }
+    .sc-verde    { background:#f0fff4; }
+    .sc-amarillo { background:#fffbeb; }
+    .sc-rojo     { background:#fff5f5; }
+    .ratio-verde    { color:#16a34a;font-weight:700; }
+    .ratio-amarillo { color:#d97706;font-weight:700; }
+    .ratio-rojo     { color:#dc2626;font-weight:700; }
+    .resumen-ok   { background:#dcfce7;border:1px solid #86efac;border-radius:8px;
+      padding:12px 16px;color:#166534;font-weight:600;font-size:14px; }
+    .resumen-falla { background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;
+      padding:12px 16px;color:#991b1b;font-weight:600;font-size:14px; }
+    .metric-card { background:#fff;border:1px solid #e5e7eb;border-radius:8px;
+      padding:10px 14px;text-align:center; }
+    .metric-val  { font-size:18px;font-weight:700;color:#1f2937; }
+    .metric-lbl  { font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px; }
+    .metric-unit { font-size:10px;color:#9ca3af; }
+    .warn-box { background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;
+      padding:8px 12px;font-size:11px;color:#92400e;margin-top:6px; }
+    /* SVG diagrama */
+    #svgRafter { width:100%;height:260px;background:#0d1117;border-radius:8px;
+      border:1px solid #1f2937; }
+    #panelResultados { display:none; }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container-fluid py-3">
+
+  <!-- Topbar -->
+  <div id="fc-topbar">
+    <div class="fc-tb-icon">🪵</div>
+    <div>
+      <div class="fc-tb-title">ESCALC</div>
+      <div class="fc-tb-sub">W1 — Roof Rafter · NDS 2024</div>
+    </div>
+    <a class="fc-tb-back" href="/madera" style="margin-left:auto;">← Madera</a>
+    <div class="ms-2">
+      <button id="btnCalc" class="btn btn-success btn-sm fw-bold" onclick="calcular()">▶ Calcular</button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ══ ENTRADAS ══ -->
+    <div class="col-lg-5">
+
+      <!-- Geometría -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Geometría del rafter</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Luz horizontal [ft]</label>
+              <input type="number" id="span_ft" class="form-control form-control-sm" value="14" step="0.5" min="4" max="40">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Pendiente [in/ft]</label>
+              <input type="number" id="slope_in_ft" class="form-control form-control-sm" value="6" step="1" min="1" max="24">
+              <div class="form-text" style="font-size:9px;">ej: 6 = pendiente 6:12</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Separación [in]</label>
+              <select class="form-select form-select-sm" id="spacing_in">
+                <option value="12">12"</option>
+                <option value="16" selected>16"</option>
+                <option value="19.2">19.2"</option>
+                <option value="24">24"</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Voladizo [ft]</label>
+              <input type="number" id="cantilever_ft" class="form-control form-control-sm" value="0" step="0.5" min="0" max="4">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección NDS -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Sección de madera (NDS)</div>
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label mb-0" style="font-size:11px;">Especie</label>
+              <select class="form-select form-select-sm" id="species">
+                <option value="spruce-pine-fir" selected>Spruce-Pine-Fir (SPF)</option>
+                <option value="douglas-fir-larch">Douglas Fir-Larch (DF-L)</option>
+                <option value="hem-fir">Hem-Fir</option>
+                <option value="southern-pine">Southern Pine (SP)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-0" style="font-size:11px;">Grado visual</label>
+              <select class="form-select form-select-sm" id="grade">
+                <option value="no2" selected>No. 2</option>
+                <option value="no1">No. 1</option>
+                <option value="select">Select Structural</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Ancho nominal [in]</label>
+              <select class="form-select form-select-sm" id="width_nom">
+                <option value="2" selected>2"</option>
+                <option value="3">3"</option>
+                <option value="4">4"</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Peralte nominal [in]</label>
+              <select class="form-select form-select-sm" id="depth_nom">
+                <option value="6">6"</option>
+                <option value="8" selected>8"</option>
+                <option value="10">10"</option>
+                <option value="12">12"</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cargas -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Cargas [psf — plano horizontal]</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">DL cubierta</label>
+              <input type="number" id="dl_roofing" class="form-control form-control-sm" value="10" step="1" min="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Peso propio DL</label>
+              <input type="number" id="dl_self" class="form-control form-control-sm" value="3" step="0.5" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Uso LL</label>
+              <input type="number" id="ll" class="form-control form-control-sm" value="20" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Viento WL</label>
+              <input type="number" id="wl" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+            <div class="col-4">
+              <label class="form-label mb-0" style="font-size:11px;">Nieve SL</label>
+              <input type="number" id="sl" class="form-control form-control-sm" value="0" step="1" min="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Condiciones de servicio -->
+      <div class="card shadow-sm mb-2">
+        <div class="card-body py-2 px-3">
+          <div class="sec-heading">Condiciones de servicio</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Humedad CM</label>
+              <select class="form-select form-select-sm" id="cm">
+                <option value="1.0" selected>Seco — CM = 1.0</option>
+                <option value="0.85">Húmedo — CM = 0.85</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label mb-0" style="font-size:11px;">Temperatura Ct</label>
+              <select class="form-select form-select-sm" id="ct">
+                <option value="1.0" selected>≤ 100°F — Ct = 1.0</option>
+                <option value="0.9">100–150°F — Ct = 0.9</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-0" style="font-size:11px;">Límite deflexión</label>
+              <select class="form-select form-select-sm" id="deflection_limit">
+                <option value="360" selected>L / 360 — estándar (carga viva)</option>
+                <option value="240">L / 240 — cargas totales</option>
+                <option value="180">L / 180</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col-lg-5 -->
+
+    <!-- ══ RESULTADOS ══ -->
+    <div class="col-lg-7">
+
+      <!-- Diagrama SVG -->
+      <div class="card shadow-sm mb-3" style="background:#0d1117;border-color:#1f2937;">
+        <div class="card-body p-2" style="position:relative;">
+          <svg id="svgRafter" viewBox="0 0 600 260">
+            <text x="300" y="130" text-anchor="middle" fill="#374151" font-size="13">
+              Ingresa datos y presiona Calcular
+            </text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Panel resultados (oculto hasta calcular) -->
+      <div id="panelResultados">
+
+        <!-- Resumen global -->
+        <div id="resumenGlobal" class="mb-3"></div>
+
+        <!-- Métricas clave -->
+        <div class="row g-2 mb-3">
+          <div class="col-4"><div class="metric-card">
+            <div class="metric-lbl">M máx.</div>
+            <div class="metric-val" id="mMetric">—</div>
+            <div class="metric-unit">ft·lb</div>
+          </div></div>
+          <div class="col-4"><div class="metric-card">
+            <div class="metric-lbl">V máx.</div>
+            <div class="metric-val" id="vMetric">—</div>
+            <div class="metric-unit">lb</div>
+          </div></div>
+          <div class="col-4"><div class="metric-card">
+            <div class="metric-lbl">Δ<sub>LL</sub></div>
+            <div class="metric-val" id="dMetric">—</div>
+            <div class="metric-unit" id="dLimit">—</div>
+          </div></div>
+        </div>
+
+        <!-- Verificaciones -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body py-2 px-3">
+            <div class="sec-heading">Verificaciones NDS 2024</div>
+            <table class="table table-sm table-bordered sc-tabla mb-0">
+              <thead><tr>
+                <th>Verificación y Fórmula</th>
+                <th class="text-end">Actuante</th>
+                <th class="text-end">Admisible</th>
+                <th class="text-center">D/C</th>
+                <th class="text-center">Estado</th>
+              </tr></thead>
+              <tbody id="tablaVerif"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Factores de ajuste -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body py-2 px-3">
+            <div class="sec-heading">Factores de ajuste NDS</div>
+            <div class="row g-1" id="factoresGrid"></div>
+          </div>
+        </div>
+
+        <!-- Sección y propiedades -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body py-2 px-3">
+            <div class="sec-heading">Sección y geometría calculada</div>
+            <div id="seccionInfo" class="row g-1" style="font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Advertencias -->
+        <div id="warningsBox"></div>
+
+      </div><!-- /panelResultados -->
+    </div><!-- /col-lg-7 -->
+
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script>
+async function calcular() {
+  const btn = document.getElementById('btnCalc')
+  btn.disabled = true; btn.textContent = '⏳ Calculando...'
+
+  const payload = {
+    span_ft:          parseFloat(document.getElementById('span_ft').value),
+    slope_in_ft:      parseFloat(document.getElementById('slope_in_ft').value),
+    spacing_in:       parseFloat(document.getElementById('spacing_in').value),
+    cantilever_ft:    parseFloat(document.getElementById('cantilever_ft').value),
+    species:          document.getElementById('species').value,
+    grade:            document.getElementById('grade').value,
+    width_nom:        parseInt(document.getElementById('width_nom').value),
+    depth_nom:        parseInt(document.getElementById('depth_nom').value),
+    dl_roofing:       parseFloat(document.getElementById('dl_roofing').value),
+    dl_self:          parseFloat(document.getElementById('dl_self').value),
+    ll:               parseFloat(document.getElementById('ll').value),
+    wl:               parseFloat(document.getElementById('wl').value),
+    sl:               parseFloat(document.getElementById('sl').value),
+    cm:               parseFloat(document.getElementById('cm').value),
+    ct:               parseFloat(document.getElementById('ct').value),
+    deflection_limit: parseInt(document.getElementById('deflection_limit').value),
+  }
+
+  try {
+    const resp = await fetch('/api/madera/rafter/calcular', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    })
+    const d = await resp.json()
+    if (d.error) throw new Error(d.error)
+    renderResultados(d, payload)
+    dibujarSVG(d, payload)
+  } catch(e) {
+    alert('Error: ' + e.message)
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ Calcular'
+  }
+}
+
+function renderResultados(d, inp) {
+  document.getElementById('panelResultados').style.display = 'block'
+
+  // Resumen global
+  const cls = d.ok ? 'resumen-ok' : 'resumen-falla'
+  document.getElementById('resumenGlobal').innerHTML =
+    `<div class="${cls}">
+      ${d.ok ? '✔ SECCIÓN CONFORME' : '✘ SECCIÓN INSUFICIENTE'}
+      &nbsp;—&nbsp; Verificación crítica: <strong>${d.governing_check}</strong>
+      &nbsp;|&nbsp; Combo: ${d.load_combo_governing}
+    </div>`
+
+  // Métricas
+  document.getElementById('mMetric').textContent = d.M_max_ftlb.toFixed(0)
+  document.getElementById('vMetric').textContent = d.V_max_lb.toFixed(0)
+  document.getElementById('dMetric').textContent = d.delta_LL_in.toFixed(3) + '"'
+  document.getElementById('dLimit').textContent  = `límite ${d.delta_limit_in.toFixed(3)}"`
+
+  // Verificaciones
+  const checks = [
+    {
+      nombre: 'Flexión',
+      ref:    'NDS Ch. 3.3',
+      actual: `fb = ${d.fb_actual.toFixed(0)} psi`,
+      admis:  `F\'b = ${d.Fb_prime.toFixed(0)} psi`,
+      formula: `F\'b = Fb × CD × CM × Ct × CF × CL × Cr = ${d.Fb_ref} × ${d.factors.CD} × ${d.factors.CM} × ${d.factors.Ct} × ${d.factors.CF_b} × ${d.factors.CL} × ${d.factors.Cr} = ${d.Fb_prime.toFixed(0)} psi`,
+      ratio:  d.ratio_bending,
+      ok:     d.bending_ok,
+    },
+    {
+      nombre: 'Corte',
+      ref:    'NDS 3.4.2',
+      actual: `fv = ${d.fv_actual.toFixed(2)} psi`,
+      admis:  `F\'v = ${d.Fv_prime.toFixed(1)} psi`,
+      formula: `fv = 1.5·V / (b·d) = 1.5 × ${d.V_max_lb.toFixed(0)} / (${d.b_in} × ${d.d_in}) = ${d.fv_actual.toFixed(2)} psi`,
+      ratio:  d.ratio_shear,
+      ok:     d.shear_ok,
+    },
+    {
+      nombre: 'Deflexión LL',
+      ref:    'NDS App. F',
+      actual: `Δ = ${d.delta_LL_in.toFixed(3)}"`,
+      admis:  `L/${inp.deflection_limit} = ${d.delta_limit_in.toFixed(3)}"`,
+      formula: `Δ = 5·w·L⁴ / (384·E\'·I) = ${d.delta_LL_in.toFixed(4)}" ≤ ${d.delta_limit_in.toFixed(4)}"`,
+      ratio:  d.ratio_deflection,
+      ok:     d.deflection_ok,
+    },
+  ]
+
+  let html = ''
+  checks.forEach(c => {
+    const cls  = c.ratio <= 0.80 ? 'verde' : c.ratio <= 1.00 ? 'amarillo' : 'rojo'
+    const rcls = 'ratio-' + cls
+    html += `<tr class="sc-${cls}">
+      <td>
+        <div style="font-weight:600;">${c.nombre}</div>
+        <div style="font-size:10px;color:#555;font-family:monospace;margin-top:2px;">${c.formula}</div>
+      </td>
+      <td class="text-end">${c.actual}</td>
+      <td class="text-end">${c.admis}</td>
+      <td class="text-center ${rcls} fw-bold">${c.ratio.toFixed(3)}</td>
+      <td class="text-center ${rcls}" style="font-size:14px;">${c.ok ? '✔' : '✘'}</td>
+    </tr>`
+  })
+  document.getElementById('tablaVerif').innerHTML = html
+
+  // Factores de ajuste
+  const f = d.factors
+  const factores = [
+    {k:'CD', v:f.CD, desc:`Duración carga — ${f.CD_reason}`},
+    {k:'CM', v:f.CM, desc:'Contenido de humedad'},
+    {k:'Ct', v:f.Ct, desc:'Temperatura'},
+    {k:'CF', v:f.CF_b, desc:'Factor de forma (peralte)'},
+    {k:'CL', v:f.CL, desc:'Estabilidad lateral'},
+    {k:'Cr', v:f.Cr, desc:'Miembro repetitivo'},
+    {k:'Ci', v:f.Ci, desc:'Incisión'},
+  ]
+  document.getElementById('factoresGrid').innerHTML = factores.map(fc =>
+    `<div class="col-6 col-md-3">
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:6px 8px;text-align:center;">
+        <div style="font-size:13px;font-weight:700;color:#1d4ed8;font-family:monospace;">${fc.k} = ${fc.v}</div>
+        <div style="font-size:9px;color:#6b7280;">${fc.desc}</div>
+      </div>
+    </div>`
+  ).join('')
+
+  // Sección y geometría
+  document.getElementById('seccionInfo').innerHTML = `
+    <div class="col-6 col-md-3"><b>Sección real:</b> ${d.b_in}" × ${d.d_in}"</div>
+    <div class="col-6 col-md-3"><b>Long. rafter:</b> ${d.rafter_length_ft.toFixed(2)} ft</div>
+    <div class="col-6 col-md-3"><b>Pendiente:</b> ${d.slope_angle_deg.toFixed(1)}°</div>
+    <div class="col-6 col-md-3"><b>S =</b> ${d.S_in3.toFixed(2)} in³</div>
+    <div class="col-6 col-md-3"><b>I =</b> ${d.I_in4.toFixed(2)} in⁴</div>
+    <div class="col-6 col-md-3"><b>A =</b> ${d.area_in2.toFixed(2)} in²</div>
+    <div class="col-6 col-md-3"><b>w total:</b> ${d.w_total.toFixed(1)} lb/ft</div>
+    <div class="col-6 col-md-3"><b>Ancho trib.:</b> ${d.tributary_width_ft.toFixed(2)} ft</div>
+  `
+
+  // Advertencias
+  document.getElementById('warningsBox').innerHTML = d.warnings.length
+    ? d.warnings.map(w => `<div class="warn-box">⚠ ${w}</div>`).join('')
+    : ''
+}
+
+function dibujarSVG(d, inp) {
+  const svg = document.getElementById('svgRafter')
+  const W = 600, H = 260
+  const span_px = 400  // ancho del vano en px
+  const ox = 80, oy = 60  // origen (apoyo izq)
+  const slope = inp.slope_in_ft / 12.0
+  const rise_px = span_px * slope * 0.6  // exagerado para visibilidad
+
+  // Altura del rafter en el extremo derecho
+  const rx = ox + span_px, ry = oy - rise_px
+
+  // Grosor visual del rafter (en px, proporcional al d nominal)
+  const thick = Math.max(4, inp.depth_nom * 1.5)
+
+  let s = `<defs>
+    <marker id="arrW" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
+    </marker>
+  </defs>
+  <!-- Fondo cubierta -->
+  <polygon points="${ox},${oy+4} ${rx},${ry+4} ${rx},${ry-thick+4} ${ox},${oy-thick+4}"
+           fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5" opacity="0.9"/>
+
+  <!-- Apoyos triangulares -->
+  <polygon points="${ox},${oy+4} ${ox-10},${oy+24} ${ox+10},${oy+24}"
+           fill="#374151" stroke="#6b7280" stroke-width="1"/>
+  <polygon points="${rx},${ry+4} ${rx-10},${ry+24} ${rx+10},${ry+24}"
+           fill="#374151" stroke="#6b7280" stroke-width="1"/>
+
+  <!-- Línea de suelo -->
+  <line x1="${ox-20}" y1="${oy+24}" x2="${rx+20}" y2="${oy+24}" stroke="#4b5563" stroke-width="1.5"/>
+  <line x1="${ox-20}" y1="${ry+24}" x2="${rx+20}" y2="${ry+24}" stroke="#4b5563" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+  <!-- Carga distribuida (flechas hacia abajo) -->
+  `
+  const nArrows = 8
+  for (let i = 0; i <= nArrows; i++) {
+    const t  = i / nArrows
+    const ax = ox + t * span_px
+    const ay = oy - thick/2 + t * (-rise_px)   // punto en la superficie
+    const arrowLen = 20
+    s += `<line x1="${ax}" y1="${ay - arrowLen}" x2="${ax}" y2="${ay - 2}"
+               stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrW)"/>`
+  }
+  // Label carga
+  s += `<text x="${ox + span_px/2}" y="${oy - thick/2 - (rise_px/2) - 26}"
+             fill="#ef4444" font-size="10" text-anchor="middle">
+    w = ${d.w_total.toFixed(1)} lb/ft (${d.load_combo_governing})
+  </text>`
+
+  // Cota de luz
+  s += `<line x1="${ox}" y1="${oy+36}" x2="${rx}" y2="${oy+36}" stroke="#6b7280" stroke-width="0.8"/>
+  <line x1="${ox}" y1="${oy+30}" x2="${ox}" y2="${oy+42}" stroke="#6b7280" stroke-width="0.8"/>
+  <line x1="${rx}" y1="${oy+30}" x2="${rx}" y2="${oy+42}" stroke="#6b7280" stroke-width="0.8"/>
+  <text x="${ox + span_px/2}" y="${oy+48}" fill="#9ca3af" font-size="10" text-anchor="middle">
+    L = ${inp.span_ft} ft (luz horizontal)
+  </text>`
+
+  // Pendiente
+  const mpt = 80
+  s += `<text x="${ox+mpt}" y="${oy - thick/2 + mpt*(-slope*0.6) - 6}"
+             fill="#60a5fa" font-size="10" text-anchor="middle">
+    Pendiente ${inp.slope_in_ft}:12
+  </text>`
+
+  // Sección nominal
+  const nom = `${inp.width_nom}"×${inp.depth_nom}" (${d.b_in}"×${d.d_in}" real)`
+  s += `<text x="${ox + span_px/2}" y="${H - 10}"
+             fill="#4ade80" font-size="11" text-anchor="middle" font-weight="bold">
+    ${nom} — ${inp.species.replace('-', ' ')} ${inp.grade.toUpperCase()}
+  </text>`
+
+  // Estado
+  const stColor = d.ok ? '#22c55e' : '#ef4444'
+  const stText  = d.ok ? '✔ CONFORME' : '✘ NO CONFORME'
+  s += `<rect x="${W-150}" y="10" width="140" height="32" rx="5"
+             fill="${d.ok ? '#052e16' : '#450a0a'}" stroke="${stColor}" stroke-width="1.2"/>
+  <text x="${W-80}" y="30" fill="${stColor}" font-size="12" text-anchor="middle" font-weight="bold">
+    ${stText}
+  </text>`
+
+  svg.innerHTML = s
+}
+</script>
+</body>
+</html>

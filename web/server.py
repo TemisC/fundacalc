@@ -139,6 +139,10 @@ from core.normas.covenin1753 import COVENIN1753
 from reportes.generador_pdf import GeneradorPDF
 from reportes.generador_dxf import GeneradorDXF
 
+# ── ESCALC — Módulo de Madera (Wood) NDS 2024 ────────────────────────────────
+from core.madera.rafter_engine import RafterCalculator, RafterInputs
+from core.madera.nds_data import SPECIES_LABELS, GRADE_LABELS
+
 # ── ESCALC — Módulo de Conexiones en Acero ────────────────────────────────────
 from core.conexiones.shear_tab import (
     ShearTab, EntradaShearTab,
@@ -4727,6 +4731,109 @@ async def api_shear_tab_calcular(datos: EntradaShearTabAPI):
         })
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  ESCALC WOOD — Módulo de Madera NDS 2024
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/madera", response_class=HTMLResponse)
+async def madera_hub():
+    return (ROOT / "web" / "static" / "madera" / "hub.html").read_text(encoding="utf-8")
+
+
+@app.get("/rafter", response_class=HTMLResponse)
+async def rafter_form():
+    return (ROOT / "web" / "static" / "madera" / "rafter.html").read_text(encoding="utf-8")
+
+
+class EntradaRafterAPI(BaseModel):
+    span_ft:          float
+    slope_in_ft:      float
+    spacing_in:       float
+    cantilever_ft:    float = 0.0
+    species:          str
+    grade:            str
+    width_nom:        int
+    depth_nom:        int
+    dl_roofing:       float
+    dl_self:          float = 3.0
+    ll:               float
+    wl:               float = 0.0
+    sl:               float = 0.0
+    cm:               float = 1.0
+    ct:               float = 1.0
+    deflection_limit: int   = 360
+
+
+@app.post("/api/madera/rafter/calcular")
+async def api_rafter_calcular(datos: EntradaRafterAPI):
+    try:
+        inp = RafterInputs(
+            span_ft=datos.span_ft, slope_in_ft=datos.slope_in_ft,
+            spacing_in=datos.spacing_in, cantilever_ft=datos.cantilever_ft,
+            species=datos.species, grade=datos.grade,
+            width_nom=datos.width_nom, depth_nom=datos.depth_nom,
+            dl_roofing=datos.dl_roofing, dl_self=datos.dl_self,
+            ll=datos.ll, wl=datos.wl, sl=datos.sl,
+            cm=datos.cm, ct=datos.ct,
+            deflection_limit=datos.deflection_limit,
+        )
+        r = RafterCalculator(inp).calculate()
+        f = r.factors
+        return JSONResponse({
+            "ok": r.all_ok,
+            "governing_check": r.governing_check,
+            # Geometría
+            "slope_angle_deg":    round(r.slope_angle_deg, 2),
+            "slope_factor":       round(r.slope_factor, 4),
+            "rafter_length_ft":   round(r.rafter_length_ft, 2),
+            "tributary_width_ft": round(r.tributary_width_ft, 3),
+            # Sección real (in)
+            "b_in": r.b_in, "d_in": r.d_in,
+            "area_in2": round(r.area_in2, 2),
+            "S_in3":    round(r.S_in3, 3),
+            "I_in4":    round(r.I_in4, 3),
+            # Cargas (lb/ft)
+            "w_DL": round(r.w_DL, 2), "w_LL": round(r.w_LL, 2),
+            "w_WL": round(r.w_WL, 2), "w_SL": round(r.w_SL, 2),
+            "w_total": round(r.w_total, 2),
+            "load_combo_governing": r.load_combo_governing,
+            # Solicitaciones
+            "M_max_ftlb": round(r.M_max_ftlb, 1),
+            "V_max_lb":   round(r.V_max_lb, 1),
+            # Propiedades NDS referencia (psi)
+            "Fb_ref": r.Fb_ref, "Fv_ref": r.Fv_ref, "E_ref": r.E_ref,
+            # Factores de ajuste
+            "factors": {
+                "CD": f.CD, "CM": f.CM, "Ct": f.Ct,
+                "CF_b": f.CF_b, "CL": f.CL, "Cr": f.Cr, "Ci": f.Ci,
+                "CD_reason": f.CD_reason,
+            },
+            # Resistencias ajustadas (psi)
+            "Fb_prime": round(r.Fb_prime, 1),
+            "Fv_prime": round(r.Fv_prime, 1),
+            "E_prime":  round(r.E_prime, 0),
+            # Tensiones actuantes (psi)
+            "fb_actual": round(r.fb_actual, 1),
+            "fv_actual": round(r.fv_actual, 2),
+            # Deflexión (in)
+            "delta_LL_in":    round(r.delta_LL_in, 4),
+            "delta_limit_in": round(r.delta_limit_in, 4),
+            "delta_ratio":    round(r.delta_ratio, 4),
+            # Ratios D/C
+            "ratio_bending":    round(r.ratio_bending, 4),
+            "ratio_shear":      round(r.ratio_shear, 4),
+            "ratio_deflection": round(r.ratio_deflection, 4),
+            # Verificaciones individuales
+            "bending_ok":    r.bending_ok,
+            "shear_ok":      r.shear_ok,
+            "deflection_ok": r.deflection_ok,
+            # Mensajes
+            "warnings": r.warnings,
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 
 if __name__ == "__main__":
