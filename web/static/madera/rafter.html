@@ -48,7 +48,7 @@
     .warn-box { background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;
       padding:8px 12px;font-size:11px;color:#92400e;margin-top:6px; }
     /* SVG diagrama */
-    #svgRafter { width:100%;height:260px;background:#0d1117;border-radius:8px;
+    #svgRafter { width:100%;height:320px;background:#0d1117;border-radius:8px;
       border:1px solid #1f2937; }
     #panelResultados { display:none; }
   </style>
@@ -216,7 +216,7 @@
       <!-- Diagrama SVG -->
       <div class="card shadow-sm mb-3" style="background:#0d1117;border-color:#1f2937;">
         <div class="card-body p-2" style="position:relative;">
-          <svg id="svgRafter" viewBox="0 0 600 260">
+          <svg id="svgRafter" viewBox="0 0 600 320">
             <text x="300" y="130" text-anchor="middle" fill="#374151" font-size="13">
               Ingresa datos y presiona Calcular
             </text>
@@ -437,82 +437,147 @@ function renderResultados(d, inp) {
 
 function dibujarSVG(d, inp) {
   const svg = document.getElementById('svgRafter')
-  const W = 600, H = 260
-  const span_px = 400  // ancho del vano en px
-  const ox = 80, oy = 60  // origen (apoyo izq)
-  const slope = inp.slope_in_ft / 12.0
-  const rise_px = span_px * slope * 0.6  // exagerado para visibilidad
 
-  // Altura del rafter en el extremo derecho
-  const rx = ox + span_px, ry = oy - rise_px
+  // ── Dimensiones del SVG ──────────────────────────────────────────────────
+  const W = 600, H = 320
+  // Actualizar viewBox dinámicamente
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
 
-  // Grosor visual del rafter (en px, proporcional al d nominal)
-  const thick = Math.max(4, inp.depth_nom * 1.5)
+  // ── Geometría en "pies" ──────────────────────────────────────────────────
+  const span_ft  = inp.span_ft
+  const cant_ft  = inp.cantilever_ft || 0
+  const slope    = inp.slope_in_ft / 12.0      // ratio (e.g. 8/12 = 0.667)
+  const total_ft = span_ft + cant_ft            // longitud horizontal total
 
+  // Alturas en pies
+  const rise_span = span_ft * slope             // subida en el vano
+  const rise_cant = cant_ft * slope             // subida en el voladizo (si sube aún)
+  const max_rise  = Math.max(rise_span, 0.1)   // evitar división por 0
+
+  // ── Márgenes fijos (px) ──────────────────────────────────────────────────
+  const ML = 90, MR = 90, MT = 60, MB = 55   // izq, der, top, bot
+
+  const avail_w = W - ML - MR    // píxeles disponibles horizontalmente
+  const avail_h = H - MT - MB    // píxeles disponibles verticalmente
+
+  // ── Escala adaptativa: el rafter siempre cabe ────────────────────────────
+  const sx = avail_w / total_ft                       // px/ft horizontal
+  const sy = avail_h / (max_rise + 0.5)               // px/ft vertical (+margen)
+  const sc = Math.min(sx, sy)                          // escala única
+
+  // ── Coordenadas de pantalla ───────────────────────────────────────────────
+  // Origen = apoyo izquierdo (bottom surface del rafter en x=0)
+  const ox = ML                                        // px izq
+  const oy = MT + max_rise * sc + 0.25 * sc           // px top del apoyo izq (baseline)
+
+  const rx   = ox + span_ft * sc                      // x apoyo derecho
+  const cx   = ox + total_ft * sc                     // x punta voladizo
+  const ry   = oy - rise_span * sc                    // y apoyo derecho (sube)
+  const cy_b = ry                                     // base voladizo coincide con ry
+  const cy_t = cy_b - cant_ft * slope * sc            // tip voladizo (sigue subiendo)
+
+  // Grosor visual del rafter
+  const thick = Math.max(6, inp.depth_nom * 1.2)
+
+  // ── SVG ──────────────────────────────────────────────────────────────────
   let s = `<defs>
     <marker id="arrW" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
       <path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/>
     </marker>
-  </defs>
-  <!-- Fondo cubierta -->
-  <polygon points="${ox},${oy+4} ${rx},${ry+4} ${rx},${ry-thick+4} ${ox},${oy-thick+4}"
-           fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5" opacity="0.9"/>
+  </defs>`
 
-  <!-- Apoyos triangulares -->
+  // Polígono del rafter (con voladizo si aplica)
+  if (cant_ft > 0) {
+    s += `<polygon
+      points="${ox},${oy+4} ${cx},${cy_t+4} ${cx},${cy_t-thick+4} ${ox},${oy-thick+4}"
+      fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5" opacity="0.9"/>
+    <!-- Línea de apoyo interior (apoyo derecho) -->
+    <line x1="${rx}" y1="${ry+4}" x2="${rx}" y2="${ry-thick+4}"
+          stroke="#6ee7b7" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>`
+  } else {
+    s += `<polygon
+      points="${ox},${oy+4} ${rx},${ry+4} ${rx},${ry-thick+4} ${ox},${oy-thick+4}"
+      fill="#1e3a5f" stroke="#3b82f6" stroke-width="1.5" opacity="0.9"/>`
+  }
+
+  // Apoyos triangulares
+  s += `
   <polygon points="${ox},${oy+4} ${ox-10},${oy+24} ${ox+10},${oy+24}"
            fill="#374151" stroke="#6b7280" stroke-width="1"/>
   <polygon points="${rx},${ry+4} ${rx-10},${ry+24} ${rx+10},${ry+24}"
-           fill="#374151" stroke="#6b7280" stroke-width="1"/>
+           fill="#374151" stroke="#6b7280" stroke-width="1"/>`
 
-  <!-- Línea de suelo -->
-  <line x1="${ox-20}" y1="${oy+24}" x2="${rx+20}" y2="${oy+24}" stroke="#4b5563" stroke-width="1.5"/>
-  <line x1="${ox-20}" y1="${ry+24}" x2="${rx+20}" y2="${ry+24}" stroke="#4b5563" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
-
-  <!-- Carga distribuida (flechas hacia abajo) -->
-  `
-  const nArrows = 8
-  for (let i = 0; i <= nArrows; i++) {
-    const t  = i / nArrows
-    const ax = ox + t * span_px
-    const ay = oy - thick/2 + t * (-rise_px)   // punto en la superficie
-    const arrowLen = 20
-    s += `<line x1="${ax}" y1="${ay - arrowLen}" x2="${ax}" y2="${ay - 2}"
-               stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrW)"/>`
+  if (cant_ft > 0) {
+    // Rueda/rodillo en el extremo del voladizo (apoyo simple)
+    s += `<circle cx="${cx}" cy="${cy_t+12}" r="6" fill="none" stroke="#6b7280" stroke-width="1.2"/>
+    <line x1="${cx-10}" y1="${cy_t+22}" x2="${cx+10}" y2="${cy_t+22}" stroke="#6b7280" stroke-width="1"/>`
   }
-  // Label carga
-  s += `<text x="${ox + span_px/2}" y="${oy - thick/2 - (rise_px/2) - 26}"
+
+  // Línea de suelo
+  s += `<line x1="${ox-20}" y1="${oy+24}" x2="${rx+20}" y2="${oy+24}"
+             stroke="#4b5563" stroke-width="1.5"/>`
+
+  // Cargas distribuidas (flechas rojas)
+  const nArrows = Math.max(4, Math.round(total_ft / 2))
+  for (let i = 0; i <= nArrows; i++) {
+    const t_ratio = i / nArrows
+    const ax = ox + t_ratio * total_ft * sc
+    const ay = oy - thick/2 - t_ratio * slope * total_ft * sc
+    s += `<line x1="${ax}" y1="${ay - 18}" x2="${ax}" y2="${ay - 2}"
+               stroke="#ef4444" stroke-width="1.3" marker-end="url(#arrW)"/>`
+  }
+
+  // Label carga (centrado sobre el rafter)
+  const mid_x  = ox + span_ft/2 * sc
+  const mid_y  = oy - thick/2 - slope * span_ft/2 * sc - 24
+  s += `<text x="${mid_x}" y="${mid_y}"
              fill="#ef4444" font-size="10" text-anchor="middle">
-    w = ${d.w_total.toFixed(1)} lb/ft (${d.load_combo_governing})
+    w = ${d.w_total.toFixed(1)} lb/ft &nbsp;(${d.load_combo_governing})
   </text>`
 
-  // Cota de luz
-  s += `<line x1="${ox}" y1="${oy+36}" x2="${rx}" y2="${oy+36}" stroke="#6b7280" stroke-width="0.8"/>
-  <line x1="${ox}" y1="${oy+30}" x2="${ox}" y2="${oy+42}" stroke="#6b7280" stroke-width="0.8"/>
-  <line x1="${rx}" y1="${oy+30}" x2="${rx}" y2="${oy+42}" stroke="#6b7280" stroke-width="0.8"/>
-  <text x="${ox + span_px/2}" y="${oy+48}" fill="#9ca3af" font-size="10" text-anchor="middle">
-    L = ${inp.span_ft} ft (luz horizontal)
+  // Cota de luz horizontal
+  const dim_y = oy + 36
+  s += `
+  <line x1="${ox}" y1="${dim_y}" x2="${rx}" y2="${dim_y}" stroke="#6b7280" stroke-width="0.8"/>
+  <line x1="${ox}" y1="${dim_y-6}" x2="${ox}" y2="${dim_y+6}" stroke="#6b7280" stroke-width="0.8"/>
+  <line x1="${rx}" y1="${dim_y-6}" x2="${rx}" y2="${dim_y+6}" stroke="#6b7280" stroke-width="0.8"/>
+  <text x="${(ox+rx)/2}" y="${dim_y+12}" fill="#9ca3af" font-size="10" text-anchor="middle">
+    L = ${span_ft} ft
   </text>`
 
-  // Pendiente
-  const mpt = 80
-  s += `<text x="${ox+mpt}" y="${oy - thick/2 + mpt*(-slope*0.6) - 6}"
-             fill="#60a5fa" font-size="10" text-anchor="middle">
-    Pendiente ${inp.slope_in_ft}:12
+  // Cota voladizo (si existe)
+  if (cant_ft > 0) {
+    const vd_y = ry + 36
+    s += `
+    <line x1="${rx}" y1="${vd_y}" x2="${cx}" y2="${vd_y}" stroke="#6ee7b7" stroke-width="0.8"/>
+    <line x1="${rx}" y1="${vd_y-6}" x2="${rx}" y2="${vd_y+6}" stroke="#6ee7b7" stroke-width="0.8"/>
+    <line x1="${cx}" y1="${vd_y-6}" x2="${cx}" y2="${vd_y+6}" stroke="#6ee7b7" stroke-width="0.8"/>
+    <text x="${(rx+cx)/2}" y="${vd_y+12}" fill="#6ee7b7" font-size="10" text-anchor="middle">
+      vol = ${cant_ft} ft
+    </text>`
+  }
+
+  // Label pendiente (en el 1/4 del rafter)
+  const pl_x = ox + 0.18 * span_ft * sc
+  const pl_y = oy - thick/2 - slope * 0.18 * span_ft * sc - 8
+  s += `<text x="${pl_x}" y="${pl_y}"
+             fill="#60a5fa" font-size="10" text-anchor="start">
+    ${inp.slope_in_ft}:12 (${d.slope_angle_deg.toFixed(1)}°)
   </text>`
 
-  // Sección nominal
-  const nom = `${inp.width_nom}"×${inp.depth_nom}" (${d.b_in}"×${d.d_in}" real)`
-  s += `<text x="${ox + span_px/2}" y="${H - 10}"
+  // Sección nominal (abajo del SVG)
+  const nom = `${inp.width_nom}"×${inp.depth_nom}" (${d.b_in}"×${d.d_in}" real) — ${inp.species.replace(/-/g,' ')} ${inp.grade.toUpperCase()}`
+  s += `<text x="${W/2}" y="${H-8}"
              fill="#4ade80" font-size="11" text-anchor="middle" font-weight="bold">
-    ${nom} — ${inp.species.replace('-', ' ')} ${inp.grade.toUpperCase()}
+    ${nom}
   </text>`
 
-  // Estado
+  // Estado (esquina superior derecha)
   const stColor = d.ok ? '#22c55e' : '#ef4444'
   const stText  = d.ok ? '✔ CONFORME' : '✘ NO CONFORME'
-  s += `<rect x="${W-150}" y="10" width="140" height="32" rx="5"
+  s += `<rect x="${W-160}" y="8" width="152" height="30" rx="5"
              fill="${d.ok ? '#052e16' : '#450a0a'}" stroke="${stColor}" stroke-width="1.2"/>
-  <text x="${W-80}" y="30" fill="${stColor}" font-size="12" text-anchor="middle" font-weight="bold">
+  <text x="${W-84}" y="28" fill="${stColor}" font-size="12" text-anchor="middle" font-weight="bold">
     ${stText}
   </text>`
 
