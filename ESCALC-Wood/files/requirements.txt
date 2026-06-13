@@ -1,0 +1,16 @@
+# ESCALC Suite — dependencias Python
+# Instalar: pip install -r requirements.txt
+
+# ── Servidor web ───────────────────────────────────────────────────────────
+flask==3.0.3
+jinja2==3.1.4
+werkzeug==3.0.3
+
+# ── Cálculo numérico (módulo Wood y futuros) ───────────────────────────────
+numpy==1.26.4
+
+# ── Exportación PDF (memoria de cálculo) ──────────────────────────────────
+reportlab==4.2.2
+
+# ── Utilidades ────────────────────────────────────────────────────────────
+python-dotenv==1.0.1     # variables de entorno (.env)

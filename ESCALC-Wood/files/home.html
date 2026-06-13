@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC — Engineering Software CALC</title>
+  <style>
+    :root {
+      --bg:     #0f1117;
+      --surf:   #181c25;
+      --surf2:  #1e2330;
+      --brd:    #2a2f3e;
+      --brd2:   #3a4055;
+      --txt:    #e8eaf0;
+      --txt2:   #9da5b8;
+      --txt3:   #505870;
+      --acc:    #4caf7d;
+      --acc2:   #2d6b4a;
+      --wip:    #854f0b;
+      --font:   'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--brd);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surf);
+    }
+    .brand {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--txt);
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+    .brand-e { color: var(--acc); }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--txt3);
+      font-weight: 400;
+      margin-left: 10px;
+      padding-left: 10px;
+      border-left: 1px solid var(--brd2);
+    }
+    .version-badge {
+      font-size: 11px;
+      padding: 3px 10px;
+      background: var(--surf2);
+      border: 1px solid var(--brd2);
+      border-radius: 20px;
+      color: var(--txt3);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 3rem 2rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .hero h1 {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--txt);
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+    }
+    .hero h1 span { color: var(--acc); }
+    .hero p {
+      font-size: 14px;
+      color: var(--txt2);
+      max-width: 520px;
+      line-height: 1.7;
+    }
+
+    /* ── Grid de módulos ── */
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      padding: 0 2rem 3rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .module-card {
+      background: var(--surf);
+      border: 1px solid var(--brd);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: var(--txt);
+      transition: border-color .15s, background .15s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .module-card.active:hover {
+      border-color: var(--acc2);
+      background: #1a2520;
+    }
+    .module-card.wip {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .module-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--acc);
+      border-radius: 12px 0 0 12px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .module-card.active:hover::before { opacity: 1; }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-name {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--txt);
+    }
+    .status-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .status-active {
+      background: rgba(76,175,125,.15);
+      color: var(--acc);
+      border: 1px solid var(--acc2);
+    }
+    .status-wip {
+      background: rgba(133,79,11,.2);
+      color: #e0a020;
+      border: 1px solid var(--wip);
+    }
+    .card-sub {
+      font-size: 12px;
+      color: var(--txt2);
+    }
+    .card-arrow {
+      font-size: 18px;
+      color: var(--txt3);
+      align-self: flex-end;
+      transition: color .15s, transform .15s;
+    }
+    .module-card.active:hover .card-arrow {
+      color: var(--acc);
+      transform: translateX(4px);
+    }
+
+    /* ── Stack info ── */
+    .stack-bar {
+      margin: 0 2rem;
+      padding: 1rem 1.25rem;
+      background: var(--surf);
+      border: 1px solid var(--brd);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      max-width: 876px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 2rem;
+    }
+    .stack-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--txt3);
+      flex-shrink: 0;
+    }
+    .stack-items {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stack-tag {
+      font-size: 11px;
+      padding: 3px 10px;
+      background: var(--surf2);
+      border: 1px solid var(--brd2);
+      border-radius: 5px;
+      color: var(--txt2);
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--brd);
+      padding: 1rem 2rem;
+      text-align: center;
+      font-size: 11px;
+      color: var(--txt3);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="brand">
+    <span class="brand-e">E</span>SCALC
+    <span class="brand-sub">Engineering Software CALC</span>
+  </a>
+  <span class="version-badge">v1.0 — dev</span>
+</header>
+
+<div class="hero">
+  <h1>Suite de cálculo<br>estructural <span>en Python</span></h1>
+  <p>Herramientas de ingeniería para diseño y verificación de elementos
+  estructurales. Cada módulo es independiente y exporta memoria de cálculo en PDF.</p>
+</div>
+
+<div class="modules-grid">
+  {% for m in modules %}
+  <a href="{{ m.url if m.status == 'active' else '#' }}"
+     class="module-card {{ m.status }}"
+     {{ 'onclick="return false"' | safe if m.status == 'wip' else '' }}>
+    <div class="card-top">
+      <span class="card-name">{{ m.name }}</span>
+      <span class="status-pill status-{{ m.status }}">
+        {{ 'Activo' if m.status == 'active' else 'En desarrollo' }}
+      </span>
+    </div>
+    <span class="card-sub">{{ m.sub }}</span>
+    <span class="card-arrow">{{ '→' if m.status == 'active' else '···' }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<div class="stack-bar">
+  <span class="stack-label">Stack</span>
+  <div class="stack-items">
+    <span class="stack-tag">Python 3.11</span>
+    <span class="stack-tag">Flask 3.0</span>
+    <span class="stack-tag">Jinja2</span>
+    <span class="stack-tag">NumPy</span>
+    <span class="stack-tag">ReportLab</span>
+    <span class="stack-tag">SVG puro</span>
+    <span class="stack-tag">NDS 2024</span>
+    <span class="stack-tag">AISC 360</span>
+  </div>
+</div>
+
+<footer>
+  ESCALC · Engineering Software CALC · Python · Flask · NDS 2024 · AISC 360
+</footer>
+
+</body>
+</html>

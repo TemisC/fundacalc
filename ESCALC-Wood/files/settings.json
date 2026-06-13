@@ -1,0 +1,21 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python",
+  "python.terminal.activateEnvironment": true,
+  "editor.formatOnSave": true,
+  "files.associations": {
+    "*.html": "jinja-html"
+  },
+  "emmet.includeLanguages": {
+    "jinja-html": "html"
+  },
+  "[python]": {
+    "editor.tabSize": 4,
+    "editor.rulers": [88]
+  },
+  "editor.rulers": [88],
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/venv": true
+  }
+}
