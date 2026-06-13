@@ -237,8 +237,8 @@ def _build_geo_pedestal(datos: "DatosEntrada") -> GeometriaPedestal:
     return ped
 
 app = FastAPI(title="FundaCalc API")
-app.mount("/static", StaticFiles(directory=str(ROOT / "web" / "static")), name="static")
 app.mount("/static/wind", StaticFiles(directory=str(ROOT / "escalc-wind")), name="wind")
+app.mount("/static", StaticFiles(directory=str(ROOT / "web" / "static")), name="static")
 
 
 # ── Middleware de autenticación ────────────────────────────────────────────────
