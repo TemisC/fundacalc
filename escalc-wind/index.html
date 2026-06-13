@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESCALC Wind — ASCE 7-22 Wind Pressures</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg:        #050810;
+      --surface:   #0d1117;
+      --border:    #21262d;
+      --text:      #c9d1d9;
+      --text-muted:#8b949e;
+      --blue:      #378ADD;
+      --green:     #1D9E75;
+      --amber:     #EF9F27;
+      --red:       #E24B4A;
+      --topbar-h:  56px;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: var(--topbar-h);
+      background: rgba(13,17,23,0.96);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .topbar-left  { display: flex; align-items: center; gap: 14px; }
+    .topbar-badge {
+      background: linear-gradient(135deg, #1D9E75, #1a8a66);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .topbar-title { color: #e6edf3; font-size: 15px; font-weight: 600; }
+    .topbar-sub   { color: var(--text-muted); font-size: 11px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Loading overlay ── */
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: rgba(5,8,16,.92);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    #loadingOverlay.hidden { display: none; }
+    .loading-spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loadingStatus { color: var(--text-muted); font-size: 13px; }
+
+    /* ── Main layout ── */
+    .main-layout {
+      display: flex;
+      height: calc(100vh - var(--topbar-h));
+      overflow: hidden;
+    }
+
+    /* ── Left panel ── */
+    .inputs-panel {
+      width: 340px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+    }
+    .inputs-body   { flex: 1; padding: 16px; }
+    .inputs-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .form-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+    .form-control, .form-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      border-radius: 5px;
+      padding: 5px 8px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--bg);
+      border-color: var(--blue);
+      color: var(--text);
+      box-shadow: 0 0 0 2px rgba(55,138,221,.2);
+    }
+    .input-group-text {
+      background: #161b22;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 5px 8px;
+    }
+    .form-check-input {
+      background-color: var(--bg);
+      border-color: var(--border);
+    }
+    .form-check-input:checked { background-color: var(--green); border-color: var(--green); }
+    .form-check-label { font-size: 12px; }
+
+    .btn-calc {
+      width: 100%;
+      background: var(--green);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity .15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-calc:hover   { opacity: .9; }
+    .btn-calc:disabled { opacity: .5; cursor: not-allowed; }
+
+    .collapse-trigger {
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 0;
+    }
+    .collapse-trigger:hover { color: var(--blue); }
+    .collapse-arrow { transition: transform .2s; }
+    .collapse-arrow.open { transform: rotate(90deg); }
+
+    /* ── Right panel ── */
+    .results-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* ── Empty state ── */
+    #emptyState {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 3rem; opacity: .3; }
+
+    /* ── Results ── */
+    #resultsContainer { display: none; }
+
+    .params-card {
+      background: rgba(29,158,117,.08);
+      border: 1px solid rgba(29,158,117,.3);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 10px;
+    }
+    .param-item {}
+    .param-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .param-value { font-size: 16px; font-weight: 700; color: #e6edf3; font-variant-numeric: tabular-nums; }
+    .param-unit  { font-size: 10px; color: var(--text-muted); }
+
+    .result-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .result-block-header {
+      padding: 10px 16px;
+      background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .result-block-header:hover { background: rgba(255,255,255,.05); }
+    .block-title { font-weight: 600; font-size: 13px; color: #e6edf3; }
+    .block-subtitle { font-size: 11px; color: var(--text-muted); }
+    .block-badge {
+      margin-left: auto;
+      font-size: 10px;
+      background: rgba(55,138,221,.15);
+      color: var(--blue);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* ── Tables ── */
+    .res-table-wrap { overflow-x: auto; }
+    .res-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .res-table th {
+      background: #161b22;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 7px 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .res-table th:first-child { text-align: left; }
+    .res-table td {
+      padding: 6px 10px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .res-table td:first-child { text-align: left; }
+    .res-table tr:last-child td { border-bottom: none; }
+    .res-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    .p-pos  { color: var(--green); font-weight: 600; }   /* positive / downward */
+    .p-neg  { color: var(--red);   font-weight: 600; }   /* negative / uplift    */
+    .p-min  { color: var(--text-muted); font-style: italic; } /* minimum governs */
+    .p-crit { background: rgba(239,159,39,.07); }          /* critical row */
+
+    .dir-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    .dir-n { background: rgba(55,138,221,.15); color: var(--blue); }
+    .dir-p { background: rgba(239,159,39,.12); color: var(--amber); }
+
+    /* ── C&C Section ── */
+    .cc-add-row {
+      padding: 10px 16px;
+      background: rgba(55,138,221,.04);
+      border-top: 1px solid var(--border);
+    }
+    .cc-add-row .row { align-items: flex-end; }
+    .btn-add-cc {
+      background: rgba(55,138,221,.15);
+      border: 1px solid rgba(55,138,221,.35);
+      color: var(--blue);
+      border-radius: 5px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-add-cc:hover { background: rgba(55,138,221,.25); }
+    .btn-del-cc {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--red);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-del-cc:hover { background: rgba(226,75,74,.1); }
+
+    /* ── Export bar ── */
+    .export-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px 0 4px 0;
+    }
+    .btn-export {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-export:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-export.primary { border-color: var(--green); color: var(--green); }
+    .btn-export.primary:hover { background: rgba(29,158,117,.1); }
+
+    /* ── G detail tooltip ── */
+    .g-detail {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .g-chip {
+      display: inline-block;
+      background: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 10px;
+      margin-right: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media print {
+      .topbar, .inputs-panel, #loadingOverlay, .export-bar,
+      .btn-del-cc, .cc-add-row, .btn-ghost { display: none !important; }
+      .main-layout { display: block; height: auto; overflow: visible; }
+      .results-panel { padding: 10px; overflow: visible; }
+      .result-block { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Loading overlay ─────────────────────────────────────────────────── -->
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div id="loadingStatus">Initializing Python engine (Pyodide)…</div>
+  <div style="font-size:11px;color:var(--text-muted)">First load may take 5–10 s</div>
+</div>
+
+<!-- ── Topbar ───────────────────────────────────────────────────────────── -->
+<nav class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-badge">ESCALC</span>
+    <div>
+      <div class="topbar-title">Wind Pressure Calculator</div>
+      <div class="topbar-sub">ASCE 7-22 · MWFRS Ch. 27 · C&amp;C Ch. 30 · ASD / LRFD</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-ghost" onclick="document.getElementById('glossaryModal').style.display='flex'">
+      📖 Glossary / Glosario
+    </button>
+    <a href="/dashboard" class="btn-ghost" style="text-decoration:none">← Dashboard</a>
+  </div>
+</nav>
+
+<!-- ── Glossary Modal ───────────────────────────────────────────────────── -->
+<div id="glossaryModal" style="display:none;position:fixed;inset:0;z-index:900;
+     background:rgba(5,8,16,.88);backdrop-filter:blur(6px);
+     align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;">
+  <div style="background:#0d1117;border:1px solid #21262d;border-radius:12px;
+              width:100%;max-width:860px;overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:16px 22px;border-bottom:1px solid #21262d;
+                background:rgba(255,255,255,.02);">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e6edf3">
+          📖 Glossary &amp; Glosario — ESCALC Wind
+        </div>
+        <div style="font-size:11px;color:#8b949e;margin-top:2px">
+          ASCE 7-22 terminology with Spanish translations / Terminología con traducción al español
+        </div>
+      </div>
+      <button onclick="document.getElementById('glossaryModal').style.display='none'"
+              style="background:transparent;border:1px solid #21262d;color:#8b949e;
+                     border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px">
+        ✕ Close
+      </button>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 22px;max-height:75vh;overflow-y:auto">
+
+      <!-- Section: Input Parameters -->
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                  color:#378ADD;margin-bottom:10px">
+        Input Parameters · Parámetros de Entrada
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px">
+        <thead>
+          <tr style="background:#161b22">
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:12%">Symbol</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">English</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">Español</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d">Definition / Definición</th>
+          </tr>
+        </thead>
+        <tbody id="glossInputBody"></tbody>
+      </table>
+
+      <!-- Section: Calculated Parameters -->
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                  color:#1D9E75;margin-bottom:10px">
+        Calculated Parameters · Parámetros Calculados
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px">
+        <thead>
+          <tr style="background:#161b22">
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:12%">Symbol</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">English</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">Español</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d">Definition / Definición</th>
+          </tr>
+        </thead>
+        <tbody id="glossCalcBody"></tbody>
+      </table>
+
+      <!-- Section: Pressure Terminology -->
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                  color:#EF9F27;margin-bottom:10px">
+        Pressure Terminology · Terminología de Presiones
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px">
+        <thead>
+          <tr style="background:#161b22">
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:12%">Term</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">English</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">Español</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d">Definition / Definición</th>
+          </tr>
+        </thead>
+        <tbody id="glossTermBody"></tbody>
+      </table>
+
+      <!-- Section: Roof Types -->
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                  color:#8b949e;margin-bottom:10px">
+        Roof Types · Tipos de Techo
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#161b22">
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:12%">Type</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">English</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d;width:25%">Español</th>
+            <th style="padding:7px 12px;text-align:left;color:#8b949e;font-weight:600;
+                       border-bottom:1px solid #21262d">Description</th>
+          </tr>
+        </thead>
+        <tbody id="glossRoofBody"></tbody>
+      </table>
+
+      <div style="margin-top:18px;padding:12px 14px;background:rgba(55,138,221,.06);
+                  border:1px solid rgba(55,138,221,.2);border-radius:6px;
+                  font-size:11px;color:#8b949e;line-height:1.7">
+        <strong style="color:#378ADD">Reference:</strong>
+        ASCE/SEI 7-22 <em>Minimum Design Loads and Associated Criteria for Buildings and Other Structures</em>,
+        American Society of Civil Engineers, 2022. Chapters 26–27–30.<br>
+        <strong style="color:#378ADD">Referencia:</strong>
+        ASCE/SEI 7-22 <em>Cargas Mínimas de Diseño y Criterios Asociados para Edificios y Otras Estructuras</em>,
+        American Society of Civil Engineers, 2022. Capítulos 26–27–30.
+      </div>
+
+    </div><!-- /body -->
+  </div>
+</div>
+
+<!-- ── Main layout ──────────────────────────────────────────────────────── -->
+<div class="main-layout">
+
+  <!-- ══ LEFT: Inputs ════════════════════════════════════════════════════ -->
+  <div class="inputs-panel">
+    <div class="inputs-body">
+
+      <!-- Wind Parameters -->
+      <div class="section-title">Wind Parameters</div>
+
+      <div class="mb-2">
+        <label class="form-label">V — Basic Wind Speed</label>
+        <div class="input-group input-group-sm">
+          <input type="number" class="form-control" id="V" value="115" min="85" max="250" step="5">
+          <span class="input-group-text">mph</span>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-7">
+          <label class="form-label">Exposure Category</label>
+          <select class="form-select form-select-sm" id="exposure">
+            <option value="B">B — Suburban / Wooded</option>
+            <option value="C" selected>C — Open terrain</option>
+            <option value="D">D — Coastal / Water</option>
+          </select>
+        </div>
+        <div class="col-5">
+          <label class="form-label">Risk Category</label>
+          <select class="form-select form-select-sm" id="risk_cat">
+            <option value="I">I — Low</option>
+            <option value="II" selected>II — Normal</option>
+            <option value="III">III — High</option>
+            <option value="IV">IV — Essential</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Design Basis</label>
+        <div class="d-flex gap-3">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="wind_basis" id="basis_asd" value="ASD" checked>
+            <label class="form-check-label" for="basis_asd">ASD (×0.6)</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="wind_basis" id="basis_lrfd" value="LRFD">
+            <label class="form-check-label" for="basis_lrfd">LRFD (×1.0)</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Building Geometry -->
+      <div class="section-title mt-2">Building Geometry</div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label">W — Width (⊥ ridge)</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="W" value="50" step="0.1" min="1">
+            <span class="input-group-text">ft</span>
+          </div>
+        </div>
+        <div class="col-6">
+          <label class="form-label">L — Length (∥ ridge)</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="L" value="70" step="0.1" min="1">
+            <span class="input-group-text">ft</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label">Eave Height</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="eave_h" value="10" step="0.25" min="0">
+            <span class="input-group-text">ft</span>
+          </div>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Ridge Height</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="ridge_h" value="14" step="0.25" min="0">
+            <span class="input-group-text">ft</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-7">
+          <label class="form-label">Roof Type</label>
+          <select class="form-select form-select-sm" id="roof_type">
+            <option value="Hipped" selected>Hipped (4-way)</option>
+            <option value="Gable">Gable (2-way)</option>
+            <option value="Flat">Flat (θ ≤ 5°)</option>
+            <option value="Shed">Shed / Monopitch</option>
+          </select>
+        </div>
+        <div class="col-5">
+          <label class="form-label">Pitch (X : 12)</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="pitch_x" value="4" step="0.25" min="0" max="12">
+            <span class="input-group-text">: 12</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label">Overhang</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="overhang" value="0" step="0.25" min="0">
+            <span class="input-group-text">ft</span>
+          </div>
+        </div>
+        <div class="col-6">
+          <label class="form-label">Enclosure</label>
+          <select class="form-select form-select-sm" id="enclosure">
+            <option value="Enclosed" selected>Enclosed</option>
+            <option value="Partially Open">Partially Open</option>
+            <option value="Open">Open</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Advanced (collapsed) -->
+      <div class="collapse-trigger mt-3" onclick="toggleAdvanced(this)">
+        <span class="collapse-arrow">▶</span>
+        <span>Advanced — Kzt, Kd, Ke</span>
+      </div>
+      <div id="advancedPanel" style="display:none">
+        <div class="row g-2 mb-2 mt-1">
+          <div class="col-4">
+            <label class="form-label">Kzt</label>
+            <input type="number" class="form-control form-control-sm" id="Kzt" value="1.000" step="0.001" min="1">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Kd</label>
+            <input type="number" class="form-control form-control-sm" id="Kd" value="0.85" step="0.01" min="0.8" max="1">
+          </div>
+          <div class="col-4">
+            <label class="form-label">Ke</label>
+            <input type="number" class="form-control form-control-sm" id="Ke" value="1.000" step="0.001" min="0.8" max="1">
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /inputs-body -->
+
+    <div class="inputs-footer">
+      <button class="btn-calc" id="calcBtn" onclick="runCalc()" disabled>
+        <span id="calcBtnText">⏳ Loading engine…</span>
+      </button>
+    </div>
+  </div><!-- /inputs-panel -->
+
+  <!-- ══ RIGHT: Results ══════════════════════════════════════════════════ -->
+  <div class="results-panel" id="resultsPanel">
+
+    <!-- Empty state -->
+    <div id="emptyState">
+      <div class="empty-icon">🌬</div>
+      <div style="font-size:15px;color:var(--text-muted);">Fill in the inputs and press <strong style="color:var(--green)">Calculate</strong></div>
+      <div style="font-size:12px;color:var(--text-muted);max-width:360px;text-align:center">
+        MWFRS (Ch. 27) walls &amp; roof · C&amp;C (Ch. 30) components · Overhangs · ASD/LRFD
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsContainer">
+
+      <!-- Parameters summary -->
+      <div class="params-card" id="paramsCard"></div>
+
+      <!-- Error display -->
+      <div id="errorMsg" style="display:none;background:rgba(226,75,74,.1);border:1px solid var(--red);
+           border-radius:8px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--red)">
+      </div>
+
+      <!-- MWFRS Walls -->
+      <div class="result-block" id="blockWalls">
+        <div class="result-block-header" onclick="toggleBlock('wallsBody')">
+          <span>🏛</span>
+          <div>
+            <div class="block-title">MWFRS — Wall Wind Pressures</div>
+            <div class="block-subtitle">ASCE 7-22 § 27.3 · Eq. 27.3-1</div>
+          </div>
+          <span class="block-badge" id="badgeWalls">—</span>
+          <span style="color:var(--text-muted);margin-left:8px">▾</span>
+        </div>
+        <div id="wallsBody">
+          <div class="res-table-wrap" id="wallsTableWrap"></div>
+          <div class="g-detail" id="gDetail"></div>
+        </div>
+      </div>
+
+      <!-- MWFRS Roof -->
+      <div class="result-block" id="blockRoof">
+        <div class="result-block-header" onclick="toggleBlock('roofBody')">
+          <span>🏠</span>
+          <div>
+            <div class="block-title">MWFRS — Roof Wind Pressures</div>
+            <div class="block-subtitle">ASCE 7-22 § 27.3 · Table 27.3-2</div>
+          </div>
+          <span class="block-badge" id="badgeRoof">—</span>
+          <span style="color:var(--text-muted);margin-left:8px">▾</span>
+        </div>
+        <div id="roofBody">
+          <div class="res-table-wrap" id="roofTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- C&C Components -->
+      <div class="result-block" id="blockCC">
+        <div class="result-block-header" onclick="toggleBlock('ccBody')">
+          <span>🔩</span>
+          <div>
+            <div class="block-title">C&amp;C — Components &amp; Cladding</div>
+            <div class="block-subtitle">ASCE 7-22 Ch. 30 · Eq. 30.3-1 · Log interpolation</div>
+          </div>
+          <span class="block-badge" id="badgeCC">0 components</span>
+          <span style="color:var(--text-muted);margin-left:8px">▾</span>
+        </div>
+        <div id="ccBody">
+          <div class="res-table-wrap" id="ccTableWrap">
+            <table class="res-table" id="ccTable">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Type</th><th>Zone</th>
+                  <th>Width (ft)</th><th>Span (ft)</th><th>1/3 Rule</th>
+                  <th>Area (ft²)</th><th>GCpd</th><th>GCpu</th>
+                  <th class="p-pos">Pmax (psf)</th><th class="p-neg">Pmin (psf)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="ccTableBody"></tbody>
+            </table>
+          </div>
+          <!-- Add component row -->
+          <div class="cc-add-row">
+            <div class="row g-2 align-items-end">
+              <div class="col-auto">
+                <label class="form-label">ID</label>
+                <input type="text" class="form-control form-control-sm" id="cc_id" value="C-1" style="width:60px">
+              </div>
+              <div class="col-auto">
+                <label class="form-label">Type</label>
+                <select class="form-select form-select-sm" id="cc_type" style="width:110px" onchange="updateZoneOptions()">
+                  <option>Truss</option>
+                  <option>Rafter</option>
+                  <option>Roofing</option>
+                  <option>Hip Beam</option>
+                  <option>Skylight</option>
+                  <option>Wall</option>
+                  <option>Opening</option>
+                  <option>Garage Door</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label">Zone</label>
+                <select class="form-select form-select-sm" id="cc_zone" style="width:70px">
+                  <option value="1">Z-1</option>
+                  <option value="2">Z-2</option>
+                  <option value="3">Z-3</option>
+                </select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label">Width (ft)</label>
+                <input type="number" class="form-control form-control-sm" id="cc_width" value="2.0" step="0.1" min="0.1" style="width:80px">
+              </div>
+              <div class="col-auto">
+                <label class="form-label">Span (ft)</label>
+                <input type="number" class="form-control form-control-sm" id="cc_span" value="20" step="0.5" min="0.1" style="width:80px">
+              </div>
+              <div class="col-auto">
+                <label class="form-label">1/3 Rule</label>
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" id="cc_one_third" checked>
+                </div>
+              </div>
+              <div class="col-auto">
+                <button class="btn-add-cc" onclick="addComponent()">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overhangs -->
+      <div class="result-block" id="blockOH" style="display:none">
+        <div class="result-block-header" onclick="toggleBlock('ohBody')">
+          <span>⬇</span>
+          <div>
+            <div class="block-title">Roof Overhangs — Uplift</div>
+            <div class="block-subtitle">ASCE 7-22 Ch. 30 Pt. 4 · Zone 3_OHS</div>
+          </div>
+          <span class="block-badge" id="badgeOH">—</span>
+          <span style="color:var(--text-muted);margin-left:8px">▾</span>
+        </div>
+        <div id="ohBody">
+          <div class="res-table-wrap" id="ohTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- Export bar -->
+      <div class="export-bar">
+        <button class="btn-export primary" onclick="window.print()">
+          ⎙ Export PDF (Print)
+        </button>
+        <button class="btn-export" onclick="sendToWizard()">
+          ↗ Send to Wizard
+        </button>
+        <button class="btn-export" onclick="copyJSON()">
+          {} Copy JSON
+        </button>
+      </div>
+
+    </div><!-- /resultsContainer -->
+  </div><!-- /results-panel -->
+
+</div><!-- /main-layout -->
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let pyodide = null;
+let pyReady = false;
+let lastResult = null;
+let components = [];   // [{id, type, zone, width, span, one_third}, ...]
+let ccCounter = 1;
+
+// ── Pyodide init ─────────────────────────────────────────────────────────────
+async function initPyodide() {
+  const status = document.getElementById('loadingStatus');
+  try {
+    status.textContent = 'Loading Pyodide runtime…';
+    pyodide = await loadPyodide({
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
+    });
+
+    status.textContent = 'Fetching ESCALC Wind modules…';
+    const [asce7Code, windCode] = await Promise.all([
+      fetch('./asce7_tables.py').then(r => {
+        if (!r.ok) throw new Error(`Cannot fetch asce7_tables.py (${r.status}). Serve via a local HTTP server.`);
+        return r.text();
+      }),
+      fetch('./wind_calc.py').then(r => {
+        if (!r.ok) throw new Error(`Cannot fetch wind_calc.py (${r.status}).`);
+        return r.text();
+      }),
+    ]);
+
+    status.textContent = 'Compiling Python modules…';
+    pyodide.FS.writeFile('/home/pyodide/asce7_tables.py', asce7Code);
+    pyodide.FS.writeFile('/home/pyodide/wind_calc.py', windCode);
+
+    await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, '/home/pyodide')
+from wind_calc import calculate
+`);
+
+    pyReady = true;
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    const btn = document.getElementById('calcBtn');
+    btn.disabled = false;
+    document.getElementById('calcBtnText').textContent = '▶ Calculate';
+
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    status.style.color = 'var(--red)';
+    console.error(err);
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function fmtP(val, governs = false) {
+  if (val === null || val === undefined) return '—';
+  const cls = val >= 0 ? 'p-pos' : 'p-neg';
+  const g   = governs ? ' p-min' : '';
+  return `<span class="${cls}${g}">${val.toFixed(2)}</span>`;
+}
+function fmtN(val, dec = 3) {
+  if (val === null || val === undefined) return '—';
+  return (+val).toFixed(dec);
+}
+function toggleBlock(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+function toggleAdvanced(trigger) {
+  const panel = document.getElementById('advancedPanel');
+  const arrow = trigger.querySelector('.collapse-arrow');
+  const visible = panel.style.display !== 'none';
+  panel.style.display = visible ? 'none' : '';
+  arrow.classList.toggle('open', !visible);
+}
+function updateZoneOptions() {
+  const type  = document.getElementById('cc_type').value.toLowerCase();
+  const isWall = type.includes('wall') || type.includes('opening') || type.includes('door') || type.includes('garage');
+  const sel   = document.getElementById('cc_zone');
+  const cur   = sel.value;
+  sel.innerHTML = isWall
+    ? `<option value="4">Z-4</option><option value="5">Z-5</option>`
+    : `<option value="1">Z-1</option><option value="2">Z-2</option><option value="3">Z-3</option>`;
+  if (!isWall && (cur === '4' || cur === '5')) sel.value = '1';
+  if (isWall  && (cur !== '4' && cur !== '5')) sel.value = '4';
+}
+
+// ── Build inputs JSON ─────────────────────────────────────────────────────────
+function buildInputs() {
+  const basis = document.querySelector('input[name="wind_basis"]:checked').value;
+  return {
+    V:          parseFloat(document.getElementById('V').value),
+    exposure:   document.getElementById('exposure').value,
+    risk_cat:   document.getElementById('risk_cat').value,
+    wind_basis: basis,
+    Kzt:        parseFloat(document.getElementById('Kzt').value),
+    Kd:         parseFloat(document.getElementById('Kd').value),
+    Ke:         parseFloat(document.getElementById('Ke').value),
+    W:          parseFloat(document.getElementById('W').value),
+    L:          parseFloat(document.getElementById('L').value),
+    eave_h:     parseFloat(document.getElementById('eave_h').value),
+    ridge_h:    parseFloat(document.getElementById('ridge_h').value),
+    roof_type:  document.getElementById('roof_type').value,
+    pitch_x:    parseFloat(document.getElementById('pitch_x').value),
+    overhang:   parseFloat(document.getElementById('overhang').value),
+    enclosure:  document.getElementById('enclosure').value,
+    components: components,
+  };
+}
+
+// ── Main calculation ──────────────────────────────────────────────────────────
+async function runCalc() {
+  if (!pyReady) return;
+  const btn = document.getElementById('calcBtn');
+  btn.disabled = true;
+  document.getElementById('calcBtnText').textContent = '⏳ Calculating…';
+
+  try {
+    const inputs = buildInputs();
+    pyodide.globals.set('_inputs_json', JSON.stringify(inputs));
+    const resultJson = await pyodide.runPythonAsync('calculate(_inputs_json)');
+    const result = JSON.parse(resultJson);
+    lastResult = result;
+    renderResults(result);
+  } catch (err) {
+    showError('JavaScript error: ' + err.message);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('calcBtnText').textContent = '▶ Calculate';
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderResults(result) {
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('resultsContainer').style.display = '';
+  document.getElementById('errorMsg').style.display      = 'none';
+
+  if (result.status === 'error') {
+    showError(result.message + (result.trace ? '\n' + result.trace : ''));
+    return;
+  }
+
+  renderParams(result.params);
+  renderWalls(result.walls, result.params);
+  renderRoof(result.roof, result.params);
+  renderCC(result.cc);
+  renderOverhangs(result.overhangs);
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = '';
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('resultsContainer').style.display = '';
+}
+
+function renderParams(p) {
+  const G = p.G_normal;
+  document.getElementById('paramsCard').innerHTML = `
+    <div style="font-size:11px;font-weight:600;color:var(--text-muted);
+                text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">
+      Calculated Parameters
+    </div>
+    <div class="params-grid">
+      ${param('h', p.h.toFixed(3), 'ft', 'Mean Roof Height')}
+      ${param('θ', p.theta.toFixed(2), '°', 'Roof Slope')}
+      ${param('a', p.a.toFixed(2), 'ft', 'C&C Zone Dim.')}
+      ${param('Kh', p.Kh.toFixed(3), '', 'Vel. Pressure Coef.')}
+      ${param('qh', p.qh.toFixed(2), 'psf', 'Velocity Pressure')}
+      ${param('G', G.G.toFixed(3), '', 'Gust Factor')}
+      ${param('±GCpi', p.GCpi_val.toFixed(2), '', 'Int. Pressure Coef.')}
+      ${param('Kd', p.Kd.toFixed(2), '', 'Directionality')}
+      ${param('LF', p.LF.toFixed(2), '', p.wind_basis === 'ASD' ? 'ASD ×0.6' : 'LRFD ×1.0')}
+    </div>
+    <div style="margin-top:12px;font-size:10px;color:var(--text-muted)">
+      <span class="g-chip">G₁=0.850 (simplified)</span>
+      <span class="g-chip">G₂=${G.G2.toFixed(3)} (complete)</span>
+      <span class="g-chip">Zm=${G.Zm.toFixed(1)} ft</span>
+      <span class="g-chip">Izm=${G.Izm.toFixed(3)}</span>
+      <span class="g-chip">Lzm=${G.Lzm.toFixed(1)} ft</span>
+      <span class="g-chip">Q=${G.Q.toFixed(3)}</span>
+    </div>`;
+}
+
+function param(lbl, val, unit, title) {
+  return `<div class="param-item" title="${title}">
+    <div class="param-label">${lbl}</div>
+    <div class="param-value">${val}<span class="param-unit"> ${unit}</span></div>
+  </div>`;
+}
+
+// ── MWFRS Walls ──────────────────────────────────────────────────────────────
+function renderWalls(walls, params) {
+  const allRows = [...walls.normal, ...walls.parallel];
+  const maxTot  = Math.max(...allRows.map(r => Math.abs(r.total)));
+  document.getElementById('badgeWalls').textContent =
+    `Max total ${maxTot.toFixed(2)} psf`;
+
+  let html = `<table class="res-table">
+    <thead><tr>
+      <th>Direction</th><th>GCpi</th><th>L/B</th>
+      <th>G</th><th>Cp<sub>WW</sub></th><th>Cp<sub>LW</sub></th>
+      <th class="p-pos">Windward (psf)</th>
+      <th class="p-neg">Leeward (psf)</th>
+      <th class="p-neg">Side (psf)</th>
+      <th>Total (psf)</th><th>Min* (psf)</th>
+    </tr></thead><tbody>`;
+
+  for (const r of walls.normal) {
+    const isCrit = Math.abs(r.total) >= maxTot * 0.99;
+    html += `<tr class="${isCrit ? 'p-crit' : ''}">
+      <td><span class="dir-badge dir-n">Normal to Ridge</span>
+          <small style="color:var(--text-muted)"> GCpi${r.GCpi_sign}</small></td>
+      <td>${r.GCpi_sign}${Math.abs(r.GCpi).toFixed(2)}</td>
+      <td>${r.LB.toFixed(3)}</td>
+      <td>${r.G.toFixed(3)}</td>
+      <td>${r.CpWW.toFixed(2)}</td>
+      <td>${r.CpLW.toFixed(3)}</td>
+      <td>${fmtP(r.windward)}</td>
+      <td>${fmtP(r.leeward)}</td>
+      <td>${fmtP(r.side)}</td>
+      <td style="font-weight:700;color:#e6edf3">${Math.abs(r.total).toFixed(2)}</td>
+      <td><span class="p-min">9.60</span></td>
+    </tr>`;
+  }
+  for (const r of walls.parallel) {
+    html += `<tr>
+      <td><span class="dir-badge dir-p">Parallel to Ridge</span>
+          <small style="color:var(--text-muted)"> GCpi${r.GCpi_sign}</small></td>
+      <td>${r.GCpi_sign}${Math.abs(r.GCpi).toFixed(2)}</td>
+      <td>${r.LB.toFixed(3)}</td>
+      <td>${r.G.toFixed(3)}</td>
+      <td>${r.CpWW.toFixed(2)}</td>
+      <td>${r.CpLW.toFixed(3)}</td>
+      <td>${fmtP(r.windward)}</td>
+      <td>${fmtP(r.leeward)}</td>
+      <td>${fmtP(r.side)}</td>
+      <td style="font-weight:700;color:#e6edf3">${Math.abs(r.total).toFixed(2)}</td>
+      <td><span class="p-min">9.60</span></td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+
+  const Gn = params.G_normal;
+  const Gp = params.G_parallel;
+  html += `<div class="g-detail">
+    <strong>G Normal:</strong>
+    <span class="g-chip">G=${Gn.G.toFixed(3)}</span>
+    <span class="g-chip">Q=${Gn.Q.toFixed(3)}</span>
+    &nbsp;&nbsp;
+    <strong>G Parallel:</strong>
+    <span class="g-chip">G=${Gp.G.toFixed(3)}</span>
+    <span class="g-chip">Q=${Gp.Q.toFixed(3)}</span>
+    &nbsp;&nbsp;
+    <span style="color:var(--text-muted)">* §27.1.5 min wall pressure = 9.60 psf</span>
+  </div>`;
+
+  document.getElementById('wallsBody').innerHTML = html;
+}
+
+// ── MWFRS Roof ───────────────────────────────────────────────────────────────
+function renderRoof(roof, params) {
+  let html = '';
+
+  // Normal to ridge
+  html += `<div style="padding:10px 16px 4px;font-size:11px;font-weight:600;
+                       color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">
+    Wind Normal to Ridge &nbsp;<span class="dir-badge dir-n">⊥</span></div>`;
+  html += roofTable(roof.normal);
+
+  // Parallel to ridge
+  html += `<div style="padding:14px 16px 4px;font-size:11px;font-weight:600;
+                       color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">
+    Wind Parallel to Ridge &nbsp;<span class="dir-badge dir-p">∥</span></div>`;
+  html += roofTable(roof.parallel);
+
+  html += `<div style="padding:8px 16px;font-size:11px;color:var(--text-muted)">
+    * §26.13 min roof pressure = 4.80 psf &nbsp;|&nbsp; θ = ${params.theta.toFixed(2)}° &nbsp;|&nbsp; h/L = ${(params.h/parseFloat(document.getElementById('W').value)).toFixed(3)}</div>`;
+
+  document.getElementById('roofBody').innerHTML = html;
+
+  const allP = [...roof.normal, ...roof.parallel].map(r => Math.abs(r.P));
+  const maxP = Math.max(...allP);
+  document.getElementById('badgeRoof').textContent = `Max ${maxP.toFixed(2)} psf`;
+}
+
+function roofTable(rows) {
+  let html = `<div class="res-table-wrap"><table class="res-table">
+    <thead><tr>
+      <th>Surface</th><th>GCpi</th><th>Cp</th>
+      <th>P (psf)</th><th>Min*</th>
+    </tr></thead><tbody>`;
+  for (const r of rows) {
+    const minGov = Math.abs(r.P) < 4.80;
+    html += `<tr>
+      <td>${r.surface}</td>
+      <td>${r.GCpi_sign}${Math.abs(r.GCpi).toFixed(2)}</td>
+      <td>${fmtN(r.Cp)}</td>
+      <td>${fmtP(r.P, minGov)}</td>
+      <td>${minGov ? '<span class="p-min">4.80 ★</span>' : '<span class="p-min">4.80</span>'}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ── C&C ──────────────────────────────────────────────────────────────────────
+function renderCC(ccData) {
+  const tbody = document.getElementById('ccTableBody');
+  document.getElementById('badgeCC').textContent = `${ccData.length} component${ccData.length !== 1 ? 's' : ''}`;
+
+  if (ccData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text-muted);padding:20px">
+      No components added. Use the form below to add C&amp;C components.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = ccData.map((c, i) => {
+    const pmaxGov = c.Pmax <= 9.61;
+    const pminGov = c.Pmin >= -9.61;
+    return `<tr>
+      <td><code style="color:var(--blue)">${c.id}</code></td>
+      <td>${c.type}</td>
+      <td><span class="dir-badge" style="background:rgba(239,159,39,.1);color:var(--amber)">Z-${c.zone}</span></td>
+      <td>${c.width.toFixed(3)}</td>
+      <td>${c.span.toFixed(3)}</td>
+      <td style="text-align:center">${c.one_third ? '✓' : '—'}</td>
+      <td>${c.area.toFixed(2)}</td>
+      <td style="color:var(--text-muted)">${c.GCpd.toFixed(3)}</td>
+      <td style="color:var(--text-muted)">${c.GCpu.toFixed(3)}</td>
+      <td>${fmtP(c.Pmax, pmaxGov)}</td>
+      <td>${fmtP(c.Pmin, pminGov)}</td>
+      <td><button class="btn-del-cc" onclick="removeComponent(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function addComponent() {
+  const id       = document.getElementById('cc_id').value.trim() || `C-${ccCounter}`;
+  const type     = document.getElementById('cc_type').value;
+  const zone     = parseInt(document.getElementById('cc_zone').value);
+  const width    = parseFloat(document.getElementById('cc_width').value);
+  const span     = parseFloat(document.getElementById('cc_span').value);
+  const oneThird = document.getElementById('cc_one_third').checked;
+
+  if (!width || !span) { alert('Width and Span are required.'); return; }
+
+  components.push({ id, type, zone, width, span, one_third: oneThird });
+  ccCounter++;
+  // Auto-update ID for next component
+  const nextId = id.replace(/\d+$/, m => String(parseInt(m) + 1));
+  document.getElementById('cc_id').value = nextId || `C-${ccCounter}`;
+
+  if (pyReady) runCalc();
+}
+
+function removeComponent(idx) {
+  components.splice(idx, 1);
+  if (pyReady) runCalc();
+}
+
+// ── Overhangs ─────────────────────────────────────────────────────────────────
+function renderOverhangs(overhangs) {
+  const block = document.getElementById('blockOH');
+  if (!overhangs || overhangs.length === 0) {
+    block.style.display = 'none';
+    return;
+  }
+  block.style.display = '';
+  document.getElementById('badgeOH').textContent = `Pmin = ${overhangs[0].Pmin.toFixed(2)} psf`;
+
+  let html = `<div class="res-table-wrap"><table class="res-table">
+    <thead><tr>
+      <th>Zone</th><th>Span (ft)</th><th>a (ft)</th>
+      <th>GCpi</th><th>GCpd</th><th>GCpu</th>
+      <th class="p-pos">Pmax (psf)</th><th class="p-neg">Pmin (psf)</th>
+    </tr></thead><tbody>`;
+  for (const r of overhangs) {
+    html += `<tr class="p-crit">
+      <td><span class="dir-badge" style="background:rgba(226,75,74,.15);color:var(--red)">
+        ${r.zone}</span></td>
+      <td>${r.span.toFixed(3)}</td>
+      <td>${r.a.toFixed(2)}</td>
+      <td>${r.GCpi.toFixed(2)}</td>
+      <td>${r.GCpd.toFixed(2)}</td>
+      <td>${r.GCpu.toFixed(2)}</td>
+      <td>${fmtP(r.Pmax, r.Pmax <= 9.61)}</td>
+      <td>${fmtP(r.Pmin)}</td>
+    </tr>`;
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('ohBody').innerHTML = html;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function sendToWizard() {
+  if (!lastResult || lastResult.status !== 'ok') return;
+  const r = lastResult;
+  const wn = r.walls.normal;
+  const worst = wn.find(w => w.GCpi_sign === '-') || wn[0];
+  const payload = {
+    windV:    r.params.V,
+    expo:     r.params.exposure,
+    rcat:     r.params.risk_cat,
+    qh:       r.params.qh,
+    gust:     r.params.G_normal.G,
+    pWW:      worst.windward,
+    pLW:      worst.leeward,
+    pSW:      worst.side,
+    pTot:     worst.total,
+    z1mn:     Math.min(...r.cc.filter(c => c.zone === 1).map(c => c.Pmin), 0),
+    z2mn:     Math.min(...r.cc.filter(c => c.zone === 2).map(c => c.Pmin), 0),
+    z3mn:     Math.min(...r.cc.filter(c => c.zone === 3).map(c => c.Pmin), 0),
+    zOHmn:    r.overhangs.length ? r.overhangs[0].Pmin : null,
+  };
+  localStorage.setItem('escalc_wind_results', JSON.stringify(payload));
+  alert('Wind results saved to localStorage (key: escalc_wind_results).\nThe ESCALC Wizard will read them on next load.');
+}
+
+function copyJSON() {
+  if (!lastResult) return;
+  navigator.clipboard.writeText(JSON.stringify(lastResult, null, 2))
+    .then(() => alert('Results JSON copied to clipboard.'))
+    .catch(() => alert('Copy failed — check browser permissions.'));
+}
+
+// ── Glossary data ─────────────────────────────────────────────────────────────
+const GLOSS_INPUT = [
+  ['V',         'Basic Wind Speed',          'Velocidad Básica de Viento',
+   'Ultimate wind speed (mph) from ASCE 7-22 Fig. 26.5-1. Determined by geographic location and risk category. / Velocidad última del viento (mph) según ubicación geográfica y categoría de riesgo.'],
+  ['Exposure',  'Exposure Category',         'Categoría de Exposición',
+   'Terrain roughness classification: B = suburban/wooded; C = open terrain with scattered obstructions; D = coastal/water surface. / Rugosidad del terreno: B = suburban/arbolado; C = terreno abierto; D = costa/superficie de agua.'],
+  ['Risk Cat.', 'Risk Category',             'Categoría de Riesgo',
+   'I = low (farm buildings); II = normal (residential, commercial); III = high (schools, hospitals); IV = essential (emergency facilities). / I = bajo; II = normal (residencial); III = alto (escuelas); IV = esencial (emergencias).'],
+  ['ASD/LRFD',  'Design Basis',              'Base de Diseño',
+   'ASD (Allowable Stress Design): applies load factor 0.6 to wind — pressures in service-level. LRFD (Strength Design): factor = 1.0. / ASD: factor 0.6, nivel de servicio. LRFD: factor 1.0, nivel de resistencia.'],
+  ['W',         'Building Width',            'Ancho del Edificio',
+   'Horizontal dimension perpendicular to the ridge (ft). Wind blows along W in the Normal-to-Ridge direction. / Dimensión horizontal perpendicular a la cumbrera (ft). El viento sopla en dirección W para el análisis Normal a la Cumbrera.'],
+  ['L',         'Building Length',           'Longitud del Edificio',
+   'Horizontal dimension parallel to the ridge (ft). / Dimensión horizontal paralela a la cumbrera (ft).'],
+  ['Eave h',    'Eave Height',               'Altura del Alero',
+   'Height from grade to the eave (lowest edge of roof) in ft. / Altura desde el terreno hasta el alero (borde inferior del techo) en ft.'],
+  ['Ridge h',   'Ridge Height',              'Altura de la Cumbrera',
+   'Height from grade to the ridge (highest point of roof) in ft. / Altura desde el terreno hasta la cumbrera (punto más alto del techo) en ft.'],
+  ['Pitch',     'Roof Pitch / Slope',        'Pendiente del Techo',
+   'Expressed as X:12 — rise X inches per 12 inches horizontal run. θ = atan(X/12). / Expresada como X:12 — sube X pulgadas por cada 12 horizontales. θ = atan(X/12).'],
+  ['Overhang',  'Roof Overhang',             'Voladizo del Techo',
+   'Horizontal projection of roof beyond the exterior wall (ft). Triggers uplift check per Ch. 30 Pt. 4. / Proyección horizontal del techo más allá del muro exterior (ft). Activa la verificación de succión Ch. 30 Pt. 4.'],
+  ['Enclosure', 'Enclosure Classification',  'Clasificación de Cerramiento',
+   'Enclosed: all walls protect interior (GCpi = ±0.18). Partially Open: dominant opening on one face (GCpi = ±0.55). Open: ≥80% of each wall open (GCpi = 0). / Cerrado: ±0.18. Parcialmente abierto: ±0.55. Abierto: 0.'],
+  ['Kzt',       'Topographic Factor',        'Factor Topográfico',
+   'Accounts for wind speed-up over hills and escarpments (§26.8). = 1.0 for flat terrain; > 1.0 for ridges/cliffs. / Amplificación de viento por colinas y escarpas (§26.8). = 1.0 para terreno plano.'],
+  ['Kd',        'Wind Directionality Factor','Factor de Direccionalidad',
+   'Reduces wind load to account for probability that extreme wind does not come from worst direction simultaneously with worst pressure coefficient. = 0.85 for buildings (Table 26.6-1). / Reduce la carga considerando que el peor viento raramente coincide con el peor Cp. = 0.85 para edificios.'],
+  ['Ke',        'Ground Elevation Factor',   'Factor de Elevación',
+   'Adjusts for air density at altitudes above sea level (Table 26.9-1). = 1.0 at sea level; decreases at high altitude. / Corrige la densidad del aire a altitudes sobre el nivel del mar. = 1.0 al nivel del mar.'],
+];
+
+const GLOSS_CALC = [
+  ['h',     'Mean Roof Height',             'Altura Media del Techo',
+   'h = Eave Height + (Ridge − Eave) / 2. Reference height for velocity pressure calculations. / Altura de referencia para el cálculo de presión de velocidad.'],
+  ['θ',     'Roof Slope Angle',             'Ángulo de Pendiente',
+   'θ = atan(X/12) in degrees. Determines which ASCE 7-22 pressure coefficient table applies. / Determina qué tabla de Cp aplica según ASCE 7-22.'],
+  ['a',     'Edge / Corner Zone Dimension', 'Dimensión de Zona de Borde',
+   'a = max(min(0.1×B, 0.4×h), 0.04×B, 3.0) ft. Defines width of edge zones 2 and corner zones 3 for C&C. / Define el ancho de las zonas de borde (Z-2) y esquina (Z-3) para C&C.'],
+  ['Kh',    'Velocity Pressure Exposure Coefficient', 'Coeficiente de Exposición a Presión de Velocidad',
+   'Kh = 2.41 × (z/zg)^(2/α) evaluated at mean roof height h. Tabulated in ASCE 7-22 Table 26.10-1. / Evaluado a la altura media del techo h. Tabulado en ASCE 7-22 Tabla 26.10-1.'],
+  ['qh',    'Velocity Pressure at h',       'Presión de Velocidad a la Altura h',
+   'qh = 0.00256 × Kh × Kzt × Ke × V² × LF (psf). Base pressure from which all design pressures are derived. Kd is NOT included here — it is applied per pressure equation. / Presión base de la que derivan todas las presiones de diseño. Kd NO se incluye aquí.'],
+  ['G',     'Gust Factor',                  'Factor de Ráfaga',
+   'G = min(0.85, G₂). G₁ = 0.85 simplified (rigid structures). G₂ = complete analysis per §26.11. Applied in p = qh × Kd × G × Cp − qi × Kd × GCpi. / G = min(0.85, G₂). G₁ = simplificado. G₂ = análisis completo §26.11.'],
+  ['Q',     'Background Response Factor',   'Factor de Respuesta de Fondo',
+   'Q = √(1 / (1 + 0.63×((B+h)/Lzm)^0.63)). Used in G₂ calculation. B = building width perpendicular to wind direction. / Usado en el cálculo de G₂. B = ancho del edificio perpendicular a la dirección del viento.'],
+  ['GCpi',  'Internal Pressure Coefficient','Coeficiente de Presión Interna',
+   '±0.18 (Enclosed), ±0.55 (Partially Open), 0 (Open). Two cases always computed: +GCpi (inward) and −GCpi (outward). / ±0.18 (Cerrado), ±0.55 (Parcialmente Abierto), 0 (Abierto). Siempre dos casos.'],
+  ['Cp',    'External Pressure Coefficient','Coeficiente de Presión Exterior',
+   'Dimensionless factor from ASCE 7-22 Fig. 27.3-1 (walls) and Table 27.3-2 (roof). Function of surface, L/B ratio, slope θ, and h/L. / Factor adimensional de Fig. 27.3-1 (muros) y Tabla 27.3-2 (techo). Función de L/B, θ y h/L.'],
+  ['GCp',   'Combined Pressure Coefficient','Coeficiente de Presión Combinado',
+   'Product G×Cp for MWFRS, or single tabulated GCp for C&C (logarithmically interpolated by effective wind area). From analytical equations of Commentary Tables C30.3-x. / Para C&C: interpolación logarítmica por área. Ecuaciones analíticas del Commentary.'],
+  ['LF',    'Load Factor (ASD/LRFD)',        'Factor de Carga',
+   'LF = 0.6 for ASD (converts ultimate wind speed to service-level pressure). LF = 1.0 for LRFD. / LF = 0.6 para ASD (convierte velocidad última a nivel de servicio). LF = 1.0 para LRFD.'],
+];
+
+const GLOSS_TERMS = [
+  ['MWFRS',      'Main Wind Force Resisting System',  'Sistema Principal de Resistencia a Fuerza de Viento',
+   'The structural assembly (frames, shear walls, diaphragms) that transfers wind loads to the foundation. Designed using Chapter 27 pressures. / Conjunto estructural (marcos, muros, diafragmas) que transfiere cargas de viento a la cimentación. Diseño por Ch. 27.'],
+  ['C&C',        'Components and Cladding',            'Componentes y Revestimiento',
+   'Individual elements not part of the MWFRS: rafters, trusses, roof panels, wall panels, windows, doors, fasteners. Higher local pressures than MWFRS. Ch. 30. / Elementos individuales ajenos al MWFRS: vigas, cerchas, paneles, ventanas, puertas. Presiones locales mayores que MWFRS.'],
+  ['Windward',   'Windward Wall/Roof',                 'Muro / Techo a Barlovento',
+   'Surface facing into the wind. Windward wall always Cp = +0.80 (pressure toward surface). Windward roof Cp may be negative (suction) for low slopes. / Superficie que enfrenta el viento. Muro a barlovento: Cp = +0.80 siempre. Techo puede ser negativo en pendiente baja.'],
+  ['Leeward',    'Leeward Wall/Roof',                  'Muro / Techo a Sotavento',
+   'Surface on the sheltered side of the building. Always negative Cp (suction). Leeward wall Cp depends on L/B ratio (−0.5 to −0.2). / Superficie en la cara protegida del viento. Cp siempre negativo. Muro: Cp depende de L/B (−0.5 a −0.2).'],
+  ['Side Wall',  'Side Wall',                          'Muro Lateral',
+   'Wall parallel to the wind direction. Cp = −0.7 (suction) for all cases. / Muro paralelo a la dirección del viento. Cp = −0.7 (succión) en todos los casos.'],
+  ['Pmax',       'Maximum Design Pressure',            'Presión de Diseño Máxima',
+   'Pmax = qh × Kd × (GCpd + GCpi). Acts toward the surface (compression or net downward). Min = +9.60 psf per §30.2.2. / Presión hacia la superficie (compresión o hacia abajo). Mínimo = +9.60 psf.'],
+  ['Pmin',       'Minimum Design Pressure (Uplift)',   'Presión de Diseño Mínima (Succión / Levantamiento)',
+   'Pmin = qh × Kd × (GCpu − GCpi). Negative value acts away from surface (uplift/suction). Min = −9.60 psf per §30.2.2. / Valor negativo que actúa alejándose de la superficie (succión/levantamiento). Mínimo = −9.60 psf.'],
+  ['Zone 1',     'Interior Zone (Roof)',               'Zona Interior (Techo)',
+   'Lowest C&C coefficients. Located more than distance a from any edge or hip. / Menores coeficientes C&C. Ubicada a más de la distancia a de cualquier borde o cadera.'],
+  ['Zone 2',     'Edge Zone (Roof)',                   'Zona de Borde (Techo)',
+   'Intermediate C&C coefficients. Strip of width a along eave and rake edges. / Coeficientes intermedios. Franja de ancho a a lo largo del alero y bordes inclinados.'],
+  ['Zone 3',     'Corner Zone (Roof)',                 'Zona de Esquina (Techo)',
+   'Highest C&C coefficients. Area a×a at each roof corner. Critical for uplift design of corner fasteners. / Mayores coeficientes. Área a×a en cada esquina del techo. Crítica para el diseño de conexiones de esquina.'],
+  ['Zone 4',     'Interior Wall Zone',                 'Zona Interior de Muro',
+   'C&C zone on wall areas away from corners. Fig. 30.3-1. / Zona C&C en áreas de muro alejadas de esquinas.'],
+  ['Zone 5',     'Corner Wall Zone',                   'Zona de Esquina de Muro',
+   'C&C zone on wall areas within distance a of corners. Higher suction coefficients. Fig. 30.3-1. / Zona C&C en muros dentro de la distancia a de las esquinas. Mayores coeficientes de succión.'],
+  ['3_OHS',      'Overhang Zone (Uplift)',             'Zona de Voladizo (Succión)',
+   'Critical zone for roof overhangs. GCpu = −3.60. Ch. 30 Pt. 4. Generates the largest uplift pressures in the building. / Zona crítica de voladizo. GCpu = −3.60. Genera las mayores presiones de succión del edificio.'],
+  ['1/3 Rule',   'One-Third Rule',                     'Regla del Tercio',
+   '§30.3-1: The effective width for C&C need not be less than 1/3 the span. Applied as: effective width = min(actual width, span/3). / §30.3-1: El ancho efectivo no debe ser menor que 1/3 del claro. Ancho efectivo = min(ancho real, claro/3).'],
+  ['ASD',        'Allowable Stress Design',            'Diseño por Esfuerzos Admisibles',
+   'Load combinations use service-level forces. Wind load factor = 0.6 applied to V² in velocity pressure. Pressures are compared against allowable (working) stresses. / Combinaciones a nivel de servicio. Factor 0.6 en la presión de velocidad.'],
+  ['LRFD',       'Load and Resistance Factor Design',  'Diseño por Factores de Carga y Resistencia',
+   'Load combinations use ultimate-level forces. Wind load factor = 1.0. Pressures are compared against reduced (factored) strengths. / Combinaciones a nivel último. Factor 1.0 en la presión de velocidad.'],
+];
+
+const GLOSS_ROOF = [
+  ['Hipped',  'Hipped Roof',        'Techo de Cuatro Aguas',
+   'Four sloping sides meeting at ridges and hips. Fig. 30.3-2E applies for 7° < θ ≤ 20°. Common in Florida residential construction. / Cuatro faldones inclinados que se unen en cumbreras y caderas. Típico en construcción residencial de Florida.'],
+  ['Gable',   'Gable Roof',         'Techo a Dos Aguas',
+   'Two sloping sides with vertical triangular walls (gable ends) at each end. Fig. 30.3-2B for 7° < θ ≤ 20°. / Dos faldones inclinados con hastiales triangulares en los extremos.'],
+  ['Flat',    'Flat Roof',           'Techo Plano',
+   'θ ≤ 5°. Technically flat or very low slope. Fig. 30.3-2A. h = Eave Height (no ridge). / θ ≤ 5°. Techo plano o de muy baja pendiente. h = altura del alero.'],
+  ['Shed',    'Shed / Monopitch Roof','Techo a Una Agua (Cobertizo)',
+   'Single sloping surface. Treated with gable equations as conservative approximation. / Un solo faldón inclinado. Tratado con ecuaciones de techo a dos aguas como aproximación conservadora.'],
+];
+
+function buildGlossTable(tbodyId, data) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = data.map((row, i) => `
+    <tr style="border-bottom:1px solid #21262d;${i % 2 === 1 ? 'background:rgba(255,255,255,.015)' : ''}">
+      <td style="padding:8px 12px;font-family:monospace;color:#378ADD;font-weight:700;
+                 vertical-align:top">${row[0]}</td>
+      <td style="padding:8px 12px;color:#e6edf3;vertical-align:top">${row[1]}</td>
+      <td style="padding:8px 12px;color:#1D9E75;vertical-align:top">${row[2]}</td>
+      <td style="padding:8px 12px;color:#8b949e;font-size:11px;line-height:1.55;
+                 vertical-align:top">${row[3]}</td>
+    </tr>`).join('');
+}
+
+// Close modal when clicking backdrop
+document.getElementById('glossaryModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+// Build all glossary tables on load
+buildGlossTable('glossInputBody', GLOSS_INPUT);
+buildGlossTable('glossCalcBody',  GLOSS_CALC);
+buildGlossTable('glossTermBody',  GLOSS_TERMS);
+buildGlossTable('glossRoofBody',  GLOSS_ROOF);
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+initPyodide();
+</script>
+</body>
+</html>
